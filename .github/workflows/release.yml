@@ -1,8 +1,14 @@
-name: Attach plugin zip to release
+name: Release
 
-# When you publish a GitHub Release, this builds the installable plugin zip
-# (bin/build-zip.sh — committed files minus .distignore) and attaches it to
-# that release. Nothing is committed back to the repo.
+# When you publish a GitHub Release this workflow:
+#   1. builds the installable plugin zip (bin/build-zip.sh — committed files
+#      minus .distignore) and attaches it to that release;
+#   2. pushes that version to the WordPress.org plugin SVN repo and updates
+#      the .org readme and listing assets.
+#
+# Nothing is committed back to the repo. The SVN steps need the repo secrets
+# SVN_USERNAME and SVN_PASSWORD (your WordPress.org account) and only run for
+# real Release events, not workflow_dispatch.
 
 on:
   release:
@@ -18,6 +24,7 @@ permissions:
 
 jobs:
   zip:
+    name: Attach plugin zip to release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -45,3 +52,33 @@ jobs:
           tag_name: ${{ github.event.release.tag_name || github.event.inputs.tag }}
           files: dist/perxel-ai-translate.zip
           fail_on_unmatched_files: true
+
+  deploy:
+    name: Deploy to WordPress.org
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: WordPress.org plugin deploy
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: perxel-ai-translate
+
+  assets:
+    name: Update readme and assets
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update WordPress.org readme and assets
+        uses: 10up/action-wordpress-plugin-asset-update@stable
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: perxel-ai-translate

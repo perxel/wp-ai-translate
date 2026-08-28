@@ -24,7 +24,7 @@ assets/js, assets/css       Admin-only JS/CSS
 languages/                  .pot template
 readme.txt                  WordPress.org listing (keep in sync with README.md + version)
 .wordpress-org/             Listing assets (icon/banner/screenshots) — not shipped
-.github/workflows/          lint.yml (PHPCS + Plugin Check), deploy.yml (tag → SVN)
+.github/workflows/          lint.yml (PHPCS + Plugin Check), release.yml (Release → zip + SVN)
 ```
 
 ## Conventions
@@ -63,8 +63,9 @@ WordPress.org review would.
    `readme.txt` (`Stable tag`), and add a changelog entry in both readmes.
    The tag must equal the `Version:` header or `release.yml` fails.
 2. Create a GitHub Release with that tag.
-3. `release.yml` attaches `perxel-ai-translate.zip` to the release (always).
-   `deploy.yml` pushes to WordPress.org SVN (needs `SVN_USERNAME` /
+3. Publishing the Release runs `release.yml`: the `zip` job attaches
+   `perxel-ai-translate.zip` to the release (always); the `deploy` / `assets`
+   jobs push to WordPress.org SVN and update the listing (need `SVN_USERNAME` /
    `SVN_PASSWORD` secrets; the SVN repo only exists after the first manual
    review is approved).
 

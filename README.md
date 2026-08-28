@@ -74,19 +74,20 @@ to replace the built-in list entirely.
    `readme.txt` (`Stable tag`), and add a changelog entry. Commit to `main`.
 2. Create a **GitHub Release** with the tag = the new version (e.g. `0.0.2`).
 
-Two workflows then run automatically:
+`release.yml` then runs automatically on the published Release and does two
+things:
 
-| Workflow | Trigger | What it does |
-| --- | --- | --- |
-| `release.yml` | Release published | Builds `perxel-ai-translate.zip` with `bin/build-zip.sh` and **attaches it to the release**. Works immediately. |
-| `deploy.yml` | Tag pushed | Pushes the version to the WordPress.org SVN repo. Only works **after** the plugin's first submission has been approved, and needs the repo secrets `SVN_USERNAME` / `SVN_PASSWORD`. |
+| Job | What it does |
+| --- | --- |
+| `zip` | Builds `perxel-ai-translate.zip` with `bin/build-zip.sh` and **attaches it to the release**. Works immediately. |
+| `deploy` / `assets` | Pushes the version to the WordPress.org SVN repo and updates the `.org` readme and listing assets. Only works **after** the plugin's first submission has been approved, and needs the repo secrets `SVN_USERNAME` / `SVN_PASSWORD`. |
 
 The zip is a build artifact — it is **not** committed to the repo (`dist/` is
 git-ignored). The stable download URL for the latest build is
 `https://github.com/phucbm/perxel-ai-translate/releases/latest/download/perxel-ai-translate.zip`.
 
 Listing assets (icon, banner, screenshots) live in `.wordpress-org/` and are
-pushed to SVN on the same `deploy.yml` run.
+pushed to SVN on the same `release.yml` run.
 
 ## License
 
