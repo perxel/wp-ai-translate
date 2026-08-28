@@ -1,0 +1,327 @@
+.pxat-wrap .pxat-list {
+	list-style: disc;
+	margin-left: 20px;
+}
+
+.pxat-delete-batch {
+	color: #b32d2e;
+}
+
+.pxat-tax-summary {
+	margin-top: 4px;
+	font-size: 12px;
+	color: #646970;
+}
+
+.pxat-wrap .pxat-step-title {
+	font-size: 24px;
+	font-weight: 700;
+	margin-top: 32px;
+	padding-top: 16px;
+	border-top: 1px solid #dcdcde;
+}
+
+.pxat-wrap .pxat-step-title:first-of-type {
+	margin-top: 20px;
+	padding-top: 0;
+	border-top: none;
+}
+
+.pxat-wrap .pxat-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.pxat-badge--pending {
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.pxat-badge--processing {
+	background: #fff3cd;
+	color: #856404;
+}
+
+.pxat-badge--success {
+	background: #d4edda;
+	color: #155724;
+}
+
+.pxat-badge--error {
+	background: #f8d7da;
+	color: #721c24;
+}
+
+.pxat-badge--skipped {
+	background: #e2e3e5;
+	color: #383d41;
+}
+
+.pxat-badge--applied {
+	background: #d1e7ff;
+	color: #0a4b8c;
+}
+
+/* Native WP .spinner, just repositioned for inline use next to text/buttons
+   instead of its default float:right block placement. */
+.pxat-wrap .spinner {
+	float: none;
+	vertical-align: middle;
+	margin: 0 4px 0 0;
+}
+
+.pxat-badge .spinner {
+	width: 14px;
+	height: 14px;
+	background-size: 14px 14px;
+	margin: -2px 4px 0 0;
+}
+
+.pxat-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 16px 0 8px;
+}
+
+.pxat-stat-card {
+	flex: 1 1 160px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 12px 16px;
+}
+
+.pxat-stat-label {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+	color: #646970;
+	margin-bottom: 6px;
+}
+
+.pxat-stat-value {
+	font-size: 24px;
+	font-weight: 600;
+	line-height: 1.2;
+	color: #1d2327;
+}
+
+.pxat-stat-sub {
+	font-size: 12px;
+	color: #646970;
+	margin-top: 2px;
+}
+
+.pxat-stat-bar {
+	margin-top: 8px;
+	height: 6px;
+	background: #f0f0f1;
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.pxat-stat-bar-fill {
+	height: 100%;
+	background: #2271b1;
+	border-radius: 3px;
+	transition: width .3s ease;
+}
+
+.pxat-stat-note {
+	margin-top: 8px;
+	font-size: 12px;
+	color: #646970;
+	min-height: 18px;
+}
+
+#pxat-stats-footnote {
+	margin-top: -6px;
+}
+
+.pxat-inline-error {
+	color: #b32d2e;
+	font-size: 12px;
+	display: inline-block;
+	margin-bottom: 4px;
+}
+
+.pxat-inline-warning {
+	color: #996800;
+	background: #fff8e5;
+	border: 1px solid #f0d78c;
+	border-radius: 3px;
+	padding: 1px 6px;
+	font-size: 12px;
+	display: inline-block;
+	margin-bottom: 4px;
+	cursor: help;
+}
+
+.pxat-inline-ok {
+	color: #1a6640;
+	background: #eafaf1;
+	border: 1px solid #a8ddc3;
+	border-radius: 3px;
+	padding: 1px 6px;
+	font-size: 12px;
+	display: inline-block;
+	margin-bottom: 4px;
+}
+
+.pxat-type-results {
+	margin-bottom: 4px;
+}
+
+.pxat-type-results .pxat-inline-error,
+.pxat-type-results .pxat-inline-warning {
+	cursor: help;
+}
+
+.pxat-dialog {
+	max-width: 720px;
+	width: 90vw;
+	max-height: 80vh;
+	overflow-y: auto;
+	padding: 24px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, .15);
+}
+
+.pxat-dialog::backdrop {
+	background: rgba(0, 0, 0, .4);
+}
+
+.pxat-dialog h2 {
+	margin-top: 0;
+}
+
+.pxat-dialog-actions {
+	margin-top: 20px;
+}
+
+.pxat-preview-field {
+	margin-bottom: 16px;
+	padding-bottom: 16px;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.pxat-preview-field:last-child {
+	border-bottom: none;
+}
+
+.pxat-preview-field {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+}
+
+.pxat-preview-field h4 {
+	flex: 1 0 100%;
+	margin: 0 0 8px;
+}
+
+.pxat-preview-before,
+.pxat-preview-after {
+	flex: 1 1 0;
+	min-width: 200px;
+}
+
+.pxat-preview-before pre,
+.pxat-preview-after pre {
+	white-space: pre-wrap;
+	word-break: break-word;
+	background: #f6f7f7;
+	padding: 8px 10px;
+	margin: 4px 0 0;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.pxat-preview-before pre {
+	color: #646970;
+}
+
+.pxat-test-result {
+	margin-left: 8px;
+	font-weight: 600;
+}
+
+.pxat-test-result--ok {
+	color: #155724;
+}
+
+.pxat-test-result--fail {
+	color: #721c24;
+}
+
+.pxat-chat-message {
+	max-width: 720px;
+	background: #f0f0f1;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 10px 14px;
+}
+
+.pxat-chat-message__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 6px;
+}
+
+.pxat-chat-message__role {
+	font-weight: 600;
+	font-size: 11px;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+	color: #50575e;
+}
+
+.pxat-chat-message__body {
+	margin: 0;
+	font-family: Consolas, Monaco, monospace;
+	font-size: 12px;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.pxat-log {
+	background: #1d2327;
+	color: #c3c4c7;
+	padding: 12px 16px;
+	height: 260px;
+	overflow-y: auto;
+	overflow-x: auto;
+	font-family: Consolas, Monaco, monospace;
+	font-size: 12px;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.pxat-wrap .pxat-footer {
+	margin-top: 32px;
+	padding-top: 16px;
+	border-top: 1px solid #dcdcde;
+	color: #646970;
+}
+
+#adminmenu a[href$="page=pxat-settings"] {
+	background: #2271b1;
+	color: #fff;
+}
+
+#adminmenu a[href$="page=pxat-settings"]:hover,
+#adminmenu a[href$="page=pxat-settings"]:focus,
+#adminmenu li.current a[href$="page=pxat-settings"] {
+	background: #135e96;
+	color: #fff;
+}

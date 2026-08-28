@@ -1,0 +1,21 @@
+# Files and folders that must NOT ship in the WordPress.org / installable build.
+
+/.git
+/.github
+/.idea
+/.wordpress-org
+/node_modules
+/vendor
+/tests
+
+.distignore
+.gitignore
+.editorconfig
+CLAUDE.md
+README.md
+composer.json
+composer.lock
+phpcs.xml.dist
+phpunit.xml.dist
+package.json
+package-lock.json
