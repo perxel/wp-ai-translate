@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 0.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -96,5 +96,5 @@ Deleting the plugin removes its settings and the batch log directory. Translatio
 
 == Changelog ==
 
-= 1.0.0 =
+= 0.0.1 =
 * First public release.
