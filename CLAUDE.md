@@ -61,7 +61,11 @@ WordPress.org review would.
 
 1. Bump the version in `perxel-ai-translate.php` (header + `PXAT_VERSION`),
    `readme.txt` (`Stable tag`), and add a changelog entry in both readmes.
-2. `git tag X.Y.Z && git push origin X.Y.Z`.
-3. `deploy.yml` pushes it to WordPress.org SVN (needs `SVN_USERNAME` /
-   `SVN_PASSWORD` repo secrets). The SVN repo only exists after the plugin's
-   first manual review has been approved.
+   The tag must equal the `Version:` header or `release.yml` fails.
+2. Create a GitHub Release with that tag.
+3. `release.yml` attaches `perxel-ai-translate.zip` to the release (always).
+   `deploy.yml` pushes to WordPress.org SVN (needs `SVN_USERNAME` /
+   `SVN_PASSWORD` secrets; the SVN repo only exists after the first manual
+   review is approved).
+
+Build artifacts (`dist/`) are never committed.
