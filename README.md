@@ -34,6 +34,15 @@ composer run lint      # PHP_CodeSniffer (WordPress standard)
 composer run lint:fix  # phpcbf
 ```
 
+Build an installable / WordPress.org submission zip (only committed files,
+minus everything in `.distignore`):
+
+```bash
+composer run build          # or: bin/build-zip.sh
+bin/build-zip.sh --dirty    # include uncommitted changes
+# → dist/perxel-ai-translate.zip
+```
+
 Regenerate the translation template:
 
 ```bash

@@ -51,6 +51,7 @@ readme.txt                  WordPress.org listing (keep in sync with README.md +
 ```bash
 php -l <changed files>
 composer run lint          # needs `composer install` first
+composer run build         # bin/build-zip.sh — installable zip in dist/
 ```
 
 CI also runs the official **Plugin Check** action — treat its output as the

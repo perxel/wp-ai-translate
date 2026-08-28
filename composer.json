@@ -13,7 +13,8 @@
 	},
 	"scripts": {
 		"lint": "phpcs",
-		"lint:fix": "phpcbf"
+		"lint:fix": "phpcbf",
+		"build": "bin/build-zip.sh"
 	},
 	"config": {
 		"allow-plugins": {

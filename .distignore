@@ -1,6 +1,8 @@
 # Files and folders that must NOT ship in the WordPress.org / installable build.
 
 /.git
+/dist
+/bin
 /.github
 /.idea
 /.wordpress-org
