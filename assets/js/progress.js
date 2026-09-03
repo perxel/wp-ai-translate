@@ -19,11 +19,14 @@
 		return ( ctx || document ).querySelector( sel );
 	}
 
-	// Named `__` (not `t`) - `toggleButtons()` and the click handler both keep a
-	// local `var t` for other things.
-	function __( str ) {
-		return ( window.wp && wp.i18n ) ? wp.i18n.__( str, 'perxel-ai-translate' ) : str;
-	}
+	// wp.i18n.__, or a passthrough until it loads. Named `__` (not `t`) because
+	// `toggleButtons()` and the click handler each keep a local `var t`. Pass the
+	// text domain at every call site so `wp i18n make-pot` can find the strings.
+	var __ = ( window.wp && window.wp.i18n )
+		? window.wp.i18n.__
+		: function ( s ) {
+			return s;
+		};
 
 	/* A one-line status next to the Start/Stop buttons so a click always
 	   produces visible feedback (stopping, stopped, failed). */
@@ -192,11 +195,11 @@
 		var stopBtn = el( '#pxat-stop' );
 		if ( stopBtn ) {
 			stopBtn.disabled = false;
-			stopBtn.textContent = __( 'Stop' );
+			stopBtn.textContent = __( 'Stop', 'perxel-ai-translate' );
 		}
 		var startBtn = el( '#pxat-start' );
 		if ( startBtn ) {
-			startBtn.textContent = __( 'Resume translating' );
+			startBtn.textContent = __( 'Resume translating', 'perxel-ai-translate' );
 		}
 		toggleButtons( false );
 
@@ -205,11 +208,11 @@
 		stalled = false;
 		sessionExpired = false;
 		if ( expired ) {
-			setRunMsg( __( 'Your session expired. Reload the page to keep translating.' ) );
+			setRunMsg( __( 'Your session expired. Reload the page to keep translating.', 'perxel-ai-translate' ) );
 		} else if ( failed ) {
-			setRunMsg( __( 'The last request failed. Press Resume to try again.' ) );
+			setRunMsg( __( 'The last request failed. Press Resume to try again.', 'perxel-ai-translate' ) );
 		} else {
-			setRunMsg( __( 'Stopped. Press Resume to translate the remaining posts.' ) );
+			setRunMsg( __( 'Stopped. Press Resume to translate the remaining posts.', 'perxel-ai-translate' ) );
 		}
 
 		// One last refresh so the figures match the final written post - and if
@@ -221,7 +224,7 @@
 			}
 		} ).catch( function ( err ) {
 			if ( isExpired( err ) ) {
-				setRunMsg( __( 'Your session expired. Reload the page to keep translating.' ) );
+				setRunMsg( __( 'Your session expired. Reload the page to keep translating.', 'perxel-ai-translate' ) );
 			}
 		} );
 	}
@@ -282,11 +285,11 @@
 		var btn = el( '#pxat-stop' );
 		if ( btn ) {
 			btn.disabled = true;
-			btn.textContent = __( 'Stopping…' );
+			btn.textContent = __( 'Stopping…', 'perxel-ai-translate' );
 		}
 		// A translate request is likely in flight; it has to finish before the
 		// worker checks `running` and winds down (then onIdle() takes over).
-		setRunMsg( __( 'Finishing the current post, then stopping…' ) );
+		setRunMsg( __( 'Finishing the current post, then stopping…', 'perxel-ai-translate' ) );
 	}
 
 	function toggleButtons( isRunning ) {
@@ -321,9 +324,9 @@
 			} ).catch( function ( err ) {
 				pollFails++;
 				if ( isExpired( err ) ) {
-					setRunMsg( __( 'Your session expired. Reload the page to keep translating.' ) );
+					setRunMsg( __( 'Your session expired. Reload the page to keep translating.', 'perxel-ai-translate' ) );
 				} else if ( pollFails >= 3 ) {
-					setRunMsg( __( 'Lost contact with the server - retrying. Check your connection.' ) );
+					setRunMsg( __( 'Lost contact with the server - retrying. Check your connection.', 'perxel-ai-translate' ) );
 				}
 			} );
 		}, 3000 );
@@ -337,9 +340,9 @@
 		var note = row ? row.querySelector( '.pxat-cell-note' ) : null;
 
 		btn.disabled = true;
-		btn.textContent = __( 'Retrying…' );
+		btn.textContent = __( 'Retrying…', 'perxel-ai-translate' );
 		if ( note ) {
-			note.textContent = __( 'Retrying this post…' );
+			note.textContent = __( 'Retrying this post…', 'perxel-ai-translate' );
 		}
 
 		function restore( message ) {
@@ -364,11 +367,11 @@
 				}
 				return;
 			}
-			restore( ( res && res.data && res.data.message ) || __( 'The retry did not go through. Try again.' ) );
+			restore( ( res && res.data && res.data.message ) || __( 'The retry did not go through. Try again.', 'perxel-ai-translate' ) );
 		} ).catch( function ( err ) {
 			restore( isExpired( err )
-				? __( 'Your session expired. Reload the page and try again.' )
-				: __( 'The retry request failed. Check your connection and try again.' ) );
+				? __( 'Your session expired. Reload the page and try again.', 'perxel-ai-translate' )
+				: __( 'The retry request failed. Check your connection and try again.', 'perxel-ai-translate' ) );
 		} );
 	}
 
