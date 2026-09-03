@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.12
+Stable tag: 0.0.13
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,6 +99,11 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.13 =
+* Run screen: **Start translating** no longer stays visible while a run is in progress (a WordPress button style was overriding the hidden state).
+* **Stop** now gives feedback: the button reads "Stopping..." while the current post finishes, then the screen settles into a **Resume translating** state with a one-line status ("Stopped. Press Resume to translate the remaining posts.").
+* If a translate request fails, the run screen recovers instead of freezing, telling you to press Resume to retry; if the run had actually finished, it reloads into the completion screen.
 
 = 0.0.12 =
 * When your OpenRouter key has a credit limit set, the Settings > API key row shows how much of it is left ("Verified · $37.66 left of $50.00") and turns amber below 20%, red at zero.

@@ -31,6 +31,20 @@
 	display: none;
 }
 
+/* Progress: WP core's `.wp-core-ui .button` sets `display:inline-block`, which
+ * outweighs the UA `[hidden]` rule - so a hidden action button stays visible.
+ * Re-assert it for the start/stop pair (the ID selector wins on specificity). */
+.pxat #pxat-start[hidden],
+.pxat #pxat-stop[hidden] {
+	display: none;
+}
+
+/* Progress: the "stopping / stopped / failed" line beside the action buttons. */
+.pxat .pxat-run-msg {
+	color: var(--pxui-fg-muted, #646970);
+	font-size: 13px;
+}
+
 /* Confirm: pending-reload notice by the config controls. */
 .pxat .pxat-config-status {
 	display: flex;

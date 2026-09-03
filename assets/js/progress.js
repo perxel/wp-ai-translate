@@ -9,11 +9,41 @@
 	var cfg = window.PXAT_Progress || {};
 	var running = false;
 	var finished = false;
+	var stalled = false;
 	var activeWorkers = 0;
 	var pollTimer = null;
 
 	function el( sel, ctx ) {
 		return ( ctx || document ).querySelector( sel );
+	}
+
+	// Named `__` (not `t`) - `toggleButtons()` and the click handler both keep a
+	// local `var t` for other things.
+	function __( str ) {
+		return ( window.wp && wp.i18n ) ? wp.i18n.__( str, 'perxel-ai-translate' ) : str;
+	}
+
+	/* A one-line status next to the Start/Stop buttons so a click always
+	   produces visible feedback (stopping, stopped, failed). */
+	function setRunMsg( text ) {
+		var box = el( '.pxui-main__actions' );
+		if ( ! box ) {
+			return;
+		}
+		var msg = el( '#pxat-run-msg' );
+		if ( ! text ) {
+			if ( msg ) {
+				msg.parentNode.removeChild( msg );
+			}
+			return;
+		}
+		if ( ! msg ) {
+			msg = document.createElement( 'span' );
+			msg.id = 'pxat-run-msg';
+			msg.className = 'pxat-run-msg';
+			box.appendChild( msg );
+		}
+		msg.textContent = text;
 	}
 
 	function post( action, data ) {
@@ -114,9 +144,52 @@
 
 	function retire( reload ) {
 		activeWorkers--;
-		if ( activeWorkers <= 0 && reload ) {
-			window.location.reload();
+		if ( activeWorkers > 0 ) {
+			return;
 		}
+		if ( reload ) {
+			window.location.reload();
+			return;
+		}
+		onIdle();
+	}
+
+	/* Every worker has wound down without finishing the run: it is paused.
+	   Restore the buttons and say so. */
+	function onIdle() {
+		if ( pollTimer ) {
+			clearInterval( pollTimer );
+			pollTimer = null;
+		}
+		var stopBtn = el( '#pxat-stop' );
+		if ( stopBtn ) {
+			stopBtn.disabled = false;
+			stopBtn.textContent = __( 'Stop' );
+		}
+		var startBtn = el( '#pxat-start' );
+		if ( startBtn ) {
+			startBtn.textContent = __( 'Resume translating' );
+		}
+		toggleButtons( false );
+
+		var failed = stalled;
+		stalled = false;
+		setRunMsg( failed
+			? __( 'The last request failed. Press Resume to try again.' )
+			: __( 'Stopped. Press Resume to translate the remaining posts.' ) );
+
+		// One last refresh so the figures match the final written post - and if
+		// the run turns out to have no work left, reload into the done screen.
+		post( 'pxat_status', {} ).then( function ( res ) {
+			if ( ! res || ! res.success ) {
+				return;
+			}
+			render( res.data );
+			var c = res.data.counts || {};
+			if ( c.total > 0 && ! c.pending && ! c.translating ) {
+				window.location.reload();
+			}
+		} );
 	}
 
 	function worker() {
@@ -127,6 +200,7 @@
 		post( 'pxat_process', {} ).then( function ( res ) {
 			if ( ! res || ! res.success ) {
 				running = false;
+				stalled = true;
 				retire( false );
 				return;
 			}
@@ -140,6 +214,7 @@
 			worker();
 		} ).catch( function () {
 			running = false;
+			stalled = true;
 			retire( false );
 		} );
 	}
@@ -149,6 +224,9 @@
 			return;
 		}
 		running = true;
+		finished = false;
+		stalled = false;
+		setRunMsg( '' );
 		toggleButtons( true );
 		var n = Math.max( 1, cfg.batched ? cfg.workerCount : 1 );
 		for ( var i = 0; i < n; i++ ) {
@@ -159,8 +237,18 @@
 	}
 
 	function stop() {
+		if ( ! running ) {
+			return;
+		}
 		running = false;
-		toggleButtons( false );
+		var btn = el( '#pxat-stop' );
+		if ( btn ) {
+			btn.disabled = true;
+			btn.textContent = __( 'Stopping…' );
+		}
+		// A translate request is likely in flight; it has to finish before the
+		// worker checks `running` and winds down (then onIdle() takes over).
+		setRunMsg( __( 'Finishing the current post, then stopping…' ) );
 	}
 
 	function toggleButtons( isRunning ) {
