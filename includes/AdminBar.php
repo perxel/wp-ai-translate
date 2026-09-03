@@ -8,9 +8,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * "Translate this page" admin-bar node, shown while editing a single post of a
- * translatable type. Adds the post to the translation cart and lands on the
- * Confirm screen, same as the bulk action. The "cart" is never named here - from
- * the editor this just reads as "translate this page".
+ * translatable type. Lands on the Confirm screen with this post's id in the URL,
+ * same as the bulk action.
  */
 class AdminBar {
 
@@ -80,8 +79,16 @@ class AdminBar {
 			wp_die( esc_html__( 'Invalid post, or its type cannot be translated.', 'perxel-ai-translate' ) );
 		}
 
-		Cart::add( array( $post_id ), $post->post_type );
-		wp_safe_redirect( Cart::url() );
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'      => Admin::PAGE_CONFIRM,
+					'ids'       => $post_id,
+					'post_type' => $post->post_type,
+				),
+				admin_url( 'admin.php' )
+			)
+		);
 		exit;
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 	}

@@ -7,16 +7,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Confirm screen - the translation cart. Lists the posts collected in the cart
- * (Cart), lets you remove rows or empty it, then pick the destination language
- * and data scope, see a per-post plan with a cost estimate, and start the run.
- * The config block is a GET self-submit form (press "Update" to recompute);
- * "Start" is a POST that creates the run, empties the cart and redirects to
- * Progress.
+ * Confirm screen. The selected post ids arrive in the URL (`ids`, comma
+ * separated, plus `post_type`) from the bulk action, the "Translate this page"
+ * bar item or a re-run - there is no stored selection. Pick the destination
+ * language and data scope, see a per-post plan with a cost estimate, and start
+ * the run. The config block is a GET self-submit form (press "Update" to
+ * recompute) that carries the ids through as hidden fields; "Start" is a POST
+ * that creates the run and redirects to Progress.
  *
  * There is no run-mode choice any more - every run translates and writes. Every
- * post in the cart is processed regardless of status. "Batched" (several posts
- * per model request) is a global Settings toggle, snapshotted into each run.
+ * selected post is processed regardless of status. "Batched" (several posts per
+ * model request) is a global Settings toggle, snapshotted into each run.
  */
 class Confirm {
 
@@ -42,20 +43,13 @@ class Confirm {
 		$admin = Plugin::instance()->admin();
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only navigation params, each sanitised on use.
-		$cart      = Cart::get();
-		$post_ids  = $cart['post_ids'];
-		$post_type = $cart['post_type'];
-
-		$conflict = get_transient( 'pxat_cart_conflict_' . get_current_user_id() );
-		if ( $conflict ) {
-			delete_transient( 'pxat_cart_conflict_' . get_current_user_id() );
-		}
+		list( $post_ids, $post_type ) = self::read_selection( $_GET );
 
 		$languages = Wpml::get_active_languages();
 		if ( count( $languages ) < 2 ) {
 			$admin->screen(
-				Admin::PAGE_CONFIRM,
-				__( 'Translation cart', 'perxel-ai-translate' ),
+				Admin::PAGE_DASHBOARD,
+				__( 'Translation', 'perxel-ai-translate' ),
 				'notice',
 				array(
 					'type' => 'error',
@@ -67,10 +61,9 @@ class Confirm {
 
 		if ( empty( $post_ids ) ) {
 			$admin->screen(
-				Admin::PAGE_CONFIRM,
-				__( 'Translation cart', 'perxel-ai-translate' ),
-				'cart-empty',
-				array( 'conflict' => is_array( $conflict ) ? $conflict : null )
+				Admin::PAGE_DASHBOARD,
+				__( 'Translation', 'perxel-ai-translate' ),
+				'confirm-empty'
 			);
 			return;
 		}
@@ -82,11 +75,10 @@ class Confirm {
 		$vars = array_merge(
 			$config,
 			array(
+				'ids_csv'         => implode( ',', $post_ids ),
 				'post_type'       => $post_type,
 				'post_type_label' => self::post_type_label( $post_type, count( $post_ids ) ),
-				'cart_count'      => count( $post_ids ),
-				'conflict'        => is_array( $conflict ) ? $conflict : null,
-				'clear_url'       => wp_nonce_url( admin_url( 'admin-post.php?action=pxat_cart_clear' ), 'pxat_cart_clear' ),
+				'selected_count'  => count( $post_ids ),
 				'languages'       => $languages,
 				'model'           => Settings::model(),
 				'model_verified'  => Settings::model_verified(),
@@ -120,12 +112,36 @@ class Confirm {
 		}
 
 		$admin->screen(
-			Admin::PAGE_CONFIRM,
-			__( 'Translation cart', 'perxel-ai-translate' ),
+			Admin::PAGE_DASHBOARD,
+			__( 'Translation', 'perxel-ai-translate' ),
 			'confirm',
 			$vars,
 			array( 'actions' => $actions )
 		);
+	}
+
+	/**
+	 * The selected posts for this screen: `ids` (comma-separated) and
+	 * `post_type` from the request. The post type falls back to the first
+	 * post's own type, and a non-translatable type voids the whole selection.
+	 *
+	 * @param array $source $_GET or $_POST (already slash-quoted by WordPress).
+	 * @return array{0:int[], 1:string} [ post_ids, post_type ].
+	 */
+	protected static function read_selection( array $source ) {
+		$raw      = isset( $source['ids'] ) ? wp_unslash( $source['ids'] ) : '';
+		$post_ids = array_values( array_unique( array_filter( array_map( 'absint', explode( ',', (string) $raw ) ) ) ) );
+
+		$post_type = isset( $source['post_type'] ) ? sanitize_key( wp_unslash( $source['post_type'] ) ) : '';
+		if ( ! $post_type && $post_ids ) {
+			$post_type = (string) get_post_type( $post_ids[0] );
+		}
+
+		if ( ! $post_type || ! in_array( $post_type, PostTypes::get_translatable_post_types(), true ) ) {
+			return array( array(), '' );
+		}
+
+		return array( $post_ids, $post_type );
 	}
 
 	/**
@@ -367,11 +383,9 @@ class Confirm {
 		}
 		check_admin_referer( 'pxat_create_run' );
 
-		$cart      = Cart::get();
-		$post_ids  = $cart['post_ids'];
-		$post_type = $cart['post_type'];
+		list( $post_ids, $post_type ) = self::read_selection( $_POST );
 		if ( empty( $post_ids ) ) {
-			wp_die( esc_html__( 'Your translation cart is empty.', 'perxel-ai-translate' ) );
+			wp_die( esc_html__( 'No posts selected to translate.', 'perxel-ai-translate' ) );
 		}
 
 		$source_lang = Wpml::get_default_language();
@@ -489,7 +503,6 @@ class Confirm {
 			)
 		);
 		Runs::add_items( $run_id, $items );
-		Cart::clear();
 
 		wp_safe_redirect(
 			add_query_arg(

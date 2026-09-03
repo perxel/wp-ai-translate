@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.6
+Stable tag: 0.0.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -27,13 +27,12 @@ It is aimed at sites that already run **WPML** and want to translate a lot of co
 
 **How it works**
 
-1. Open any post list, tick some rows and choose **Perxel AI Translate…** from the bulk actions (or use *Translate this page* in the toolbar while editing one post). The posts land in your **translation cart** under **AI Translate**.
-2. Keep adding posts to the cart from anywhere - it stays until you start a run or clear it.
-3. On the cart screen, remove any rows you changed your mind about, then pick the destination language and which data to process. You get a cost and token estimate before anything runs.
-4. Press **Start**. Each post is translated and written straight into WordPress as a WPML translation; review the result in the normal editor. Close the tab any time - the run resumes where it left off.
-5. Every run is kept under **AI Translate → History** until you delete it.
+1. Open any post list, tick some rows and choose **Perxel AI Translate…** from the bulk actions (or use *Translate this page* in the toolbar while editing one post).
+2. You land on a confirm screen for exactly those posts: pick the destination language and which data to process. You get a cost and token estimate before anything runs.
+3. Press **Start**. Each post is translated and written straight into WordPress as a WPML translation; review the result in the normal editor. Close the tab any time - the run resumes where it left off.
+4. Every run is kept under **AI Translate → History** until you delete it.
 
-Turn on **Faster batched requests** on the cart screen to send several short posts per model request.
+Turn on **Faster batched requests** in Settings to send several short posts per model request.
 
 **Requirements**
 
@@ -61,7 +60,7 @@ Data is sent only when you explicitly start a translation or test the key. Your 
 1. Upload the plugin to `/wp-content/plugins/perxel-ai-translate`, or install it from the Plugins screen.
 2. Activate it. WPML must already be active with at least two languages.
 3. Go to **AI Translate → Settings** and enter your OpenRouter API key.
-4. Open a post list, tick some rows, choose **Perxel AI Translate…** from the bulk actions, then start a run from the translation cart.
+4. Open a post list, tick some rows, choose **Perxel AI Translate…** from the bulk actions, then start the run from the confirm screen.
 
 == Frequently Asked Questions ==
 
@@ -88,11 +87,15 @@ Deleting the plugin removes its settings and those tables. Translations already 
 == Screenshots ==
 
 1. Dashboard - setup state and all-time totals.
-2. Translation cart - collected posts, language, data selection and cost estimate.
+2. Confirm screen - selected posts, language, data selection and cost estimate.
 3. Run screen - live translation progress.
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.7 =
+* Removed the translation cart. Picking posts from a bulk action or the *Translate this page* toolbar item now goes straight to a confirm screen for exactly those posts - no persistent, accumulating list, and no more "different post type" refusal.
+* The confirm screen lives at `admin.php?page=pxat-confirm` and is titled just **Translation**.
 
 = 0.0.6 =
 * The translation run now begins on its own when the run screen opens - pressing **Start** on the cart is the only step.

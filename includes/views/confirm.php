@@ -11,11 +11,10 @@
  * @var array  $model          Settings::model() - { id, label, input, output, … }
  * @var bool   $model_verified
  * @var string $settings_url
+ * @var string $ids_csv
  * @var string $post_type
  * @var string $post_type_label
- * @var int    $cart_count
- * @var array|null $conflict
- * @var string $clear_url
+ * @var int    $selected_count
  * @var array  $languages
  * @var array  $rows
  * @var int    $total_tokens
@@ -41,24 +40,16 @@ $posts_phrase = sprintf(
 	number_format_i18n( $eligible_count )
 );
 
-if ( $conflict ) {
-	echo \Perxel_UI::notice(
-		'warning',
-		esc_html__( 'Those posts were a different post type from the ones already in your cart, so nothing was added. Start the run or clear the cart, then add them.', 'perxel-ai-translate' )
-	);
-}
-
 echo \Perxel_UI::notice(
 	'info',
 	esc_html(
 		sprintf(
 			/* translators: 1: number of posts, 2: post type name. */
-			__( '%1$s %2$s in your translation cart.', 'perxel-ai-translate' ),
-			number_format_i18n( $cart_count ),
+			__( '%1$s %2$s selected.', 'perxel-ai-translate' ),
+			number_format_i18n( $selected_count ),
 			$post_type_label
 		)
 	)
-	. ' <a href="' . esc_url( $clear_url ) . '">' . esc_html__( 'Clear cart', 'perxel-ai-translate' ) . '</a>'
 );
 
 echo '<p class="pxat-step">' . esc_html__( 'Step 1 of 2 - configure', 'perxel-ai-translate' ) . '</p>';
@@ -139,6 +130,8 @@ $config_rows[] = array(
 <form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" id="pxat-config-form">
 	<input type="hidden" name="page" value="<?php echo esc_attr( Admin::PAGE_CONFIRM ); ?>" />
 	<input type="hidden" name="pxat_save_config" value="1" />
+	<input type="hidden" name="ids" value="<?php echo esc_attr( $ids_csv ); ?>" />
+	<input type="hidden" name="post_type" value="<?php echo esc_attr( $post_type ); ?>" />
 	<?php
 	echo \Perxel_UI::rows(
 		array(
@@ -195,7 +188,6 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 			<th><?php echo esc_html( sprintf( '%s (%s)', __( 'Source post', 'perxel-ai-translate' ), $source_label ) ); ?></th>
 			<th><?php echo esc_html( sprintf( '%s (%s)', __( 'Translation', 'perxel-ai-translate' ), $dest_label ) ); ?></th>
 			<th><?php esc_html_e( 'Plan', 'perxel-ai-translate' ); ?></th>
-			<th class="pxat-col-remove"><span class="screen-reader-text"><?php esc_html_e( 'Remove from cart', 'perxel-ai-translate' ); ?></span></th>
 		</tr>
 	</thead>
 	<tbody>
@@ -282,9 +274,6 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 					}
 					?>
 				</td>
-				<td class="pxat-col-remove">
-					<a class="pxat-remove" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=pxat_cart_remove&post_id=' . (int) $row['id'] ), 'pxat_cart_remove' ) ); ?>" aria-label="<?php esc_attr_e( 'Remove from cart', 'perxel-ai-translate' ); ?>"><?php esc_html_e( 'Remove', 'perxel-ai-translate' ); ?></a>
-				</td>
 			</tr>
 		<?php endforeach; ?>
 	</tbody>
@@ -293,6 +282,8 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 
 <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="pxat-start-form">
 	<input type="hidden" name="action" value="pxat_create_run" />
+	<input type="hidden" name="ids" value="<?php echo esc_attr( $ids_csv ); ?>" />
+	<input type="hidden" name="post_type" value="<?php echo esc_attr( $post_type ); ?>" />
 	<input type="hidden" name="dest_lang" value="<?php echo esc_attr( $dest_lang ); ?>" />
 	<input type="hidden" name="data_mode" value="<?php echo esc_attr( $data_mode ); ?>" />
 	<?php foreach ( ( 'full' === $data_mode ? array() : $custom_types ) as $t ) : ?>

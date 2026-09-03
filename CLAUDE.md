@@ -58,20 +58,19 @@ confirmed) wires `Admin`, `BulkAction`, `AdminBar`.
   failures are non-blocking warnings (`has_warning`); Custom mode's are hard
   errors (`has_apply_error`, item ends `error`, retryable). `process_items()` is
   the batched counterpart (one request for several posts, weighted usage split).
-- **`Confirm`** - the "Translation cart" screen (menu slug `pxat-confirm`).
-  Lists what's in the cart with a per-row Remove and a Clear; a GET self-submit
-  config form; "Start" is a POST that creates the run + items, empties the cart
-  and redirects to `Progress`. Empty cart renders `views/cart-empty.php`.
+- **`Confirm`** - the "Translation" screen (menu slug `pxat-confirm`, off the
+  menu, reached only by redirect). The selection is *not* stored: entry points
+  (`BulkAction`, `AdminBar` "Translate this page", `Progress` re-run) redirect
+  here with `?ids=1,2,3&post_type=page` in the URL. `Confirm::read_selection()`
+  parses that from `$_GET` / `$_POST`; a non-translatable `post_type` voids the
+  selection (→ `views/confirm-empty.php`). A GET self-submit config form and the
+  "Start" POST both carry `ids` + `post_type` through as hidden fields. "Start"
+  creates the run + items and redirects to `Progress`. There is no picker/filter
+  UI - posts are chosen with the post list's own filters + bulk action, or the
+  single-post bar item.
 - **`Progress`** - browser loop: `assets/js/progress.js` calls `pxat_process`
   until the run is done; the AJAX responses carry **pre-rendered cell HTML**
   (`Progress::with_snapshots`) so the JS never templates a row itself.
-- **`Cart`** - a per-user, persistent post set in the `pxat_cart` user meta
-  (`{ post_ids, post_type }`, one post type at a time). Entry points
-  (`BulkAction`, `AdminBar` "Translate this page", `Progress` re-run) call
-  `Cart::add()` and land on `Confirm`; a type mismatch is refused and flagged
-  via the `pxat_cart_conflict_<user>` transient. There is no picker/filter UI -
-  posts are chosen with the post list's own filters + bulk action, or the
-  single-post bar item.
 
 ## Conventions
 

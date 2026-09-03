@@ -86,22 +86,6 @@
 	font-variant-numeric: tabular-nums;
 }
 
-/* Translation cart: per-row Remove control. */
-.pxat .pxat-col-remove {
-	width: 1%;
-	white-space: nowrap;
-	text-align: right;
-}
-
-.pxat .pxat-remove {
-	color: var(--pxui-danger, #b32d2e);
-	text-decoration: none;
-}
-
-.pxat .pxat-remove:hover {
-	text-decoration: underline;
-}
-
 /* Preview dialog. */
 .pxat-dialog {
 	max-width: 900px;

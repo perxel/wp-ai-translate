@@ -14,8 +14,6 @@
  * @var array  $recent        Run rows.
  * @var array  $languages
  * @var string $default_lang
- * @var int    $cart_count
- * @var string $cart_url
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -81,20 +79,6 @@ if ( $active_run_id ) {
 $pt_links = array();
 foreach ( $post_types as $slug => $label ) {
 	$pt_links[] = '<a href="' . esc_url( admin_url( 'edit.php?post_type=' . $slug ) ) . '">' . esc_html( $label ) . '</a>';
-}
-
-if ( $cart_count > 0 ) {
-	$open_cart = '<a class="button button-primary" href="' . esc_url( $cart_url ) . '">' . esc_html__( 'Open translation cart', 'perxel-ai-translate' ) . '</a>';
-	echo \Perxel_UI::notice(
-		'info',
-		esc_html(
-			sprintf(
-				/* translators: %s: number of posts. */
-				_n( '%s post is waiting in your translation cart.', '%s posts are waiting in your translation cart.', $cart_count, 'perxel-ai-translate' ),
-				number_format_i18n( $cart_count )
-			)
-		) . ' ' . $open_cart
-	);
 }
 
 echo \Perxel_UI::notice(

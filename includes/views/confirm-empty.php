@@ -1,10 +1,8 @@
 <?php
 /**
- * Translation cart - empty state.
+ * Confirm screen - nothing selected.
  *
  * @package Perxel_AI_Translate
- *
- * @var array|null $conflict { tried, cart_type, new_type } when an add was refused for a type mismatch.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -13,19 +11,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure; dynamic values escaped inline.
 
-if ( $conflict ) {
-	echo \Perxel_UI::notice(
-		'warning',
-		esc_html__( 'Those posts were a different post type from what the cart held, so nothing was added. The cart is now empty - add them again.', 'perxel-ai-translate' )
-	);
-}
-
-echo \Perxel_UI::notice( 'info', esc_html__( 'Your translation cart is empty.', 'perxel-ai-translate' ) );
+echo \Perxel_UI::notice( 'info', esc_html__( 'No posts selected to translate.', 'perxel-ai-translate' ) );
 
 echo \Perxel_UI::rows(
 	array(
 		array(
-			'title' => __( 'Add posts to the cart', 'perxel-ai-translate' ),
+			'title' => __( 'Pick posts to translate', 'perxel-ai-translate' ),
 			'rows'  => array(
 				array(
 					'label' => __( 'From a post list', 'perxel-ai-translate' ),

@@ -20,7 +20,7 @@ class Admin {
 	const PAGE_HISTORY   = 'pxat-history';
 	const PAGE_ID_LOOKUP = 'pxat-id-lookup';
 	const PAGE_SETTINGS  = 'pxat-settings';
-	const PAGE_CONFIRM   = 'pxat-cart';
+	const PAGE_CONFIRM   = 'pxat-confirm';
 	const PAGE_PROGRESS  = 'pxat-progress';
 	const PAGE_UI        = 'pxat-ui';
 
@@ -36,8 +36,6 @@ class Admin {
 		add_action( 'admin_post_pxat_delete_run', array( $this, 'handle_delete_run' ) );
 		add_action( 'admin_post_pxat_cancel_run', array( $this, 'handle_cancel_run' ) );
 		add_action( 'admin_post_pxat_rerun', array( Progress::class, 'handle_rerun' ) );
-		add_action( 'admin_post_pxat_cart_remove', array( $this, 'handle_cart_remove' ) );
-		add_action( 'admin_post_pxat_cart_clear', array( $this, 'handle_cart_clear' ) );
 
 		add_action( 'wp_ajax_pxat_test_api_key', array( $this, 'ajax_test_api_key' ) );
 		add_action( 'wp_ajax_pxat_test_model', array( $this, 'ajax_test_model' ) );
@@ -52,26 +50,15 @@ class Admin {
 	 * ------------------------------------------------------------------- */
 
 	public function menu() {
-		$cart_count = Cart::count();
-		$menu_title = __( 'AI Translate', 'perxel-ai-translate' );
-		if ( $cart_count > 0 ) {
-			$menu_title .= ' <span class="awaiting-mod">' . esc_html( number_format_i18n( $cart_count ) ) . '</span>';
-		}
-
 		add_menu_page(
 			PXAT_NAME,
-			$menu_title,
+			__( 'AI Translate', 'perxel-ai-translate' ),
 			'manage_options',
 			self::PAGE_DASHBOARD,
 			array( $this, 'render_dashboard' ),
 			'dashicons-translation',
 			76
 		);
-
-		$cart_label = __( 'Translation cart', 'perxel-ai-translate' );
-		if ( $cart_count > 0 ) {
-			$cart_label .= ' <span class="awaiting-mod">' . esc_html( number_format_i18n( $cart_count ) ) . '</span>';
-		}
 
 		$submenus = array(
 			self::PAGE_DASHBOARD => array( __( 'Dashboard', 'perxel-ai-translate' ), array( $this, 'render_dashboard' ), __( 'Dashboard', 'perxel-ai-translate' ) ),
@@ -84,22 +71,14 @@ class Admin {
 			add_submenu_page( self::MENU, $entry[2] . ' - ' . PXAT_NAME, $entry[0], 'manage_options', $slug, $entry[1] );
 		}
 
-		// Cart + run screens - reachable mid-task via redirect from the bulk
-		// action / admin bar / re-run. The cart only joins the menu while it
-		// holds posts; empty, it is off the menu but still renders on visit.
-		add_submenu_page(
-			$cart_count > 0 ? self::MENU : null,
-			__( 'Translation cart', 'perxel-ai-translate' ) . ' - ' . PXAT_NAME,
-			$cart_label,
-			'manage_options',
-			self::PAGE_CONFIRM,
-			array( Confirm::class, 'render' )
-		);
+		// Confirm + run screens - off the menu, reached mid-task via redirect
+		// from the bulk action / admin bar / re-run, but still render on visit.
+		add_submenu_page( null, __( 'Translation', 'perxel-ai-translate' ) . ' - ' . PXAT_NAME, '', 'manage_options', self::PAGE_CONFIRM, array( Confirm::class, 'render' ) );
 		add_submenu_page( null, __( 'Translation run', 'perxel-ai-translate' ), '', 'manage_options', self::PAGE_PROGRESS, array( Progress::class, 'render' ) );
 
 		$titles = array(
 			self::PAGE_DASHBOARD => __( 'Dashboard', 'perxel-ai-translate' ),
-			self::PAGE_CONFIRM   => __( 'Translation cart', 'perxel-ai-translate' ),
+			self::PAGE_CONFIRM   => __( 'Translation', 'perxel-ai-translate' ),
 			self::PAGE_HISTORY   => __( 'History', 'perxel-ai-translate' ),
 			self::PAGE_ID_LOOKUP => __( 'ID lookup', 'perxel-ai-translate' ),
 			self::PAGE_SETTINGS  => __( 'Settings', 'perxel-ai-translate' ),
@@ -243,11 +222,6 @@ class Admin {
 			self::PAGE_ID_LOOKUP => __( 'ID lookup', 'perxel-ai-translate' ),
 			self::PAGE_SETTINGS  => __( 'Settings', 'perxel-ai-translate' ),
 		);
-
-		// The cart joins the sidebar only while it holds posts (or is on screen).
-		if ( Cart::count() > 0 || self::PAGE_CONFIRM === $current ) {
-			$pages[ self::PAGE_CONFIRM ] = __( 'Translation cart', 'perxel-ai-translate' );
-		}
 
 		if ( self::can_see_showcase() ) {
 			$pages[ self::PAGE_UI ] = 'Perxel UI';
@@ -426,33 +400,6 @@ class Admin {
 				admin_url( 'admin.php' )
 			)
 		);
-		exit;
-	}
-
-	public function handle_cart_remove() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You are not allowed to do this.', 'perxel-ai-translate' ) );
-		}
-		check_admin_referer( 'pxat_cart_remove' );
-
-		$post_id = isset( $_REQUEST['post_id'] ) ? absint( wp_unslash( $_REQUEST['post_id'] ) ) : 0;
-		if ( $post_id ) {
-			Cart::remove( array( $post_id ) );
-		}
-
-		wp_safe_redirect( Cart::url() );
-		exit;
-	}
-
-	public function handle_cart_clear() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You are not allowed to do this.', 'perxel-ai-translate' ) );
-		}
-		check_admin_referer( 'pxat_cart_clear' );
-
-		Cart::clear();
-
-		wp_safe_redirect( Cart::url() );
 		exit;
 	}
 

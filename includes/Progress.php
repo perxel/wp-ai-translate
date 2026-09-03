@@ -343,8 +343,18 @@ class Progress {
 			wp_die( esc_html__( 'No posts to re-translate.', 'perxel-ai-translate' ) );
 		}
 
-		Cart::add( $post_ids, $post_type );
-		wp_safe_redirect( Cart::url( array( 'dest_lang' => $run['dest_lang'] ) ) );
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'             => Admin::PAGE_CONFIRM,
+					'ids'              => implode( ',', $post_ids ),
+					'post_type'        => $post_type,
+					'pxat_save_config' => '1',
+					'dest_lang'        => $run['dest_lang'],
+				),
+				admin_url( 'admin.php' )
+			)
+		);
 		exit;
 	}
 }
