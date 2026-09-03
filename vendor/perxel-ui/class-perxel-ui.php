@@ -263,9 +263,10 @@ final class Perxel_UI {
 	}
 
 	/**
-	 * A toggle - a checkbox, which the kit CSS renders as an iOS switch.
-	 * Handy as row `content`; a plain `<input type="checkbox">` inside
-	 * `.pxui-wrap` renders identically.
+	 * A toggle - an `<input type="checkbox" class="pxui-toggle">`, which the
+	 * kit CSS renders as an iOS switch. Handy as row `content`. A plain
+	 * checkbox (no class) is a square box with a tick; add `pxui-toggle`
+	 * yourself for the switch look, or call this.
 	 *
 	 * @param array $args [ 'name', 'checked' (bool), 'value', 'id', 'form',
 	 *              'label' (accessible name) ].
@@ -291,7 +292,7 @@ final class Perxel_UI {
 		$attr .= $d['checked'] ? ' checked' : '';
 		$attr .= $d['label'] ? ' aria-label="' . esc_attr( $d['label'] ) . '"' : '';
 
-		return '<input type="checkbox"' . $attr . ' />';
+		return '<input type="checkbox" class="pxui-toggle"' . $attr . ' />';
 	}
 
 	/**

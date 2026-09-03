@@ -198,7 +198,7 @@ final class Perxel_UI_Showcase {
 						),
 						array(
 							'label'   => 'Sizes to convert',
-							'sub'     => 'A "pick several" list - real checkboxes, not toggles.',
+							'sub'     => 'A "pick several" list - selectable pills, not a stack of checkboxes.',
 							'content' => Perxel_UI::checkbox_group(
 								array(
 									'name'     => 'demo_sizes',
@@ -265,8 +265,8 @@ final class Perxel_UI_Showcase {
 		);
 
 		echo '<h2>Form controls</h2>';
-		echo '<p class="pxui-field"><label><input type="checkbox" checked /> Checkbox renders as a toggle</label></p>';
-		echo '<p class="pxui-field"><label><input type="checkbox" class="pxui-checkbox" checked /> With <code>.pxui-checkbox</code> - a real square box</label></p>';
+		echo '<p class="pxui-field"><label><input type="checkbox" checked /> A checkbox is a square box with a brand tick</label></p>';
+		echo '<p class="pxui-field"><label><input type="checkbox" class="pxui-toggle" checked /> With <code>.pxui-toggle</code> - an iOS switch (what <code>Perxel_UI::toggle()</code> emits)</label></p>';
 		echo '<p class="pxui-field">Checkbox group: ' . Perxel_UI::checkbox_group(
 			array(
 				'name'     => 'demo_group',

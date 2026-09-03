@@ -93,12 +93,12 @@ $data_rows = array(
 	array(
 		'label'   => __( 'Everything', 'perxel-ai-translate' ),
 		'sub'     => esc_html__( 'Title, content, ACF, Rank Math, taxonomy, featured image. Missing translations are created.', 'perxel-ai-translate' ),
-		'content' => '<input type="radio" name="data_mode" value="full" class="pxui-checkbox" ' . checked( $data_mode, 'full', false ) . ' />',
+		'content' => '<input type="radio" name="data_mode" value="full" ' . checked( $data_mode, 'full', false ) . ' />',
 	),
 	array(
 		'summary' => __( 'Choose specific fields', 'perxel-ai-translate' ),
 		'sub'     => esc_html__( 'Only affects posts that already have a translation - nothing new is created.', 'perxel-ai-translate' ),
-		'content' => '<input type="radio" name="data_mode" value="custom" class="pxui-checkbox" ' . checked( $data_mode, 'custom', false ) . ' />',
+		'content' => '<input type="radio" name="data_mode" value="custom" ' . checked( $data_mode, 'custom', false ) . ' />',
 		'details' => '<div id="pxat-custom-types">' . $type_pills . '</div>',
 		'open'    => 'custom' === $data_mode,
 	),

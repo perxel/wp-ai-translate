@@ -96,6 +96,7 @@ Deleting the plugin removes its settings and those tables. Translations already 
 = 0.0.7 =
 * Removed the translation cart. Picking posts from a bulk action or the *Translate this page* toolbar item now goes straight to a confirm screen for exactly those posts - no persistent, accumulating list, and no more "different post type" refusal.
 * The confirm screen lives at `admin.php?page=pxat-confirm` and is titled just **Translation**.
+* Shared UI kit updated to 0.19.0: a checkbox is now a plain square box; the iOS switch (the *Faster batched requests* setting) is an explicit toggle style.
 
 = 0.0.6 =
 * The translation run now begins on its own when the run screen opens - pressing **Start** on the cart is the only step.

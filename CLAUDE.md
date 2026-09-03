@@ -90,7 +90,9 @@ confirmed) wires `Admin`, `BulkAction`, `AdminBar`.
 - WPML is only ever touched through `Wpml` (filter/action wrappers).
 - Admin screens render inside `Perxel_UI_Layout`; use the kit components
   (`rows()`, `notice()`, `code()`, `progress_bar()`, `checkbox_group()`,
-  `toggle()`) rather than hand-rolled markup. Figures (run counts, all-time
+  `toggle()`) rather than hand-rolled markup. A bare `<input type="checkbox">`
+  renders as a square box; the iOS switch is `toggle()` / the `.pxui-toggle`
+  class (kit 0.19.0 flipped this). Figures (run counts, all-time
   totals) are a `rows()` group - label left, number as `content` right, `sub`
   for the qualifier, `tone` for good/warn/bad - not a tile grid (the kit's
   `stat_grid()` was dropped in 0.18.0). Plugin-local bits (status badges, the
@@ -98,7 +100,7 @@ confirmed) wires `Admin`, `BulkAction`, `AdminBar`.
 
 ## The `vendor/perxel-ui/` kit
 
-Standalone repo `perxel/wp-plugin-ui` (currently **0.18.0**), vendored via
+Standalone repo `perxel/wp-plugin-ui` (currently **0.19.0**), vendored via
 `bin/update-ui.sh <version>` (curl a tagged tarball into `vendor/perxel-ui/`,
 Action Scheduler style - no Composer). Committed; `.gitignore` keeps it out of
 the general `vendor/` ignore, `.distignore` strips only its dev-only

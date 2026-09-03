@@ -358,7 +358,7 @@
 }
 
 /* Row groups (including the `danger` group treatment), form controls
- * (checkbox → toggle, radio) and the spinner live in a second sheet,
+ * (checkbox, radio, `.pxui-toggle`) and the spinner live in a second sheet,
  * ui-forms.css - loaded right after this one. */
 
 /* ------------------------------------------------------------------ *
