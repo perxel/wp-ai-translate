@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.10
+Stable tag: 0.0.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,6 +99,14 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.11 =
+* The run screen is one grouped list now: the run id, language pair, mode and start time moved into the group's heading and footnote instead of a separate caption line, and the standalone progress bar became a compact meter inside the **Progress** row.
+* When a run finishes, the Progress row itself reports the outcome (**Complete**, or **Finished with errors** with a retry hint) - no separate banner.
+* The activity log is the last row of that group rather than a detached block, streams new lines live as the run works (no reload needed), and scrolls within a fixed height.
+* The run auto-starts on open, so the button now reads **Stop** from the outset; **Start translating** only comes back if the run pauses or fails.
+* The Translation screen's "N posts selected" line is the settings group's heading now, not a caption above it.
+* Shared UI kit updated to 0.21.0 (adds the inline `meter()` component and height-caps code blocks).
 
 = 0.0.10 =
 * Verified against WPML 4.9.7, Secure Custom Fields 6.9.5, Rank Math SEO 1.0.277.2 / Rank Math SEO PRO 3.0.82 and WPBakery Page Builder 9.0.1.

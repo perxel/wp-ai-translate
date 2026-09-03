@@ -85,6 +85,37 @@ final class Perxel_UI {
 	}
 
 	/**
+	 * A compact inline meter for a `rows()` value slot: a short track with the
+	 * percentage as its label. Unlike `progress_bar()` (a full-width block that
+	 * stands alone), this keeps the row's height and sits among other figures.
+	 *
+	 * @param int   $pct  0-100.
+	 * @param array $args ['id' => wrapper id (for live updates: set
+	 *                    `.pxui-meter__fill` width + `.pxui-meter__text` text),
+	 *                    'text' => label before the track, default "N%"; pass ''
+	 *                    to hide it, 'width' => track width in px, default 96,
+	 *                    'tone' => 'good'|'warn'|'bad' fill colour].
+	 * @return string
+	 */
+	public static function meter( $pct, $args = array() ) {
+		$pct   = max( 0, min( 100, (int) $pct ) );
+		$id    = ! empty( $args['id'] ) ? ' id="' . esc_attr( $args['id'] ) . '"' : '';
+		$text  = array_key_exists( 'text', $args ) ? (string) $args['text'] : $pct . '%';
+		$width = ! empty( $args['width'] ) ? (int) $args['width'] : 96;
+		$tone  = isset( $args['tone'] ) && in_array( $args['tone'], array( 'good', 'warn', 'bad' ), true ) ? ' pxui-meter--' . $args['tone'] : '';
+
+		$out = '<span class="pxui-meter' . $tone . '"' . $id . ' role="progressbar" aria-valuenow="' . esc_attr( (string) $pct ) . '" aria-valuemin="0" aria-valuemax="100">';
+		if ( '' !== $text ) {
+			$out .= '<span class="pxui-meter__text">' . esc_html( $text ) . '</span>';
+		}
+		$out .= '<span class="pxui-meter__track" style="width:' . esc_attr( (string) $width ) . 'px">';
+		$out .= '<span class="pxui-meter__fill" style="width:' . esc_attr( (string) $pct ) . '%"></span>';
+		$out .= '</span></span>';
+
+		return $out;
+	}
+
+	/**
 	 * A plain content card.
 	 *
 	 * @param array $args [ 'title', 'body', 'actions', 'id', 'class' ].

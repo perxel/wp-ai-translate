@@ -54,8 +54,10 @@ class Progress {
 
 		$actions = '';
 		if ( ! $is_done ) {
-			$actions  = '<button type="button" class="button button-primary" id="pxat-start">' . esc_html__( 'Start translating', 'perxel-ai-translate' ) . '</button> ';
-			$actions .= '<button type="button" class="button" id="pxat-stop" hidden>' . esc_html__( 'Stop', 'perxel-ai-translate' ) . '</button>';
+			// The run auto-starts on load (progress.js); the loop shows "Stop"
+			// and only reveals "Start translating" again if it pauses or fails.
+			$actions  = '<button type="button" class="button button-primary" id="pxat-start" hidden>' . esc_html__( 'Start translating', 'perxel-ai-translate' ) . '</button> ';
+			$actions .= '<button type="button" class="button" id="pxat-stop">' . esc_html__( 'Stop', 'perxel-ai-translate' ) . '</button>';
 		} else {
 			$actions = '<a class="button" href="' . esc_url(
 				wp_nonce_url(
@@ -80,7 +82,7 @@ class Progress {
 				'counts'      => $counts,
 				'is_done'     => $is_done,
 				'items'       => array_map( array( __CLASS__, 'with_snapshots' ), Runs::items( $run_id ) ),
-				'log_lines'   => Runs::log_lines( $run_id ),
+				'log_text'    => self::log_text( $run_id ),
 				'languages'   => $languages,
 				'model_label' => '' !== $run['model_label'] ? $run['model_label'] : $run['model'],
 				'elapsed'     => Runs::duration_seconds( $run_id ),
@@ -214,6 +216,22 @@ class Progress {
 		return $item;
 	}
 
+	/**
+	 * The activity log as one plain-text block, "[time] message" per line.
+	 * Shared by the initial view and every AJAX payload so the browser loop
+	 * can stream it into the same <pre> the view rendered.
+	 *
+	 * @param int $run_id Run id.
+	 * @return string
+	 */
+	public static function log_text( $run_id ) {
+		$text = '';
+		foreach ( Runs::log_lines( $run_id ) as $line ) {
+			$text .= '[' . $line['logged_at'] . '] ' . $line['message'] . "\n";
+		}
+		return $text;
+	}
+
 	/*
 	---------------------------------------------------------------------
 	 * AJAX
@@ -239,6 +257,7 @@ class Progress {
 		$out = array(
 			'counts'          => Runs::counts( $run_id ),
 			'durationSeconds' => Runs::duration_seconds( $run_id ),
+			'log'             => self::log_text( $run_id ),
 		);
 		if ( null !== $items ) {
 			$out['items'] = array_map( array( __CLASS__, 'with_snapshots' ), $items );

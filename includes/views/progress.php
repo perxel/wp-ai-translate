@@ -8,7 +8,7 @@
  * @var array  $counts
  * @var bool   $is_done
  * @var array  $items       Items with ['html'] cell strings + post snapshots.
- * @var array  $log_lines   Rows: logged_at, message.
+ * @var string $log_text    Activity log as one "[time] message" block.
  * @var array  $languages
  * @var string $model_label
  * @var float  $elapsed
@@ -35,6 +35,9 @@ $posts_n = static function ( $n ) {
 $total    = max( 1, (int) $counts['total'] );
 $done_pct = (int) round( ( $counts['done'] + $counts['error'] + $counts['skipped'] ) / $total * 100 );
 
+$src_label  = Wpml::language_label( $languages, $run['source_lang'] );
+$dest_label = Wpml::language_label( $languages, $run['dest_lang'] );
+
 $scope = 'custom' === $run['data_mode']
 	? sprintf(
 		/* translators: %s: comma-separated type labels. */
@@ -43,44 +46,63 @@ $scope = 'custom' === $run['data_mode']
 	)
 	: __( 'Everything', 'perxel-ai-translate' );
 
-echo '<p class="pxat-step">'
-	. esc_html(
-		sprintf(
-			/* translators: 1: run id, 2: source lang, 3: dest lang, 4: relative time. */
-			__( 'Run #%1$d · %2$s → %3$s · started %4$s', 'perxel-ai-translate' ),
-			$run['id'],
-			Wpml::language_label( $languages, $run['source_lang'] ),
-			Wpml::language_label( $languages, $run['dest_lang'] ),
-			Format::time_ago( $run['created_at'] )
-		)
-	)
-	. ' <span class="pxat-badge pxat-badge--mode">' . esc_html( $scope . ( $run['batched'] ? ' · ' . __( 'batched', 'perxel-ai-translate' ) : '' ) ) . '</span></p>';
+/*
+ * The run figures, as one grouped list. Run identity is the group's chrome
+ * (title + badge + note), not extra rows; progress is a meter in the first
+ * row's value slot, not a standalone bar; the activity log is the last row.
+ */
+$progress_row = array(
+	'label'   => __( 'Progress', 'perxel-ai-translate' ),
+	'content' => '<span id="pxat-stat-done">' . esc_html( number_format_i18n( $counts['done'] ) ) . '</span> / '
+		. esc_html( number_format_i18n( $counts['total'] ) ) . ' &middot; '
+		. \Perxel_UI::meter( $done_pct, array( 'id' => 'pxat-progress-bar' ) ),
+);
 
-if ( $is_done ) {
-	echo \Perxel_UI::notice(
-		'success',
-		esc_html(
-			sprintf(
-				/* translators: %s: post count. */
-				__( 'Run finished. %s written into WordPress - open each post to review.', 'perxel-ai-translate' ),
-				$posts_n( $counts['done'] )
-			)
+if ( $is_done && $counts['error'] > 0 ) {
+	$progress_row['icon']  = 'bad';
+	$progress_row['label'] = __( 'Finished with errors', 'perxel-ai-translate' );
+	$progress_row['sub']   = esc_html(
+		sprintf(
+			/* translators: 1: posts written, 2: number that failed. */
+			__( '%1$s written, %2$s failed - retry them in the table below.', 'perxel-ai-translate' ),
+			$posts_n( $counts['done'] ),
+			number_format_i18n( $counts['error'] )
+		)
+	);
+} elseif ( $is_done ) {
+	$progress_row['icon']  = 'good';
+	$progress_row['label'] = __( 'Complete', 'perxel-ai-translate' );
+	$progress_row['sub']   = esc_html(
+		sprintf(
+			/* translators: %s: post count. */
+			__( '%s written into WordPress - open each post to review.', 'perxel-ai-translate' ),
+			$posts_n( $counts['done'] )
 		)
 	);
 }
 
-echo \Perxel_UI::progress_bar( $done_pct, array( 'id' => 'pxat-progress-bar' ) );
-
 echo \Perxel_UI::rows(
 	array(
 		array(
-			'title' => __( 'This run', 'perxel-ai-translate' ),
-			'rows'  => array(
-				array(
-					'label'   => __( 'Done', 'perxel-ai-translate' ),
-					'content' => '<span id="pxat-stat-done">' . esc_html( number_format_i18n( $counts['done'] ) ) . '</span> / ' . esc_html( number_format_i18n( $counts['total'] ) ),
-					'tone'    => 'good',
-				),
+			'title'        => sprintf(
+				/* translators: %d: run id. */
+				__( 'Run #%d', 'perxel-ai-translate' ),
+				$run['id']
+			),
+			'title_action' => '<span class="pxat-badge pxat-badge--mode">'
+				. esc_html( $scope . ( $run['batched'] ? ' · ' . __( 'batched', 'perxel-ai-translate' ) : '' ) )
+				. '</span>',
+			'note'         => esc_html(
+				sprintf(
+					/* translators: 1: source language, 2: target language, 3: relative start time. */
+					__( '%1$s → %2$s · started %3$s', 'perxel-ai-translate' ),
+					$src_label,
+					$dest_label,
+					Format::time_ago( $run['created_at'] )
+				)
+			),
+			'rows'         => array(
+				$progress_row,
 				array(
 					'label'   => __( 'Errors', 'perxel-ai-translate' ),
 					'sub'     => '<span id="pxat-stat-skipped">' . esc_html( number_format_i18n( $counts['skipped'] ) ) . '</span> ' . esc_html__( 'skipped', 'perxel-ai-translate' ),
@@ -89,16 +111,16 @@ echo \Perxel_UI::rows(
 				),
 				array(
 					'label'   => __( 'Cost', 'perxel-ai-translate' ),
-					'sub'     => esc_html( $model_label ),
+					'sub'     => esc_html( $model_label ) . ' &middot; <span id="pxat-stat-tokens">' . esc_html( Format::unit_label( $counts['prompt_tokens'] + $counts['completion_tokens'] ) ) . '</span>',
 					'content' => '<span id="pxat-stat-cost">' . esc_html( Format::cost( $counts['cost_usd'] ) ) . '</span>',
-				),
-				array(
-					'label'   => __( 'Volume', 'perxel-ai-translate' ),
-					'content' => '<span id="pxat-stat-tokens">' . esc_html( Format::unit_label( $counts['prompt_tokens'] + $counts['completion_tokens'] ) ) . '</span>',
 				),
 				array(
 					'label'   => __( 'Time', 'perxel-ai-translate' ),
 					'content' => '<span id="pxat-stat-time">' . esc_html( Format::duration( $elapsed ) ) . '</span>',
+				),
+				array(
+					'summary' => __( 'Activity log', 'perxel-ai-translate' ),
+					'details' => \Perxel_UI::code( $log_text, array( 'id' => 'pxat-log' ) ),
 				),
 			),
 		),
@@ -118,9 +140,6 @@ if ( $counts['warnings'] > 0 ) {
 		array( 'inline' => true )
 	);
 }
-
-$src_label  = Wpml::language_label( $languages, $run['source_lang'] );
-$dest_label = Wpml::language_label( $languages, $run['dest_lang'] );
 ?>
 <div class="pxat-table-wrap">
 <table class="widefat striped" id="pxat-items">
@@ -163,21 +182,4 @@ $dest_label = Wpml::language_label( $languages, $run['dest_lang'] );
 </dialog>
 
 <?php
-$log_text = '';
-foreach ( $log_lines as $line ) {
-	$log_text .= '[' . $line['logged_at'] . '] ' . $line['message'] . "\n";
-}
-echo \Perxel_UI::rows(
-	array(
-		array(
-			'rows' => array(
-				array(
-					'summary' => __( 'Activity log', 'perxel-ai-translate' ),
-					'details' => \Perxel_UI::code( $log_text, array( 'id' => 'pxat-log' ) ),
-				),
-			),
-		),
-	)
-);
-
 // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped

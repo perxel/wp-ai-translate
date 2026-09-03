@@ -13,11 +13,6 @@
 	color: var(--pxui-fg-muted, #646970);
 }
 
-.pxat .pxat-lead {
-	margin: 4px 0 14px;
-	font-size: 13px;
-}
-
 /* Confirm: "Everything / Specific fields" choice. */
 .pxat .pxat-radio {
 	display: inline-flex;

@@ -105,6 +105,24 @@ final class Perxel_UI_Showcase {
 		echo '<h2>Progress bar</h2>';
 		echo Perxel_UI::progress_bar( 62, array( 'label' => '1,842 / 4,110 · ETA 4m' ) );
 
+		echo '<h2>Meter (inline, for a rows value slot)</h2>';
+		echo Perxel_UI::rows(
+			array(
+				array(
+					'label'   => 'Progress',
+					'content' => '1,842 / 4,110 &middot; ' . Perxel_UI::meter( 45 ),
+				),
+				array(
+					'label'   => 'Coverage',
+					'content' => Perxel_UI::meter( 92, array( 'tone' => 'good' ) ),
+				),
+				array(
+					'label'   => 'Disk',
+					'content' => Perxel_UI::meter( 78, array( 'tone' => 'warn', 'width' => 140 ) ),
+				),
+			)
+		);
+
 		echo '<h2>Stats (a rows group)</h2>';
 		echo Perxel_UI::rows(
 			array(

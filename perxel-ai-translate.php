@@ -3,7 +3,7 @@
  * Plugin Name:       Perxel AI Translate
  * Plugin URI:        https://github.com/perxel/wp-ai-translate
  * Description:        Bulk-translate posts, pages and custom post types across WPML languages with an AI model of your choice via OpenRouter.
- * Version:           0.0.10
+ * Version:           0.0.11
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Perxel
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PXAT_VERSION', '0.0.10' );
+define( 'PXAT_VERSION', '0.0.11' );
 define( 'PXAT_FILE', __FILE__ );
 define( 'PXAT_DIR', __DIR__ );
 define( 'PXAT_URL', untrailingslashit( plugin_dir_url( __FILE__ ) ) );
@@ -75,7 +75,7 @@ define( 'PERXEL_UI_SHOWCASE_HOSTED', true );
 
 if ( is_readable( PXAT_DIR . '/vendor/perxel-ui/loader.php' ) ) {
 	require_once PXAT_DIR . '/vendor/perxel-ui/loader.php';
-	Perxel_UI_Loader::register( '0.20.0', PXAT_DIR . '/vendor/perxel-ui', PXAT_URL . '/vendor/perxel-ui' );
+	Perxel_UI_Loader::register( '0.21.0', PXAT_DIR . '/vendor/perxel-ui', PXAT_URL . '/vendor/perxel-ui' );
 }
 
 register_activation_hook( __FILE__, array( 'Perxel\AITranslate\Plugin', 'activate' ) );

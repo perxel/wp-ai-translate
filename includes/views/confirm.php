@@ -40,14 +40,12 @@ $posts_phrase = sprintf(
 	number_format_i18n( $eligible_count )
 );
 
-echo '<p class="pxat-lead">' . esc_html(
-	sprintf(
-		/* translators: 1: number of posts, 2: post type name. */
-		__( '%1$s %2$s selected.', 'perxel-ai-translate' ),
-		number_format_i18n( $selected_count ),
-		$post_type_label
-	)
-) . '</p>';
+$selection_title = sprintf(
+	/* translators: 1: number of posts, 2: post type name. */
+	__( '%1$s %2$s selected.', 'perxel-ai-translate' ),
+	number_format_i18n( $selected_count ),
+	$post_type_label
+);
 
 /* --- Configuration (GET self-submit, auto-applied) ---------------- */
 
@@ -131,7 +129,16 @@ $config_rows = array(
 	<input type="hidden" name="pxat_save_config" value="1" />
 	<input type="hidden" name="ids" value="<?php echo esc_attr( $ids_csv ); ?>" />
 	<input type="hidden" name="post_type" value="<?php echo esc_attr( $post_type ); ?>" />
-	<?php echo \Perxel_UI::rows( $config_rows ); ?>
+	<?php
+	echo \Perxel_UI::rows(
+		array(
+			array(
+				'title' => $selection_title,
+				'rows'  => $config_rows,
+			),
+		)
+	);
+	?>
 	<p class="pxat-config-status" id="pxat-config-status" hidden>
 		<span class="pxat-spin" aria-hidden="true"></span>
 		<?php esc_html_e( 'Updating the plan…', 'perxel-ai-translate' ); ?>

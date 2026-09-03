@@ -300,6 +300,40 @@
     color:var(--pxui-fg-muted);
 }
 
+/* Compact inline meter - lives in a rows() value slot, keeps the row height.
+   Use progress_bar() for a standalone full-width bar. */
+.pxui-meter {
+    display:inline-flex;
+    align-items:center;
+    gap:var(--pxui-s2);
+    vertical-align:middle;
+}
+
+.pxui-meter__text {
+    font-size:12px;
+    font-variant-numeric:tabular-nums;
+    color:var(--pxui-fg-muted);
+}
+
+.pxui-meter__track {
+    flex:0 0 auto;
+    height:6px;
+    border-radius:3px;
+    background:var(--pxui-bg-subtle);
+    overflow:hidden;
+}
+
+.pxui-meter__fill {
+    display:block;
+    height:100%;
+    background:var(--pxui-accent);
+    transition:width .3s ease;
+}
+
+.pxui-meter--good .pxui-meter__fill { background:var(--pxui-good); }
+.pxui-meter--warn .pxui-meter__fill { background:var(--pxui-warn); }
+.pxui-meter--bad .pxui-meter__fill { background:var(--pxui-bad); }
+
 /* ------------------------------------------------------------------ *
  * Card
  * ------------------------------------------------------------------ */
@@ -346,7 +380,9 @@
 .pxui-code {
     margin:0;
     padding:var(--pxui-s3);
-    overflow-x:auto;
+    max-height:24em;
+    overflow:auto;
+    overscroll-behavior:contain;
     background:var(--pxui-bg-subtle);
     border:1px solid var(--pxui-border);
     border-radius:var(--pxui-radius);

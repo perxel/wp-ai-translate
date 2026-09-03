@@ -48,9 +48,17 @@
 		var c = d.counts;
 		var total = Math.max( 1, c.total );
 		var pct = Math.round( ( c.done + c.error + c.skipped ) / total * 100 );
-		var fill = el( '#pxat-progress-bar .pxui-progress__fill' );
-		if ( fill ) {
-			fill.style.width = pct + '%';
+		var meter = el( '#pxat-progress-bar' );
+		if ( meter ) {
+			var fill = meter.querySelector( '.pxui-meter__fill' );
+			if ( fill ) {
+				fill.style.width = pct + '%';
+			}
+			var meterText = meter.querySelector( '.pxui-meter__text' );
+			if ( meterText ) {
+				meterText.textContent = pct + '%';
+			}
+			meter.setAttribute( 'aria-valuenow', String( pct ) );
 		}
 		setText( 'pxat-stat-done', new Intl.NumberFormat().format( c.done ) );
 		setText( 'pxat-stat-error', new Intl.NumberFormat().format( c.error ) );
@@ -79,9 +87,27 @@
 		} );
 	}
 
+	function renderLog( text ) {
+		if ( typeof text !== 'string' ) {
+			return;
+		}
+		var pre = el( '#pxat-log' );
+		if ( ! pre || pre.textContent === text ) {
+			return;
+		}
+		// Keep the view pinned to the newest line unless the user has
+		// scrolled up to read something.
+		var atBottom = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40;
+		pre.textContent = text;
+		if ( atBottom ) {
+			pre.scrollTop = pre.scrollHeight;
+		}
+	}
+
 	function render( d ) {
 		renderCounts( d );
 		renderItems( d.items );
+		renderLog( d.log );
 	}
 
 	/* --- The loop -------------------------------------------------- */
