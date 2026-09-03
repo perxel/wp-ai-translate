@@ -8,8 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * "Translate this page" admin-bar node, shown while editing a single post of a
- * translatable type. Stashes a one-post selection and lands on the Confirm
- * screen, same as the bulk action.
+ * translatable type. Adds the post to the translation cart and lands on the
+ * Confirm screen, same as the bulk action. The "cart" is never named here - from
+ * the editor this just reads as "translate this page".
  */
 class AdminBar {
 
@@ -79,8 +80,8 @@ class AdminBar {
 			wp_die( esc_html__( 'Invalid post, or its type cannot be translated.', 'perxel-ai-translate' ) );
 		}
 
-		$token = Selection::store( array( $post_id ), $post->post_type );
-		wp_safe_redirect( Selection::confirm_url( $token ) );
+		Cart::add( array( $post_id ), $post->post_type );
+		wp_safe_redirect( Cart::url() );
 		exit;
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 	}

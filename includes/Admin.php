@@ -36,11 +36,11 @@ class Admin {
 		add_action( 'admin_post_pxat_delete_run', array( $this, 'handle_delete_run' ) );
 		add_action( 'admin_post_pxat_cancel_run', array( $this, 'handle_cancel_run' ) );
 		add_action( 'admin_post_pxat_rerun', array( Progress::class, 'handle_rerun' ) );
-		add_action( 'admin_post_pxat_dashboard_select', array( Dashboard::class, 'handle_select' ) );
+		add_action( 'admin_post_pxat_cart_remove', array( $this, 'handle_cart_remove' ) );
+		add_action( 'admin_post_pxat_cart_clear', array( $this, 'handle_cart_clear' ) );
 
 		add_action( 'wp_ajax_pxat_test_api_key', array( $this, 'ajax_test_api_key' ) );
 		add_action( 'wp_ajax_pxat_test_model', array( $this, 'ajax_test_model' ) );
-		add_action( 'wp_ajax_pxat_post_search', array( Dashboard::class, 'ajax_post_search' ) );
 		add_action( 'wp_ajax_pxat_process', array( Progress::class, 'ajax_process' ) );
 		add_action( 'wp_ajax_pxat_retry', array( Progress::class, 'ajax_retry' ) );
 		add_action( 'wp_ajax_pxat_status', array( Progress::class, 'ajax_status' ) );
@@ -52,9 +52,15 @@ class Admin {
 	 * ------------------------------------------------------------------- */
 
 	public function menu() {
+		$cart_count = Cart::count();
+		$menu_title = __( 'AI Translate', 'perxel-ai-translate' );
+		if ( $cart_count > 0 ) {
+			$menu_title .= ' <span class="awaiting-mod">' . esc_html( number_format_i18n( $cart_count ) ) . '</span>';
+		}
+
 		add_menu_page(
 			PXAT_NAME,
-			__( 'AI Translate', 'perxel-ai-translate' ),
+			$menu_title,
 			'manage_options',
 			self::PAGE_DASHBOARD,
 			array( $this, 'render_dashboard' ),
@@ -62,27 +68,32 @@ class Admin {
 			76
 		);
 
+		$cart_label = __( 'Translation cart', 'perxel-ai-translate' );
+		if ( $cart_count > 0 ) {
+			$cart_label .= ' <span class="awaiting-mod">' . esc_html( number_format_i18n( $cart_count ) ) . '</span>';
+		}
+
 		$submenus = array(
-			self::PAGE_DASHBOARD => array( __( 'Dashboard', 'perxel-ai-translate' ), array( $this, 'render_dashboard' ) ),
-			self::PAGE_HISTORY   => array( __( 'History', 'perxel-ai-translate' ), array( $this, 'render_history' ) ),
-			self::PAGE_ID_LOOKUP => array( __( 'ID lookup', 'perxel-ai-translate' ), array( $this, 'render_id_lookup' ) ),
-			self::PAGE_SETTINGS  => array( __( 'Settings', 'perxel-ai-translate' ), array( $this, 'render_settings' ) ),
+			self::PAGE_DASHBOARD => array( __( 'Dashboard', 'perxel-ai-translate' ), array( $this, 'render_dashboard' ), __( 'Dashboard', 'perxel-ai-translate' ) ),
+			self::PAGE_CONFIRM   => array( $cart_label, array( Confirm::class, 'render' ), __( 'Translation cart', 'perxel-ai-translate' ) ),
+			self::PAGE_HISTORY   => array( __( 'History', 'perxel-ai-translate' ), array( $this, 'render_history' ), __( 'History', 'perxel-ai-translate' ) ),
+			self::PAGE_ID_LOOKUP => array( __( 'ID lookup', 'perxel-ai-translate' ), array( $this, 'render_id_lookup' ), __( 'ID lookup', 'perxel-ai-translate' ) ),
+			self::PAGE_SETTINGS  => array( __( 'Settings', 'perxel-ai-translate' ), array( $this, 'render_settings' ), __( 'Settings', 'perxel-ai-translate' ) ),
 		);
 
 		foreach ( $submenus as $slug => $entry ) {
-			add_submenu_page( self::MENU, $entry[0] . ' - ' . PXAT_NAME, $entry[0], 'manage_options', $slug, $entry[1] );
+			add_submenu_page( self::MENU, $entry[2] . ' - ' . PXAT_NAME, $entry[0], 'manage_options', $slug, $entry[1] );
 		}
 
-		// Flow screens - reachable mid-task, kept off the menu.
-		add_submenu_page( null, __( 'Confirm translation', 'perxel-ai-translate' ), '', 'manage_options', self::PAGE_CONFIRM, array( Confirm::class, 'render' ) );
+		// Flow screen - reachable mid-task, kept off the menu.
 		add_submenu_page( null, __( 'Translation run', 'perxel-ai-translate' ), '', 'manage_options', self::PAGE_PROGRESS, array( Progress::class, 'render' ) );
 
 		$titles = array(
 			self::PAGE_DASHBOARD => __( 'Dashboard', 'perxel-ai-translate' ),
+			self::PAGE_CONFIRM   => __( 'Translation cart', 'perxel-ai-translate' ),
 			self::PAGE_HISTORY   => __( 'History', 'perxel-ai-translate' ),
 			self::PAGE_ID_LOOKUP => __( 'ID lookup', 'perxel-ai-translate' ),
 			self::PAGE_SETTINGS  => __( 'Settings', 'perxel-ai-translate' ),
-			self::PAGE_CONFIRM   => __( 'Confirm translation', 'perxel-ai-translate' ),
 			self::PAGE_PROGRESS  => __( 'Translation run', 'perxel-ai-translate' ),
 		);
 
@@ -164,18 +175,6 @@ class Admin {
 				$this->script( 'pxat-id-lookup', 'assets/js/id-lookup.js', $dep );
 				break;
 
-			case self::PAGE_DASHBOARD:
-				$this->script( 'pxat-dashboard', 'assets/js/dashboard.js', $dep );
-				wp_localize_script(
-					'pxat-dashboard',
-					'PXAT_Dashboard',
-					array(
-						'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-						'nonce'   => wp_create_nonce( self::NONCE ),
-					)
-				);
-				break;
-
 			case self::PAGE_CONFIRM:
 				$this->script( 'pxat-confirm', 'assets/js/confirm.js', $dep );
 				break;
@@ -231,6 +230,7 @@ class Admin {
 
 		$pages = array(
 			self::PAGE_DASHBOARD => __( 'Dashboard', 'perxel-ai-translate' ),
+			self::PAGE_CONFIRM   => __( 'Translation cart', 'perxel-ai-translate' ),
 			self::PAGE_HISTORY   => __( 'History', 'perxel-ai-translate' ),
 			self::PAGE_ID_LOOKUP => __( 'ID lookup', 'perxel-ai-translate' ),
 			self::PAGE_SETTINGS  => __( 'Settings', 'perxel-ai-translate' ),
@@ -413,6 +413,33 @@ class Admin {
 		exit;
 	}
 
+	public function handle_cart_remove() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to do this.', 'perxel-ai-translate' ) );
+		}
+		check_admin_referer( 'pxat_cart_remove' );
+
+		$post_id = isset( $_REQUEST['post_id'] ) ? absint( wp_unslash( $_REQUEST['post_id'] ) ) : 0;
+		if ( $post_id ) {
+			Cart::remove( array( $post_id ) );
+		}
+
+		wp_safe_redirect( Cart::url() );
+		exit;
+	}
+
+	public function handle_cart_clear() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to do this.', 'perxel-ai-translate' ) );
+		}
+		check_admin_referer( 'pxat_cart_clear' );
+
+		Cart::clear();
+
+		wp_safe_redirect( Cart::url() );
+		exit;
+	}
+
 	public function handle_delete_run() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You are not allowed to do this.', 'perxel-ai-translate' ) );
@@ -476,7 +503,7 @@ class Admin {
 
 		if ( is_wp_error( $result ) ) {
 			// The stored key is only "verified" as long as it stays the tested one.
-			if ( $api_key === Settings::api_key() ) {
+			if ( Settings::api_key() === $api_key ) {
 				Settings::update( array( 'api_key_verified' => false ) );
 			}
 			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
@@ -511,7 +538,7 @@ class Admin {
 		$result   = OpenRouter::test_model( $model_id );
 
 		if ( is_wp_error( $result ) ) {
-			if ( $model_id === Settings::model()['id'] ) {
+			if ( Settings::model()['id'] === $model_id ) {
 				Settings::update( array( 'model_verified' => false ) );
 			}
 			wp_send_json_error( array( 'message' => $result->get_error_message() ) );

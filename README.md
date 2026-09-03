@@ -9,12 +9,15 @@ spending WPML's own AI translation credits.
 
 ## What it does
 
-- A top-level **AI Translate** admin menu: a Dashboard (setup, post picker,
-  totals), Confirm, Run, History, ID lookup and Settings.
-- Also a **Perxel AI Translate…** bulk action on every WPML-translatable post
-  type, and a *Translate this page* toolbar item on the editor.
-- Confirm screen with destination language, data selection and a cost / token
-  estimate before anything runs.
+- A top-level **AI Translate** admin menu: a Dashboard (setup, totals), the
+  Translation cart, Run, History, ID lookup and Settings.
+- Posts are collected into a per-user **translation cart** from a
+  **Perxel AI Translate…** bulk action on every WPML-translatable post type, or
+  the *Translate this page* toolbar item while editing one post. The cart is
+  persistent - keep adding to it across sessions.
+- The cart screen lists what you have collected (remove rows or clear it), then
+  takes a destination language, data selection and a cost / token estimate
+  before anything runs.
 - A live, resumable Run screen. Each post is translated and written straight
   into WordPress as a WPML translation - review it in the normal editor.
 - The AI model is a setting: enter any OpenRouter model id, press *Test model*

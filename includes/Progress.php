@@ -343,8 +343,8 @@ class Progress {
 			wp_die( esc_html__( 'No posts to re-translate.', 'perxel-ai-translate' ) );
 		}
 
-		$token = Selection::store( $post_ids, $post_type );
-		wp_safe_redirect( Selection::confirm_url( $token, array( 'dest_lang' => $run['dest_lang'] ) ) );
+		Cart::add( $post_ids, $post_type );
+		wp_safe_redirect( Cart::url( array( 'dest_lang' => $run['dest_lang'] ) ) );
 		exit;
 	}
 }

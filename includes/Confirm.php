@@ -7,10 +7,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Confirm screen: pick the destination language, source-status filter and data
- * scope, see a per-post plan with a cost estimate, then start the run. Step 1 is
- * a GET self-submit form (press "Update" to recompute); "Start" is a POST that
- * creates the run and redirects to Progress.
+ * Confirm screen - the translation cart. Lists the posts collected in the cart
+ * (Cart), lets you remove rows or empty it, then pick the destination language,
+ * source-status filter and data scope, see a per-post plan with a cost estimate,
+ * and start the run. The config block is a GET self-submit form (press "Update"
+ * to recompute); "Start" is a POST that creates the run, empties the cart and
+ * redirects to Progress.
  *
  * There is no run-mode choice any more - every run translates and writes. The
  * only speed knob is "batched" (several posts per model request).
@@ -39,27 +41,20 @@ class Confirm {
 		$admin = Plugin::instance()->admin();
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only navigation params, each sanitised on use.
-		$token     = isset( $_GET['sel'] ) ? sanitize_text_field( wp_unslash( $_GET['sel'] ) ) : '';
-		$selection = Selection::get( $token );
+		$cart      = Cart::get();
+		$post_ids  = $cart['post_ids'];
+		$post_type = $cart['post_type'];
 
-		if ( ! $selection ) {
-			$admin->screen(
-				Admin::PAGE_DASHBOARD,
-				__( 'Confirm translation', 'perxel-ai-translate' ),
-				'notice',
-				array(
-					'type' => 'warning',
-					'text' => __( 'That selection has expired. Pick the posts again from the list.', 'perxel-ai-translate' ),
-				)
-			);
-			return;
+		$conflict = get_transient( 'pxat_cart_conflict_' . get_current_user_id() );
+		if ( $conflict ) {
+			delete_transient( 'pxat_cart_conflict_' . get_current_user_id() );
 		}
 
 		$languages = Wpml::get_active_languages();
 		if ( count( $languages ) < 2 ) {
 			$admin->screen(
-				Admin::PAGE_DASHBOARD,
-				__( 'Confirm translation', 'perxel-ai-translate' ),
+				Admin::PAGE_CONFIRM,
+				__( 'Translation cart', 'perxel-ai-translate' ),
 				'notice',
 				array(
 					'type' => 'error',
@@ -69,8 +64,15 @@ class Confirm {
 			return;
 		}
 
-		$post_ids  = $selection['post_ids'];
-		$post_type = $selection['post_type'];
+		if ( empty( $post_ids ) ) {
+			$admin->screen(
+				Admin::PAGE_CONFIRM,
+				__( 'Translation cart', 'perxel-ai-translate' ),
+				'cart-empty',
+				array( 'conflict' => is_array( $conflict ) ? $conflict : null )
+			);
+			return;
+		}
 
 		$available_statuses = self::available_statuses( $post_ids );
 		$config             = self::read_config( $languages, $available_statuses );
@@ -80,8 +82,11 @@ class Confirm {
 		$vars = array_merge(
 			$config,
 			array(
-				'token'              => $token,
 				'post_type'          => $post_type,
+				'post_type_label'    => self::post_type_label( $post_type, count( $post_ids ) ),
+				'cart_count'         => count( $post_ids ),
+				'conflict'           => is_array( $conflict ) ? $conflict : null,
+				'clear_url'          => wp_nonce_url( admin_url( 'admin-post.php?action=pxat_cart_clear' ), 'pxat_cart_clear' ),
 				'languages'          => $languages,
 				'available_statuses' => $available_statuses,
 				'model'              => Settings::model(),
@@ -116,12 +121,25 @@ class Confirm {
 		}
 
 		$admin->screen(
-			Admin::PAGE_DASHBOARD,
-			__( 'Confirm translation', 'perxel-ai-translate' ),
+			Admin::PAGE_CONFIRM,
+			__( 'Translation cart', 'perxel-ai-translate' ),
 			'confirm',
 			$vars,
 			array( 'actions' => $actions )
 		);
+	}
+
+	/**
+	 * @param string $post_type Post type slug.
+	 * @param int    $count     How many posts (picks singular vs plural label).
+	 * @return string Human label, falling back to the slug.
+	 */
+	protected static function post_type_label( $post_type, $count ) {
+		$object = $post_type ? get_post_type_object( $post_type ) : null;
+		if ( ! $object ) {
+			return (string) $post_type;
+		}
+		return 1 === $count ? $object->labels->singular_name : $object->labels->name;
 	}
 
 	/**
@@ -378,14 +396,12 @@ class Confirm {
 		}
 		check_admin_referer( 'pxat_create_run' );
 
-		$token     = isset( $_POST['sel'] ) ? sanitize_text_field( wp_unslash( $_POST['sel'] ) ) : '';
-		$selection = Selection::get( $token );
-		if ( ! $selection ) {
-			wp_die( esc_html__( 'That selection has expired. Pick the posts again.', 'perxel-ai-translate' ) );
+		$cart      = Cart::get();
+		$post_ids  = $cart['post_ids'];
+		$post_type = $cart['post_type'];
+		if ( empty( $post_ids ) ) {
+			wp_die( esc_html__( 'Your translation cart is empty.', 'perxel-ai-translate' ) );
 		}
-
-		$post_ids  = $selection['post_ids'];
-		$post_type = $selection['post_type'];
 
 		$source_lang   = Wpml::get_default_language();
 		$dest_lang     = isset( $_POST['dest_lang'] ) ? sanitize_text_field( wp_unslash( $_POST['dest_lang'] ) ) : '';
@@ -507,7 +523,7 @@ class Confirm {
 			)
 		);
 		Runs::add_items( $run_id, $items );
-		Selection::forget( $token );
+		Cart::clear();
 
 		wp_safe_redirect(
 			add_query_arg(

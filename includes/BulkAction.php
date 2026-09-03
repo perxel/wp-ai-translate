@@ -8,8 +8,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Adds the "Perxel AI Translate…" bulk action to every translatable post type's
- * list table. Selecting it redirects to the Confirm screen rather than acting
- * immediately.
+ * list table. Selecting it adds the checked posts to the translation cart and
+ * redirects to the Confirm screen rather than acting immediately. Combined with
+ * the list table's own status / date / taxonomy filters this is the plugin's
+ * main way to pick posts - there is no separate filter UI.
  */
 class BulkAction {
 
@@ -52,8 +54,9 @@ class BulkAction {
 
 		$post_ids  = array_map( 'intval', $post_ids );
 		$post_type = get_post_type( $post_ids[0] );
-		$token     = Selection::store( $post_ids, $post_type );
 
-		return Selection::confirm_url( $token );
+		Cart::add( $post_ids, $post_type );
+
+		return Cart::url();
 	}
 }

@@ -14,7 +14,8 @@
  * @var array  $recent        Run rows.
  * @var array  $languages
  * @var string $default_lang
- * @var string $nonce
+ * @var int    $cart_count
+ * @var string $cart_url
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -82,50 +83,26 @@ foreach ( $post_types as $slug => $label ) {
 	$pt_links[] = '<a href="' . esc_url( admin_url( 'edit.php?post_type=' . $slug ) ) . '">' . esc_html( $label ) . '</a>';
 }
 
+if ( $cart_count > 0 ) {
+	$open_cart = '<a class="button button-primary" href="' . esc_url( $cart_url ) . '">' . esc_html__( 'Open translation cart', 'perxel-ai-translate' ) . '</a>';
+	echo \Perxel_UI::notice(
+		'info',
+		esc_html(
+			sprintf(
+				/* translators: %s: number of posts. */
+				_n( '%s post is waiting in your translation cart.', '%s posts are waiting in your translation cart.', $cart_count, 'perxel-ai-translate' ),
+				number_format_i18n( $cart_count )
+			)
+		) . ' ' . $open_cart
+	);
+}
+
 echo \Perxel_UI::notice(
 	'info',
-	esc_html__( 'Translating a lot? Open a post list, tick the rows, and choose "Perxel AI Translate…" from Bulk actions.', 'perxel-ai-translate' )
+	esc_html__( 'To translate: open a post list, tick the rows, and choose "Perxel AI Translate…" from Bulk actions - or use "Translate this page" while editing a single post.', 'perxel-ai-translate' )
 	. ( $pt_links ? ' &nbsp;' . implode( ' · ', $pt_links ) : '' )
 );
 
-$pt_options = '';
-foreach ( $post_types as $slug => $label ) {
-	$pt_options .= '<option value="' . esc_attr( $slug ) . '">' . esc_html( $label ) . '</option>';
-}
-?>
-<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="pxat-picker" data-nonce="<?php echo esc_attr( $nonce ); ?>">
-	<input type="hidden" name="action" value="pxat_dashboard_select" />
-	<?php wp_nonce_field( 'pxat_dashboard_select' ); ?>
-
-	<?php
-	echo \Perxel_UI::rows(
-		array(
-			array(
-				'title' => __( 'Or pick a few posts', 'perxel-ai-translate' ),
-				'rows'  => array(
-					array(
-						'label'   => __( 'Post type', 'perxel-ai-translate' ),
-						'content' => '<select name="post_type" id="pxat-picker-type">' . $pt_options . '</select>',
-					),
-					array(
-						'label'   => __( 'Search', 'perxel-ai-translate' ),
-						'sub'     => '<span id="pxat-picker-selected" class="pxat-muted"></span>',
-						'content' => '<input type="search" id="pxat-picker-search" class="regular-text" placeholder="' . esc_attr__( 'Type a title…', 'perxel-ai-translate' ) . '" autocomplete="off" />',
-					),
-					array(
-						'summary' => __( 'Paste a list of IDs instead', 'perxel-ai-translate' ),
-						'details' => '<textarea name="paste_ids" rows="3" class="large-text code" placeholder="144777, 142887, …"></textarea>',
-					),
-				),
-				'note'  => '<span id="pxat-picker-results"></span>',
-			),
-		)
-	);
-	?>
-	<p><button type="submit" class="button button-primary" id="pxat-picker-go"><?php esc_html_e( 'Continue', 'perxel-ai-translate' ); ?></button></p>
-</form>
-
-<?php
 /* --- At a glance ------------------------------------------------------ */
 
 $tiles = array(

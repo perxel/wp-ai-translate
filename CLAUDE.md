@@ -58,14 +58,20 @@ confirmed) wires `Admin`, `BulkAction`, `AdminBar`.
   failures are non-blocking warnings (`has_warning`); Custom mode's are hard
   errors (`has_apply_error`, item ends `error`, retryable). `process_items()` is
   the batched counterpart (one request for several posts, weighted usage split).
-- **`Confirm`** - Step 1 is a GET self-submit config form; "Start" is a POST that
-  creates the run + items and redirects to `Progress`.
+- **`Confirm`** - the "Translation cart" screen (menu slug `pxat-confirm`).
+  Lists what's in the cart with a per-row Remove and a Clear; a GET self-submit
+  config form; "Start" is a POST that creates the run + items, empties the cart
+  and redirects to `Progress`. Empty cart renders `views/cart-empty.php`.
 - **`Progress`** - browser loop: `assets/js/progress.js` calls `pxat_process`
   until the run is done; the AJAX responses carry **pre-rendered cell HTML**
   (`Progress::with_snapshots`) so the JS never templates a row itself.
-- **`Selection`** - the `pxat_sel_*` transient that carries a picked post set
-  from an entry point (bulk action / admin bar / Dashboard picker / re-run) to
-  `Confirm`.
+- **`Cart`** - a per-user, persistent post set in the `pxat_cart` user meta
+  (`{ post_ids, post_type }`, one post type at a time). Entry points
+  (`BulkAction`, `AdminBar` "Translate this page", `Progress` re-run) call
+  `Cart::add()` and land on `Confirm`; a type mismatch is refused and flagged
+  via the `pxat_cart_conflict_<user>` transient. There is no picker/filter UI -
+  posts are chosen with the post list's own filters + bulk action, or the
+  single-post bar item.
 
 ## Conventions
 

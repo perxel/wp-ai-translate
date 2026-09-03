@@ -77,20 +77,20 @@
 	.pxat .pxat-spin { animation-duration: 2s; }
 }
 
-/* Selectable chips for the Dashboard picker + search results. */
-.pxat .pxat-chip {
-	display: inline-block;
-	margin: 3px 4px 0 0;
-	padding: 3px 10px;
-	border: 1px solid var(--pxui-surface-border, #dcdcde);
-	border-radius: var(--pxui-radius-pill, 999px);
-	background: var(--pxui-surface, #fff);
-	font-size: 12px;
-	cursor: pointer;
+/* Translation cart: per-row Remove control. */
+.pxat .pxat-col-remove {
+	width: 1%;
+	white-space: nowrap;
+	text-align: right;
 }
 
-.pxat .pxat-chip:hover {
-	border-color: var(--pxui-brand, #082ae5);
+.pxat .pxat-remove {
+	color: var(--pxui-danger, #b32d2e);
+	text-decoration: none;
+}
+
+.pxat .pxat-remove:hover {
+	text-decoration: underline;
 }
 
 /* Preview dialog. */
