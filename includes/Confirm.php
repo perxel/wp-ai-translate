@@ -73,9 +73,16 @@ class Confirm {
 
 		$plan = self::build_plan( $post_ids, $post_type, $config );
 
+		// If the OpenRouter key reports a credit limit, warn when this run's
+		// estimate would exceed what is left, and block Start once it hits zero.
+		$key_budget    = OpenRouter::key_budget();
+		$start_blocked = $key_budget && $key_budget['remaining'] <= 0 && $plan['eligible_count'] > 0;
+
 		$vars = array_merge(
 			$config,
 			array(
+				'key_budget'      => $key_budget,
+				'start_blocked'   => $start_blocked,
 				'ids_csv'         => implode( ',', $post_ids ),
 				'post_type'       => $post_type,
 				'post_type_label' => self::post_type_label( $post_type, count( $post_ids ) ),
@@ -100,7 +107,8 @@ class Confirm {
 				_n( '%s post', '%s posts', $plan['eligible_count'], 'perxel-ai-translate' ),
 				number_format_i18n( $plan['eligible_count'] )
 			);
-			$actions = '<button type="submit" form="pxat-start-form" class="button button-primary">'
+			$actions = '<button type="submit" form="pxat-start-form" class="button button-primary"'
+				. disabled( $start_blocked, true, false ) . '>'
 				. esc_html(
 					sprintf(
 						/* translators: 1: post count, 2: estimated cost. */
@@ -387,6 +395,11 @@ class Confirm {
 		list( $post_ids, $post_type ) = self::read_selection( $_POST );
 		if ( empty( $post_ids ) ) {
 			wp_die( esc_html__( 'No posts selected to translate.', 'perxel-ai-translate' ) );
+		}
+
+		$key_budget = OpenRouter::key_budget();
+		if ( $key_budget && $key_budget['remaining'] <= 0 ) {
+			wp_die( esc_html__( 'The API key has reached its OpenRouter spending limit. Top up your account, then try again.', 'perxel-ai-translate' ) );
 		}
 
 		$source_lang = Wpml::get_default_language();

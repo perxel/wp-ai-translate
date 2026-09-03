@@ -21,6 +21,8 @@
  * @var float  $total_cost_usd
  * @var int    $eligible_count
  * @var array  $type_labels
+ * @var array|null $key_budget  OpenRouter::key_budget() - { limit, remaining } or null.
+ * @var bool   $start_blocked   Key credit exhausted - Start is disabled.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -157,6 +159,33 @@ if ( 0 === $eligible_count ) {
 	echo \Perxel_UI::notice( 'info', esc_html__( 'Structural copy only - no model call, no cost.', 'perxel-ai-translate' ) );
 }
 
+// Key credit gate. Figures stay in USD both sides - it is a direct comparison
+// against the OpenRouter key balance, itself an exact dollar amount.
+if ( is_array( $key_budget ) && $eligible_count > 0 ) {
+	if ( $key_budget['remaining'] <= 0 ) {
+		echo \Perxel_UI::notice(
+			'error',
+			sprintf(
+				/* translators: 1: key credit limit, 2: credit left (usually $0.00). */
+				esc_html__( 'The API key has reached its %1$s limit (%2$s left). Top up at openrouter.ai, then reload this page.', 'perxel-ai-translate' ),
+				esc_html( Format::money_usd( $key_budget['limit'] ) ),
+				esc_html( Format::money_usd( max( 0, $key_budget['remaining'] ) ) )
+			)
+		);
+	} elseif ( $total_cost_usd > $key_budget['remaining'] ) {
+		echo \Perxel_UI::notice(
+			'warning',
+			sprintf(
+				/* translators: 1: estimated run cost, 2: credit left, 3: key credit limit. */
+				esc_html__( 'This run is estimated at %1$s, but the API key has only %2$s of its %3$s limit left. It may stop part way through - top up at openrouter.ai, or narrow the selection.', 'perxel-ai-translate' ),
+				esc_html( Format::cost_usd( $total_cost_usd ) ),
+				esc_html( Format::money_usd( $key_budget['remaining'] ) ),
+				esc_html( Format::money_usd( $key_budget['limit'] ) )
+			)
+		);
+	}
+}
+
 $source_label = Wpml::language_label( $languages, $source_lang );
 $dest_label   = Wpml::language_label( $languages, $dest_lang );
 
@@ -289,7 +318,7 @@ $flow = static function ( array $steps ) {
 	<?php wp_nonce_field( 'pxat_create_run' ); ?>
 	<p>
 		<?php if ( $eligible_count > 0 ) : ?>
-			<button type="submit" class="button button-primary button-hero">
+			<button type="submit" class="button button-primary button-hero"<?php disabled( $start_blocked ); ?>>
 				<?php
 				echo esc_html(
 					sprintf(

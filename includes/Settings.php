@@ -17,17 +17,19 @@ class Settings {
 
 	public static function defaults() {
 		return array(
-			'api_key'          => '',
-			'api_key_verified' => false,
-			'prompt'           => '',
-			'batched'          => false,
-			'model_id'         => PXAT_DEFAULT_MODEL,
-			'model_verified'   => false,
-			'model_label'      => '',
-			'model_input'      => 0.0,  // USD per 1M prompt tokens.
-			'model_output'     => 0.0,  // USD per 1M completion tokens.
-			'model_context'    => 0,    // Context length, tokens.
-			'model_max_output' => 0,    // Max completion tokens, 0 = unknown.
+			'api_key'           => '',
+			'api_key_verified'  => false,
+			'api_key_limit'     => 0.0,  // USD credit ceiling on the key; 0 = none / unknown.
+			'api_key_remaining' => 0.0, // USD left against that ceiling.
+			'prompt'            => '',
+			'batched'           => false,
+			'model_id'          => PXAT_DEFAULT_MODEL,
+			'model_verified'    => false,
+			'model_label'       => '',
+			'model_input'       => 0.0,  // USD per 1M prompt tokens.
+			'model_output'      => 0.0,  // USD per 1M completion tokens.
+			'model_context'     => 0,    // Context length, tokens.
+			'model_max_output'  => 0,    // Max completion tokens, 0 = unknown.
 		);
 	}
 
@@ -92,6 +94,31 @@ class Settings {
 		return (bool) self::get( 'model_verified' ) && '' !== trim( (string) self::get( 'model_label' ) );
 	}
 
+	// The API key's credit headroom reads as "low" below this fraction left.
+	const API_KEY_LOW = 0.20;
+
+	/**
+	 * Status tone for the API key row: 'muted' when unverified, 'good' when
+	 * verified (and, if the key reports a credit limit, still has headroom),
+	 * 'warn' under API_KEY_LOW of that limit, 'bad' at zero.
+	 *
+	 * @return string One of muted|good|warn|bad.
+	 */
+	public static function api_key_tone() {
+		if ( ! self::get( 'api_key_verified' ) ) {
+			return 'muted';
+		}
+		$limit = (float) self::get( 'api_key_limit' );
+		if ( $limit <= 0 ) {
+			return 'good';
+		}
+		$remaining = (float) self::get( 'api_key_remaining' );
+		if ( $remaining <= 0 ) {
+			return 'bad';
+		}
+		return $remaining / $limit < self::API_KEY_LOW ? 'warn' : 'good';
+	}
+
 	/**
 	 * @param array $values Partial or full settings.
 	 */
@@ -120,18 +147,26 @@ class Settings {
 		$key_verified   = ! empty( $raw['api_key_verified'] );
 		$model_verified = ! empty( $raw['model_verified'] ) && '' !== trim( (string) ( $raw['model_label'] ?? '' ) );
 
+		// Key credit figures are written to the option by the "Test" AJAX handler
+		// and are not posted as form fields, so carry the stored values through a
+		// plain save - but drop them the moment the key stops being verified.
+		$key_limit     = $key_verified ? (float) $current['api_key_limit'] : 0.0;
+		$key_remaining = $key_verified ? (float) $current['api_key_remaining'] : 0.0;
+
 		return array(
-			'api_key'          => isset( $raw['api_key'] ) ? sanitize_text_field( $raw['api_key'] ) : '',
-			'api_key_verified' => $key_verified,
-			'prompt'           => isset( $raw['prompt'] ) ? sanitize_textarea_field( $raw['prompt'] ) : '',
-			'batched'          => ! empty( $raw['batched'] ),
-			'model_id'         => '' !== $model_id ? $model_id : PXAT_DEFAULT_MODEL,
-			'model_verified'   => $model_verified,
-			'model_label'      => isset( $raw['model_label'] ) ? sanitize_text_field( $raw['model_label'] ) : '',
-			'model_input'      => isset( $raw['model_input'] ) ? (float) $raw['model_input'] : (float) $current['model_input'],
-			'model_output'     => isset( $raw['model_output'] ) ? (float) $raw['model_output'] : (float) $current['model_output'],
-			'model_context'    => isset( $raw['model_context'] ) ? absint( $raw['model_context'] ) : (int) $current['model_context'],
-			'model_max_output' => isset( $raw['model_max_output'] ) ? absint( $raw['model_max_output'] ) : (int) $current['model_max_output'],
+			'api_key'           => isset( $raw['api_key'] ) ? sanitize_text_field( $raw['api_key'] ) : '',
+			'api_key_verified'  => $key_verified,
+			'api_key_limit'     => $key_limit,
+			'api_key_remaining' => $key_remaining,
+			'prompt'            => isset( $raw['prompt'] ) ? sanitize_textarea_field( $raw['prompt'] ) : '',
+			'batched'           => ! empty( $raw['batched'] ),
+			'model_id'          => '' !== $model_id ? $model_id : PXAT_DEFAULT_MODEL,
+			'model_verified'    => $model_verified,
+			'model_label'       => isset( $raw['model_label'] ) ? sanitize_text_field( $raw['model_label'] ) : '',
+			'model_input'       => isset( $raw['model_input'] ) ? (float) $raw['model_input'] : (float) $current['model_input'],
+			'model_output'      => isset( $raw['model_output'] ) ? (float) $raw['model_output'] : (float) $current['model_output'],
+			'model_context'     => isset( $raw['model_context'] ) ? absint( $raw['model_context'] ) : (int) $current['model_context'],
+			'model_max_output'  => isset( $raw['model_max_output'] ) ? absint( $raw['model_max_output'] ) : (int) $current['model_max_output'],
 		);
 	}
 }

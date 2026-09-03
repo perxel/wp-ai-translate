@@ -472,20 +472,36 @@ class Admin {
 			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
 		}
 
-		// A pass means "this key works" - remember it and mark it verified.
+		$limit     = isset( $result['limit'] ) && null !== $result['limit'] ? (float) $result['limit'] : 0.0;
+		$usage     = isset( $result['usage'] ) ? (float) $result['usage'] : 0.0;
+		$remaining = isset( $result['limit_remaining'] ) && null !== $result['limit_remaining']
+			? (float) $result['limit_remaining']
+			: max( 0.0, $limit - $usage );
+
+		// A pass means "this key works" - remember it, mark it verified, and keep
+		// the credit figures so the Settings row can show them without re-testing.
 		Settings::update(
 			array(
-				'api_key'          => $api_key,
-				'api_key_verified' => true,
+				'api_key'           => $api_key,
+				'api_key_verified'  => true,
+				'api_key_limit'     => $limit,
+				'api_key_remaining' => $limit > 0 ? $remaining : 0.0,
 			)
 		);
 
+		$message = $limit > 0
+			? sprintf(
+				/* translators: 1: USD credit left, 2: USD credit limit, e.g. "$37.66 left of $50.00". */
+				__( 'Verified · %1$s left of %2$s', 'perxel-ai-translate' ),
+				Format::money_usd( $remaining ),
+				Format::money_usd( $limit )
+			)
+			: __( 'Verified', 'perxel-ai-translate' );
+
 		wp_send_json_success(
 			array(
-				'message' => __( 'API key is valid.', 'perxel-ai-translate' ),
-				'label'   => $result['label'] ?? '',
-				'usage'   => $result['usage'] ?? null,
-				'limit'   => $result['limit'] ?? null,
+				'message' => $message,
+				'tone'    => Settings::api_key_tone(),
 			)
 		);
 	}

@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.11
+Stable tag: 0.0.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,6 +99,10 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.12 =
+* When your OpenRouter key has a credit limit set, the Settings > API key row shows how much of it is left ("Verified · $37.66 left of $50.00") and turns amber below 20%, red at zero.
+* The Translation screen warns when a run's estimated cost is more than the key's remaining credit, and blocks Start once the key is exhausted (top up at openrouter.ai and reload). Keys with no limit set are unaffected.
 
 = 0.0.11 =
 * The run screen is one grouped list now: the run id, language pair, mode and start time moved into the group's heading and footnote instead of a separate caption line, and the standalone progress bar became a compact meter inside the **Progress** row.

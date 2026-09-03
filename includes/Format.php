@@ -75,11 +75,36 @@ class Format {
 			return sprintf( __( '~%s₫', 'perxel-ai-translate' ), number_format_i18n( round( $cost_usd * self::USD_TO_VND ) ) );
 		}
 
+		return self::cost_usd( $cost_usd );
+	}
+
+	/**
+	 * "~$0.0123" - an estimate always in USD, never VND-converted. For figures
+	 * shown next to an OpenRouter-reported dollar amount (e.g. the API key
+	 * budget gate), where a converted estimate would not line up.
+	 *
+	 * @param float $cost_usd Cost in US dollars.
+	 * @return string
+	 */
+	public static function cost_usd( $cost_usd ) {
+		$cost_usd = (float) $cost_usd;
+
 		if ( $cost_usd > 0 && $cost_usd < 0.01 ) {
 			return '~$' . number_format( $cost_usd, 4 );
 		}
 
 		return '~$' . number_format( $cost_usd, 2 );
+	}
+
+	/**
+	 * "$50.00" - an exact USD amount, no "~". For real reported figures such as
+	 * an OpenRouter key's credit limit, not our own estimates.
+	 *
+	 * @param float $usd Amount in US dollars.
+	 * @return string
+	 */
+	public static function money_usd( $usd ) {
+		return '$' . number_format( (float) $usd, 2 );
 	}
 
 	/**

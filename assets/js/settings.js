@@ -72,8 +72,8 @@
 		setSub( 'pxat-key-sub', __( 'Checking…', 'perxel-ai-translate' ) );
 		return ajax( 'pxat_test_api_key', { api_key: keyInput.value } ).then( function ( res ) {
 			if ( res && res.success ) {
-				setDot( keyInput, 'good' );
-				setSub( 'pxat-key-sub', res.data.message || __( 'Verified', 'perxel-ai-translate' ) );
+				setDot( keyInput, ( res.data && res.data.tone ) || 'good' );
+				setSub( 'pxat-key-sub', ( res.data && res.data.message ) || __( 'Verified', 'perxel-ai-translate' ) );
 				if ( hidden.keyVerified ) {
 					hidden.keyVerified.value = '1';
 				}

@@ -317,9 +317,10 @@ class OpenRouter {
 	 * call, so it costs nothing).
 	 *
 	 * @param string $api_key The key to check.
-	 * @return array|WP_Error Key info array on success.
+	 * @param int    $timeout Request timeout in seconds.
+	 * @return array|WP_Error Key info array ({ label, usage, limit, limit_remaining, is_free_tier }) on success.
 	 */
-	public static function test_api_key( $api_key ) {
+	public static function test_api_key( $api_key, $timeout = 20 ) {
 		if ( empty( $api_key ) ) {
 			return new WP_Error( 'pxat_no_api_key', __( 'Enter an API key first.', 'perxel-ai-translate' ) );
 		}
@@ -327,7 +328,7 @@ class OpenRouter {
 		$response = wp_remote_get(
 			'https://openrouter.ai/api/v1/auth/key',
 			array(
-				'timeout' => 20,
+				'timeout' => (int) $timeout,
 				'headers' => array(
 					'Authorization' => 'Bearer ' . $api_key,
 				),
@@ -349,6 +350,35 @@ class OpenRouter {
 		}
 
 		return isset( $json['data'] ) && is_array( $json['data'] ) ? $json['data'] : array();
+	}
+
+	/**
+	 * The stored API key's credit ceiling, from OpenRouter's key-info endpoint.
+	 * A cheap GET, no cost. Returns null when the key has no limit set, or the
+	 * lookup fails / times out - callers treat null as "do not gate".
+	 *
+	 * @return array{limit:float, remaining:float}|null
+	 */
+	public static function key_budget() {
+		$key = Settings::api_key();
+		if ( '' === trim( $key ) ) {
+			return null;
+		}
+
+		$data = self::test_api_key( $key, 8 );
+		if ( is_wp_error( $data ) || empty( $data['limit'] ) ) {
+			return null;
+		}
+
+		$limit     = (float) $data['limit'];
+		$remaining = isset( $data['limit_remaining'] ) && null !== $data['limit_remaining']
+			? (float) $data['limit_remaining']
+			: max( 0.0, $limit - (float) ( $data['usage'] ?? 0 ) );
+
+		return array(
+			'limit'     => $limit,
+			'remaining' => $remaining,
+		);
 	}
 
 	/**

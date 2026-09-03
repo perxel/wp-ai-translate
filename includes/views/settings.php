@@ -44,8 +44,17 @@ $model_detail = $model['input'] > 0
 	)
 	: esc_html__( 'not checked', 'perxel-ai-translate' );
 
-$key_icon   = $settings['api_key_verified'] ? 'good' : 'muted';
-$key_sub    = $settings['api_key_verified'] ? esc_html__( 'Verified', 'perxel-ai-translate' ) : esc_html__( 'not checked', 'perxel-ai-translate' );
+$key_icon = \Perxel\AITranslate\Settings::api_key_tone();
+if ( $settings['api_key_verified'] && (float) $settings['api_key_limit'] > 0 ) {
+	$key_sub = sprintf(
+		/* translators: 1: USD credit left, 2: USD credit limit, e.g. "$37.66 left of $50.00". */
+		esc_html__( 'Verified · %1$s left of %2$s', 'perxel-ai-translate' ),
+		esc_html( \Perxel\AITranslate\Format::money_usd( (float) $settings['api_key_remaining'] ) ),
+		esc_html( \Perxel\AITranslate\Format::money_usd( (float) $settings['api_key_limit'] ) )
+	);
+} else {
+	$key_sub = $settings['api_key_verified'] ? esc_html__( 'Verified', 'perxel-ai-translate' ) : esc_html__( 'not checked', 'perxel-ai-translate' );
+}
 $model_icon = $settings['model_verified'] ? 'good' : 'muted';
 
 $test_button = '<button type="button" class="button" id="pxat-test">' . esc_html__( 'Test', 'perxel-ai-translate' ) . '</button>';
