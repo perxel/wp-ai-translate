@@ -151,18 +151,21 @@ if ( $benchmark ) {
 
 $compat_rows = array();
 foreach ( $compatibility as $plugin ) {
+	if ( $plugin['active'] ) {
+		$state = $plugin['version']
+			/* translators: %s: plugin version active on this site. */
+			? sprintf( __( 'active %s', 'perxel-ai-translate' ), $plugin['version'] )
+			: __( 'active', 'perxel-ai-translate' );
+	} else {
+		$state = __( 'not detected', 'perxel-ai-translate' );
+	}
+
 	$compat_rows[] = array(
 		'label'   => $plugin['name'],
 		'icon'    => $plugin['active'] ? 'good' : 'muted',
 		'sub'     => esc_html( $plugin['note'] ),
-		'content' => $plugin['active']
-			? esc_html(
-				$plugin['version']
-					/* translators: %s: plugin version number. */
-					? sprintf( __( 'Active %s', 'perxel-ai-translate' ), $plugin['version'] )
-					: __( 'Active', 'perxel-ai-translate' )
-			)
-			: esc_html__( 'Not detected', 'perxel-ai-translate' ),
+		/* translators: 1: version the plugin was tested against, 2: state on this site (e.g. "active 1.0.0" or "not detected"). */
+		'content' => esc_html( sprintf( __( 'tested %1$s  ·  %2$s', 'perxel-ai-translate' ), $plugin['tested'], $state ) ),
 	);
 }
 
@@ -170,7 +173,7 @@ echo \Perxel_UI::rows(
 	array(
 		array(
 			'title' => __( 'Compatibility', 'perxel-ai-translate' ),
-			'note'  => esc_html__( 'Tested integrations. Each is listed whether or not it is installed so you can see what we support; a check means it is active on this site.', 'perxel-ai-translate' ),
+			'note'  => esc_html__( 'The plugin is built and tested against these versions. Each is listed whether or not it is installed; a check means it is active on this site.', 'perxel-ai-translate' ),
 			'rows'  => $compat_rows,
 		),
 	)
@@ -182,7 +185,12 @@ $env    = $environment;
 $env_ok = $env['wpml_active'] && $env['lang_count'] >= 2 && $env['api_key_ok'] && $env['model_ok'];
 
 $lines = array(
-	sprintf( 'WPML                 %s', $env['wpml_active'] ? 'active ' . $env['wpml_version'] : 'NOT ACTIVE' ),
+	sprintf(
+		'WPML                 %s',
+		$env['wpml_active']
+			? 'active ' . $env['wpml_version'] . ', tested ' . $env['wpml_tested']
+			: 'NOT ACTIVE'
+	),
 	sprintf( 'Active languages     %d', $env['lang_count'] ),
 	sprintf( 'Default language     %s', $env['default_lang'] ? $env['default_lang'] : '-' ),
 	sprintf( 'API key              %s', $env['api_key_set'] ? ( $env['api_key_ok'] ? 'set, verified' : 'set, not verified' ) : 'NOT SET' ),

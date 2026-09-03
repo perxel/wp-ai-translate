@@ -33,6 +33,13 @@ spending WPML's own AI translation credits.
 - WPML with at least two active languages
 - An OpenRouter API key (you pay OpenRouter directly for usage)
 
+## Tested with
+
+- WPML 4.9.7
+- Secure Custom Fields 6.9.5 (and Advanced Custom Fields)
+- Rank Math SEO 1.0.277.2 / Rank Math SEO PRO 3.0.82
+- WPBakery Page Builder 9.0.1
+
 ## Development
 
 ```bash

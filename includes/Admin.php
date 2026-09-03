@@ -553,6 +553,7 @@ class Admin {
 		return array(
 			'wpml_active'   => defined( 'ICL_SITEPRESS_VERSION' ),
 			'wpml_version'  => defined( 'ICL_SITEPRESS_VERSION' ) ? ICL_SITEPRESS_VERSION : '',
+			'wpml_tested'   => '4.9.7',
 			'lang_count'    => count( $languages ),
 			'default_lang'  => (string) Wpml::get_default_language(),
 			'api_key_set'   => Settings::has_api_key(),
@@ -567,29 +568,48 @@ class Admin {
 	}
 
 	/**
-	 * The plugins this plugin has integration code for. Every entry is shown on
-	 * the Settings screen whether or not it is installed - a check just means it
-	 * is active here. WPML is the hard dependency and lives in the Environment
-	 * block, not this list.
+	 * The plugins this plugin is built and tested against. Every entry is shown
+	 * on the Settings screen whether or not it is installed - a check just means
+	 * it is active here. Each carries the version we last verified a run against
+	 * ('tested'); 'version' is whatever is live on this site. WPML is the hard
+	 * dependency and lives in the Environment block, not this list.
 	 *
-	 * @return array[] Each: [ name, active (bool), version (string), note ].
+	 * @return array[] Each: [ name, tested (string), active (bool), version (string), note ].
 	 */
 	public static function compatibility() {
 		$acf_active = class_exists( 'ACF' ) || function_exists( 'get_field' );
 		$rm_active  = defined( 'RANK_MATH_VERSION' );
+		$rmp_active = defined( 'RANK_MATH_PRO_VERSION' );
+		$vc_active  = defined( 'WPB_VC_VERSION' );
 
 		return array(
 			array(
-				'name'    => __( 'Advanced Custom Fields', 'perxel-ai-translate' ),
+				'name'    => __( 'Advanced Custom Fields / Secure Custom Fields', 'perxel-ai-translate' ),
+				'tested'  => '6.9.5',
 				'active'  => $acf_active,
 				'version' => defined( 'ACF_VERSION' ) ? ACF_VERSION : '',
 				'note'    => __( 'Text, textarea and WYSIWYG fields are translated; other field types are copied to the translation as-is.', 'perxel-ai-translate' ),
 			),
 			array(
 				'name'    => __( 'Rank Math SEO', 'perxel-ai-translate' ),
+				'tested'  => '1.0.277.2',
 				'active'  => $rm_active,
 				'version' => $rm_active ? RANK_MATH_VERSION : '',
 				'note'    => __( 'SEO title, description, focus keyword and Facebook / X social meta.', 'perxel-ai-translate' ),
+			),
+			array(
+				'name'    => __( 'Rank Math SEO PRO', 'perxel-ai-translate' ),
+				'tested'  => '3.0.82',
+				'active'  => $rmp_active,
+				'version' => $rmp_active ? RANK_MATH_PRO_VERSION : '',
+				'note'    => __( 'Runs alongside the Pro add-on; the same Rank Math meta fields are translated.', 'perxel-ai-translate' ),
+			),
+			array(
+				'name'    => __( 'WPBakery Page Builder', 'perxel-ai-translate' ),
+				'tested'  => '9.0.1',
+				'active'  => $vc_active,
+				'version' => $vc_active ? WPB_VC_VERSION : '',
+				'note'    => __( 'Builder shortcodes such as [vc_row] are kept intact; only the readable text inside them is translated.', 'perxel-ai-translate' ),
 			),
 		);
 	}
