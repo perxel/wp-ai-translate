@@ -1,29 +1,35 @@
+/**
+ * ID lookup: copy the result list to the clipboard.
+ */
 ( function () {
 	'use strict';
 
-	var i18n = window.wp && window.wp.i18n ? window.wp.i18n : null;
-	function __( text ) {
-		return i18n ? i18n.__( text, 'perxel-ai-translate' ) : text;
-	}
+	var __ = ( window.wp && wp.i18n ) ? wp.i18n.__ : function ( s ) {
+		return s;
+	};
 
-	var copyBtn = document.getElementById( 'pxat-copy-output' );
-	var output = document.getElementById( 'pxat_output' );
-	var resultEl = document.getElementById( 'pxat-copy-output-result' );
+	var btn = document.getElementById( 'pxat-copy-output' );
+	var out = document.getElementById( 'pxat-output' );
+	var result = document.getElementById( 'pxat-copy-output-result' );
 
-	if ( ! copyBtn || ! output || ! resultEl ) {
+	if ( ! btn || ! out ) {
 		return;
 	}
 
-	copyBtn.addEventListener( 'click', function () {
-		navigator.clipboard.writeText( output.value ).then(
-			function () {
-				resultEl.textContent = __( 'Copied.' );
-				resultEl.className = 'pxat-test-result pxat-test-result--ok';
-			},
-			function () {
-				resultEl.textContent = __( 'Could not copy automatically, please select and copy manually.' );
-				resultEl.className = 'pxat-test-result pxat-test-result--fail';
-			}
-		);
+	btn.addEventListener( 'click', function () {
+		out.select();
+		var ok = false;
+		try {
+			ok = document.execCommand( 'copy' );
+		} catch ( e ) {
+			ok = false;
+		}
+		if ( navigator.clipboard && ! ok ) {
+			navigator.clipboard.writeText( out.value );
+			ok = true;
+		}
+		if ( result ) {
+			result.textContent = ok ? __( 'Copied.', 'perxel-ai-translate' ) : __( 'Press Ctrl/Cmd+C to copy.', 'perxel-ai-translate' );
+		}
 	} );
-} )();
+}() );

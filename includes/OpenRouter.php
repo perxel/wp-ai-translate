@@ -1,60 +1,50 @@
 <?php
-/**
- * OpenRouter chat-completions client.
- *
- * @package Perxel_AI_Translate
- */
+
+namespace Perxel\AITranslate;
+
+use WP_Error;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * OpenRouter chat-completions client. Every call is wrapped uniformly:
- * non-200 (incl. context-length-exceeded) and unparseable responses both
- * come back as a WP_Error with the raw text, never a thrown exception;
- * the job processor is expected to log it and move on to the next job.
+ * OpenRouter chat-completions client. Every call is wrapped uniformly: non-200
+ * and unparseable responses both come back as a WP_Error with the raw text,
+ * never a thrown exception; the caller logs it and moves on.
  */
-class PXAT_OpenRouter {
+class OpenRouter {
 
 	const API_URL     = 'https://openrouter.ai/api/v1/chat/completions';
 	const MAX_RETRIES = 2;
 
-	// Rough rule of thumb (fine for Latin-script text); real usage always
-	// comes back from the API's own `usage` field once a job runs, see
-	// translate() below — this only backs the confirm page's pre-flight estimate.
+	// Rough rule of thumb (fine for Latin-script text); real usage always comes
+	// back from the API's own `usage` field once a job runs.
 	const CHARS_PER_TOKEN = 4;
 
-	// "Auto (batched)" mode only (see PXAT_Job_Processor::process_batch()).
-	// A batched request carries several posts' worth of content, so it's given
-	// more time than a single-job request's 90s below.
+	// A batched request carries several posts' worth of content, so it gets
+	// more time than a single-job request's 90s.
 	const BATCH_TIMEOUT = 180;
 
-	// Hard ceiling on how many posts get grouped into one batch request,
-	// regardless of how much token budget is left — keeps a single failed
-	// request's blast radius bounded and keeps progress-page feedback granular.
+	// Hard ceiling on how many posts get grouped into one batch request.
 	const MAX_BATCH_JOBS = 20;
 
-	// A batch is filled against this fraction of the model's max_output_tokens,
-	// not the full amount — CHARS_PER_TOKEN above is only an estimate, and the
-	// model's actual completion (translated JSON + structural overhead) needs
-	// headroom to not get cut off mid-object.
+	// A batch is filled against this fraction of the model's max_output_tokens.
 	const BATCH_OUTPUT_SAFETY_FACTOR = 0.5;
 
 	/**
-	 * @param array    $payload     Associative array of field_key => source text.
-	 * @param string   $source_lang WPML language code, e.g. "en".
-	 * @param string   $dest_lang   WPML language code, e.g. "fr".
-	 * @param string   $model_id    OpenRouter model id. Falls back to the first configured model if unknown/empty.
-	 * @param callable $log         Optional. Called with a short status string at each notable step.
-	 * @return array|WP_Error {fields: field_key => translated text, usage: {prompt_tokens, completion_tokens, total_tokens}} on success.
+	 * @param array    $payload     field_key => source text.
+	 * @param string   $source_lang WPML language code.
+	 * @param string   $dest_lang   WPML language code.
+	 * @param string   $model_id    OpenRouter model id. Falls back to the first configured model.
+	 * @param callable $log         Optional status callback.
+	 * @return array|WP_Error {fields: field_key => translated text, usage: {...}} on success.
 	 */
 	public static function translate( array $payload, $source_lang, $dest_lang, $model_id, $log = null ) {
-		$settings = PXAT_Settings::get_settings();
 		$messages = array(
 			array(
 				'role'    => 'system',
-				'content' => self::build_system_prompt( $settings['prompt'], $source_lang, $dest_lang ),
+				'content' => self::build_system_prompt( Settings::get( 'prompt' ), $source_lang, $dest_lang ),
 			),
 			array(
 				'role'    => 'user',
@@ -75,11 +65,8 @@ class PXAT_OpenRouter {
 	}
 
 	/**
-	 * "Auto (batched)" mode: same as translate(), but $payload nests several
-	 * posts' field maps under their own job_id key in one request —
-	 * {job_id: {field_key: source text}, ...} — and the response is expected
-	 * to mirror that same nested shape with translated values, so it can be
-	 * split back into each job's own preview in PXAT_Job_Processor::process_batch().
+	 * Batched translate: $payload nests several posts' field maps under their
+	 * own job_id key in one request.
 	 *
 	 * @param array    $payload     job_id => {field_key => source text}.
 	 * @param string   $source_lang Source WPML language code.
@@ -89,11 +76,10 @@ class PXAT_OpenRouter {
 	 * @return array|WP_Error {results: job_id => {field_key => translated text}, usage: {...}} on success.
 	 */
 	public static function translate_batch( array $payload, $source_lang, $dest_lang, $model_id, $log = null ) {
-		$settings = PXAT_Settings::get_settings();
 		$messages = array(
 			array(
 				'role'    => 'system',
-				'content' => self::build_batch_system_prompt( $settings['prompt'], $source_lang, $dest_lang ),
+				'content' => self::build_batch_system_prompt( Settings::get( 'prompt' ), $source_lang, $dest_lang ),
 			),
 			array(
 				'role'    => 'user',
@@ -114,31 +100,28 @@ class PXAT_OpenRouter {
 	}
 
 	/**
-	 * Shared HTTP/retry/parsing core behind translate() and translate_batch() —
-	 * both send one chat-completions request and expect back a single JSON
-	 * object; only the messages sent and the timeout differ between them.
+	 * Shared HTTP/retry/parsing core behind translate() and translate_batch().
 	 *
 	 * @param array    $messages Chat messages.
 	 * @param string   $model_id OpenRouter model id.
 	 * @param int      $timeout  Request timeout in seconds.
 	 * @param callable $log      Optional status callback.
-	 * @return array|WP_Error {data: decoded JSON object from the model's reply, usage: {...}} on success.
+	 * @return array|WP_Error {data: decoded JSON object, usage: {...}} on success.
 	 */
 	protected static function send_request( array $messages, $model_id, $timeout, $log = null ) {
 		if ( ! is_callable( $log ) ) {
-			$log = function ( $message ) {};
+			$log = static function ( $message ) {};
 		}
 
-		$settings = PXAT_Settings::get_settings();
-		$api_key  = $settings['api_key'];
-		$model    = self::get_model( $model_id );
+		$api_key = Settings::get( 'api_key' );
+		$model   = self::get_model( $model_id );
 
 		if ( empty( $api_key ) ) {
 			return new WP_Error(
 				'pxat_no_api_key',
 				sprintf(
 					/* translators: %s: plugin name. */
-					__( 'No OpenRouter API key configured. Add one under Settings → %s.', 'perxel-ai-translate' ),
+					__( 'No OpenRouter API key configured. Add one on the %s settings screen.', 'perxel-ai-translate' ),
 					PXAT_NAME
 				)
 			);
@@ -234,10 +217,7 @@ class PXAT_OpenRouter {
 
 	/**
 	 * @param string $model_id OpenRouter model id.
-	 * @return int Token budget one batch request should stay under (a safety
-	 *             fraction of the model's max_output_tokens), or 0 if the
-	 *             model has none configured — callers should then fall back
-	 *             to MAX_BATCH_JOBS alone as the only cap.
+	 * @return int Token budget one batch request should stay under, or 0 if the model has none configured.
 	 */
 	public static function get_batch_output_budget( $model_id ) {
 		$model      = self::get_model( $model_id );
@@ -247,7 +227,7 @@ class PXAT_OpenRouter {
 	}
 
 	/**
-	 * @return array[] All configured models: {id, label, input, output}. input/output are USD per 1M tokens.
+	 * @return array[] All configured models: {id, label, input, output, max_output_tokens?}.
 	 */
 	public static function get_models() {
 		/**
@@ -274,15 +254,10 @@ class PXAT_OpenRouter {
 	}
 
 	/**
-	 * Pre-flight token estimate for one job, mirroring exactly what translate()
-	 * above actually sends: a system-prompt message plus a user message whose
-	 * content is $payload JSON-encoded the same way (JSON_UNESCAPED_UNICODE),
-	 * so field-key/brace/quote overhead is counted, not just the field values.
-	 * Real usage from the API's own `usage` field always supersedes this once
-	 * a job actually runs (see PXAT_Job_Processor::process()).
+	 * Pre-flight token estimate for one job, mirroring what translate() sends.
 	 *
-	 * @param array $payload             field_key => source text, same shape passed to translate().
-	 * @param int   $system_prompt_chars mb_strlen() of the exact system prompt this batch will use.
+	 * @param array $payload             field_key => source text.
+	 * @param int   $system_prompt_chars mb_strlen() of the exact system prompt.
 	 * @return array {prompt_tokens, completion_tokens}
 	 */
 	public static function estimate_job_tokens( array $payload, $system_prompt_chars ) {
@@ -290,8 +265,6 @@ class PXAT_OpenRouter {
 
 		return array(
 			'prompt_tokens'     => (int) ceil( ( $system_prompt_chars + $user_chars ) / self::CHARS_PER_TOKEN ),
-			// The model echoes back the same JSON structure with translated
-			// values, so the output is roughly the same size as the input.
 			'completion_tokens' => (int) ceil( $user_chars / self::CHARS_PER_TOKEN ),
 		);
 	}
@@ -300,7 +273,7 @@ class PXAT_OpenRouter {
 	 * @param int    $prompt_tokens     Prompt token count.
 	 * @param int    $completion_tokens Completion token count.
 	 * @param string $model_id          OpenRouter model id.
-	 * @return float USD cost for the given token counts at $model_id's price.
+	 * @return float USD cost.
 	 */
 	public static function estimate_cost( $prompt_tokens, $completion_tokens, $model_id ) {
 		$model = self::get_model( $model_id );
@@ -308,11 +281,11 @@ class PXAT_OpenRouter {
 	}
 
 	/**
-	 * Validates a key against OpenRouter's own key-info endpoint, no
-	 * chat-completion call, so it costs nothing to run.
+	 * Validates a key against OpenRouter's own key-info endpoint (no completion
+	 * call, so it costs nothing).
 	 *
 	 * @param string $api_key The key to check.
-	 * @return array|WP_Error Key info array (label, usage, limit, ...) on success.
+	 * @return array|WP_Error Key info array on success.
 	 */
 	public static function test_api_key( $api_key ) {
 		if ( empty( $api_key ) ) {
@@ -353,7 +326,7 @@ class PXAT_OpenRouter {
 	 * @return string
 	 */
 	public static function build_system_prompt( $user_prompt, $source_lang, $dest_lang ) {
-		$system = "You are a professional translator. Translate the values of the JSON object provided by the "
+		$system = 'You are a professional translator. Translate the values of the JSON object provided by the '
 			. "user from \"{$source_lang}\" to \"{$dest_lang}\". Keep the exact same JSON keys. Some values contain "
 			. 'HTML tags and page-builder shortcodes (e.g. [vc_row], [vc_column][/vc_column]); preserve '
 			. 'all tags, shortcodes and their attributes exactly as-is, only translate the human-readable text '
@@ -368,9 +341,8 @@ class PXAT_OpenRouter {
 	}
 
 	/**
-	 * Same contract as build_system_prompt(), one level deeper: the user
-	 * message is job_id => {field_key: text} for several posts at once, so
-	 * the model needs to be told about that extra nesting explicitly.
+	 * Same contract as build_system_prompt(), one level deeper: the user message
+	 * is job_id => {field_key: text} for several posts at once.
 	 *
 	 * @param string $user_prompt Extra instructions appended to the system prompt.
 	 * @param string $source_lang Source language code.

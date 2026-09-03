@@ -1,9 +1,6 @@
 <?php
-/**
- * Per-field translate/copy decisions.
- *
- * @package Perxel_AI_Translate
- */
+
+namespace Perxel\AITranslate;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -11,15 +8,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Per-field translate/copy decision, made by ACF field type, not by
- * hand-listing every field across the ~10 field groups on this site.
+ * hand-listing every field across the field groups on a site.
  */
-class PXAT_Fields {
+class Fields {
 
 	const ACF_TEXT_TYPES      = array( 'text', 'textarea', 'wysiwyg' );
 	const ACF_CONTAINER_TYPES = array( 'group', 'repeater', 'flexible_content' );
 
 	// Safety net against runaway recursion (e.g. a misconfigured ACF clone
-	// field), not a limit we expect real field groups to ever approach.
+	// field), not a limit real field groups are expected to approach.
 	const MAX_ACF_DEPTH = 10;
 
 	const RANKMATH_KEYS = array(
@@ -33,33 +30,35 @@ class PXAT_Fields {
 	);
 
 	// The "Data to process" checklist on the confirm page, and the granular
-	// per-type apply functions in PXAT_Job_Processor/PXAT_Post_Sync — every
-	// other piece of the data-selection model (job['custom_types'], the
-	// per-type results map, PXAT_Confirm_Page's eligibility/preview logic)
-	// is keyed off these same six slugs. 'taxonomy' and 'thumbnail'
-	// contribute no LLM field defs at all (see get_field_defs_for_type()) —
-	// both are structural only, handled by PXAT_Post_Sync::sync_taxonomies()
-	// / sync_thumbnail().
+	// per-type apply functions in Translator / PostSync. 'taxonomy' and
+	// 'thumbnail' contribute no LLM field defs at all — both are structural.
 	const DATA_TYPES = array( 'title', 'content', 'acf', 'rankmath', 'taxonomy', 'thumbnail' );
 
 	public static function get_title_field_defs() {
-		return array( array( 'key' => 'post_title', 'source' => 'core' ) );
+		return array(
+			array(
+				'key'    => 'post_title',
+				'source' => 'core',
+			),
+		);
 	}
 
 	public static function get_content_field_defs() {
 		return array(
-			array( 'key' => 'post_excerpt', 'source' => 'core' ),
-			array( 'key' => 'post_content', 'source' => 'core' ),
+			array(
+				'key'    => 'post_excerpt',
+				'source' => 'core',
+			),
+			array(
+				'key'    => 'post_content',
+				'source' => 'core',
+			),
 		);
 	}
 
 	/**
-	 * Translatable ACF fields (text/textarea/wysiwyg), found by recursing
-	 * into Group, Repeater, and Flexible Content fields at any depth. A
-	 * field nested inside one of those containers is addressed by a path
-	 * (sub-field key, or row index for repeater/flexible rows) relative to
-	 * its top-level container, since that's the only way ACF lets you read
-	 * or write a value nested inside a Repeater/Flexible Content row.
+	 * Translatable ACF fields (text/textarea/wysiwyg), found by recursing into
+	 * Group, Repeater, and Flexible Content fields at any depth.
 	 */
 	public static function get_acf_field_defs( $post_id ) {
 		$defs = array();
@@ -68,9 +67,6 @@ class PXAT_Fields {
 			return $defs;
 		}
 
-		// Modern ACF (5.x/6.x/Pro) takes positional args here: $format_value,
-		// $load_value, not an options array (that was pre-ACF5 API). We only
-		// need field name/type/key, not values, so both are false.
 		$fields = get_field_objects( $post_id, false, false );
 		if ( ! $fields ) {
 			return $defs;
@@ -90,19 +86,15 @@ class PXAT_Fields {
 	 * @param array  $field   ACF field-object (schema) node.
 	 * @param int    $post_id Source post, used to read repeater/flexible row counts.
 	 * @param string $top_key Field key of the nearest top-level ACF field ancestor.
-	 * @param array  $path    Path of $field's value within the top-level container's
-	 *                        raw value (empty when $field is itself the top-level field).
+	 * @param array  $path    Path of $field's value within the top-level container's raw value.
 	 * @param int    $depth   Recursion guard, see MAX_ACF_DEPTH.
+	 * @return array
 	 */
 	private static function collect_translate_defs( array $field, $post_id, $top_key, array $path, $depth ) {
 		if ( in_array( $field['type'], self::ACF_TEXT_TYPES, true ) ) {
 			return array(
 				array(
-					'source' => empty( $path ) ? 'acf' : 'acf_nested',
-					// LLM payload/response key. Top-level: the field name, same as
-					// before. Nested: prefixed with the container's field key, since
-					// two different containers can have same-named sub-fields (or
-					// same row index) and $path alone wouldn't be unique.
+					'source'    => empty( $path ) ? 'acf' : 'acf_nested',
 					'key'       => empty( $path ) ? $field['name'] : $top_key . ':' . implode( '.', $path ),
 					'field_key' => $field['key'],
 					'top_key'   => $top_key,
@@ -116,12 +108,6 @@ class PXAT_Fields {
 		}
 
 		$defs = array();
-
-		// Path segments below are each sub-field's own field KEY (e.g.
-		// "field_5f2a..."), not its name: ACF's internal (unformatted) value
-		// for Group/Repeater/Flexible Content is keyed by field key — only
-		// formatted values (format_value=true, which we deliberately don't
-		// use) get remapped to sub-field name.
 
 		if ( 'group' === $field['type'] && ! empty( $field['sub_fields'] ) ) {
 			foreach ( $field['sub_fields'] as $sub_field ) {
@@ -155,9 +141,6 @@ class PXAT_Fields {
 				return $defs;
 			}
 			foreach ( $rows as $row_index => $row ) {
-				// The layout row's own type tag, unlike its sub-fields, is
-				// always stored under this literal string key, regardless of
-				// format_value.
 				$layout_name = is_array( $row ) && isset( $row['acf_fc_layout'] ) ? $row['acf_fc_layout'] : null;
 				foreach ( $field['layouts'] as $layout ) {
 					if ( empty( $layout['sub_fields'] ) || $layout['name'] !== $layout_name ) {
@@ -179,9 +162,13 @@ class PXAT_Fields {
 	}
 
 	/**
-	 * Reads the raw value of the top-level ACF field $top_key, then walks
-	 * down $path (sub-field keys / repeater row indexes) to the value that
-	 * lives there. Returns null if any segment along the way is missing.
+	 * Reads the raw value of the top-level ACF field $top_key, then walks down
+	 * $path to the value that lives there. Returns null if any segment is missing.
+	 *
+	 * @param string $top_key Top-level ACF field key.
+	 * @param array  $path    Path segments.
+	 * @param int    $post_id Post ID.
+	 * @return mixed
 	 */
 	private static function read_path( $top_key, array $path, $post_id ) {
 		$value = get_field( $top_key, $post_id, false );
@@ -199,11 +186,14 @@ class PXAT_Fields {
 
 	/**
 	 * Sets $value at $path inside $container (by reference), creating
-	 * intermediate arrays as needed. Every other key in $container is left
-	 * untouched.
+	 * intermediate arrays as needed.
+	 *
+	 * @param array $container Container, by reference.
+	 * @param array $path      Path segments.
+	 * @param mixed $value     Value to write.
 	 */
 	private static function write_path( &$container, array $path, $value ) {
-		$ref = &$container;
+		$ref  = &$container;
 		$last = count( $path ) - 1;
 
 		foreach ( $path as $i => $segment ) {
@@ -219,13 +209,10 @@ class PXAT_Fields {
 	}
 
 	/**
-	 * Non text/textarea/wysiwyg ACF fields on the source post, copied as-is
-	 * to the destination post, never sent to the translator. For a Group,
-	 * Repeater, or Flexible Content field this copies the whole structure
-	 * (needed for its non-text sub-fields, e.g. images); any translatable
-	 * text nested inside is copied along with it and must be blanked
-	 * afterward, see PXAT_Post_Sync::sync_acf().
+	 * Non text/textarea/wysiwyg ACF fields on the source post, copied as-is to
+	 * the destination post, never sent to the translator.
 	 *
+	 * @param int $post_id Source post ID.
 	 * @return array[] List of ['name' => field name, 'field_key' => ACF field key].
 	 */
 	public static function get_acf_copy_fields( $post_id ) {
@@ -235,9 +222,6 @@ class PXAT_Fields {
 			return $out;
 		}
 
-		// Modern ACF (5.x/6.x/Pro) takes positional args here: $format_value,
-		// $load_value, not an options array (that was pre-ACF5 API). We only
-		// need field name/type/key, not values, so both are false.
 		$fields = get_field_objects( $post_id, false, false );
 		if ( ! $fields ) {
 			return $out;
@@ -267,7 +251,10 @@ class PXAT_Fields {
 			if ( '' === $value || false === $value ) {
 				continue;
 			}
-			$defs[] = array( 'key' => $key, 'source' => 'rankmath' );
+			$defs[] = array(
+				'key'    => $key,
+				'source' => 'rankmath',
+			);
 		}
 
 		return $defs;
@@ -283,11 +270,12 @@ class PXAT_Fields {
 	}
 
 	/**
-	 * LLM field defs for one entry of DATA_TYPES — the per-type building
-	 * block compute_field_plan() unions across whichever types are selected.
-	 * 'taxonomy' and 'thumbnail' always return empty: both are structural
-	 * (WPML term mapping / a featured-image copy), never sent to the LLM —
-	 * see PXAT_Post_Sync::sync_taxonomies() / sync_thumbnail().
+	 * LLM field defs for one entry of DATA_TYPES. 'taxonomy' and 'thumbnail'
+	 * always return empty: both are structural, never sent to the LLM.
+	 *
+	 * @param int    $source_post_id Source post ID.
+	 * @param string $type           One of DATA_TYPES.
+	 * @return array
 	 */
 	public static function get_field_defs_for_type( $source_post_id, $type ) {
 		switch ( $type ) {
@@ -372,13 +360,13 @@ class PXAT_Fields {
 	}
 
 	/**
-	 * LLM field defs with non-empty source content, unioned across whichever
-	 * of DATA_TYPES are selected — the full set sent to the LLM whenever a
-	 * post is (re)translated. Always overwrites whatever's selected; doesn't
-	 * look at the destination post at all (no "only fill in empty fields"
-	 * skip logic — see PXAT_Confirm_Page's data-axis redesign).
+	 * LLM field defs with non-empty source content, unioned across whichever of
+	 * DATA_TYPES are selected. Always overwrites; doesn't look at the
+	 * destination post at all.
 	 *
-	 * @param array $types Subset of DATA_TYPES to include ('taxonomy' contributes nothing here — it's structural, not LLM).
+	 * @param int   $source_post_id Source post ID.
+	 * @param array $types          Subset of DATA_TYPES to include.
+	 * @return array
 	 */
 	public static function compute_field_plan( $source_post_id, array $types ) {
 		$defs = array();

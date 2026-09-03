@@ -1,9 +1,6 @@
 <?php
-/**
- * Number, cost and duration formatting.
- *
- * @package Perxel_AI_Translate
- */
+
+namespace Perxel\AITranslate;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -11,14 +8,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Single source of truth for how token/word counts and USD cost are displayed.
- * Every PHP call site renders these numbers through here instead of formatting
- * inline, and assets/js/pxat-format.js mirrors the same rules for progress.js's
- * AJAX-polled counts, since PHP and JS can't share one implementation directly.
+ * Every PHP call site renders these through here; assets/js/format.js mirrors
+ * the same rules for the progress screen's AJAX-polled counters.
  */
-class PXAT_Format {
+class Format {
 
-	// OpenRouter/OpenAI's own rule of thumb: ~750 words per 1000 tokens
-	// (English-ish text). Good enough for a rough display estimate.
+	// OpenRouter/OpenAI's own rule of thumb: ~750 words per 1000 tokens.
 	const WORDS_PER_TOKEN = 0.75;
 
 	/**
@@ -27,8 +22,7 @@ class PXAT_Format {
 	 * @return string
 	 */
 	public static function display_unit() {
-		$settings = PXAT_Settings::get_settings();
-		return isset( $settings['display_unit'] ) && 'words' === $settings['display_unit'] ? 'words' : 'tokens';
+		return 'words' === Settings::get( 'display_unit' ) ? 'words' : 'tokens';
 	}
 
 	/**
@@ -55,8 +49,7 @@ class PXAT_Format {
 	}
 
 	/**
-	 * "~$0.0123" — a rough USD cost estimate. OpenRouter bills in USD, so this
-	 * is the plugin's native cost unit.
+	 * "~$0.0123" — a rough USD cost estimate. OpenRouter bills in USD.
 	 *
 	 * @param float $cost_usd Cost in US dollars.
 	 * @return string
@@ -72,8 +65,7 @@ class PXAT_Format {
 	}
 
 	/**
-	 * "02:15" or "1:02:15" — elapsed seconds as a clock-style duration, for
-	 * the batch's running-time stat card.
+	 * "02:15" or "1:02:15" — elapsed seconds as a clock-style duration.
 	 *
 	 * @param int $seconds Elapsed seconds.
 	 * @return string
@@ -91,10 +83,8 @@ class PXAT_Format {
 	}
 
 	/**
-	 * "5 mins ago", "2 hours ago" — relative time for a MySQL datetime (as
-	 * stored in $job['created_at'], site-local via current_time('mysql')).
-	 * Single source of truth so the batch list and a batch's own progress
-	 * page render this the same way instead of each formatting it inline.
+	 * "5 mins ago" — relative time for a MySQL datetime stored site-local via
+	 * current_time( 'mysql' ).
 	 *
 	 * @param string $mysql_datetime A 'Y-m-d H:i:s' timestamp.
 	 * @return string

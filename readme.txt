@@ -27,16 +27,12 @@ It is aimed at sites that already run **WPML** and want to translate a lot of co
 
 **How it works**
 
-1. Select posts in the list table and choose **Perxel AI Translate…** from the bulk actions (or use *Translate this page* in the toolbar while editing one post).
-2. On the confirm screen, pick the destination language, which data to process, and a run mode. You get a cost and token estimate before anything runs.
-3. On the progress screen the plugin translates each post. In **Manual** mode you preview each result and choose what to apply; in **Auto** and **Auto (batched)** modes translations are written straight into WordPress.
-4. A permanent history of every run is kept under *Settings → … → Translation history*.
+1. From the **AI Translate** menu, pick a few posts, or open any post list, tick some rows and choose **Perxel AI Translate…** from the bulk actions (or use *Translate this page* in the toolbar while editing one post).
+2. On the confirm screen, pick the destination language and which data to process. You get a cost and token estimate before anything runs.
+3. Press **Start**. Each post is translated and written straight into WordPress as a WPML translation; review the result in the normal editor. Close the tab any time — the run resumes where it left off.
+4. Every run is kept under **AI Translate → History** until you delete it.
 
-**Run modes**
-
-* **Manual** — translate first, then review and apply each post.
-* **Auto** — translate and apply immediately, one post per request.
-* **Auto (batched)** — group several short posts into each request for faster throughput.
+Turn on **Faster batched requests** on the confirm screen to send several short posts per model request.
 
 **Requirements**
 
@@ -62,8 +58,8 @@ Data is sent only when you explicitly start a translation or test the key. Your 
 
 1. Upload the plugin to `/wp-content/plugins/perxel-ai-translate`, or install it from the Plugins screen.
 2. Activate it. WPML must already be active with at least two languages.
-3. Go to **Settings → Perxel AI Translate** and enter your OpenRouter API key.
-4. Open any post list, select some posts, and choose **Perxel AI Translate…** from the bulk actions.
+3. Go to **AI Translate → Settings** and enter your OpenRouter API key.
+4. Open **AI Translate**, pick some posts and start a run.
 
 == Frequently Asked Questions ==
 
@@ -79,25 +75,32 @@ No. The plugin depends on WPML for language configuration and translation linkin
 
 The plugin ships with one economical default model. Developers can change or extend the list with the `pxat_openrouter_models` filter using any model id available on OpenRouter.
 
-= Where are translations stored before I apply them? =
+= Where does the plugin store its runs? =
 
-In a JSON file per batch under `wp-content/uploads/perxel-ai-translate/logs/`. Nothing is written to your posts until you apply a translation (or you chose an Auto run mode).
+In its own database tables (`wp_pxat_runs`, `wp_pxat_run_items`, `wp_pxat_run_log`). Each post is translated and written into WordPress as the run goes; you review the result in the normal editor.
 
 = What happens to my data if I delete the plugin? =
 
-Deleting the plugin removes its settings and the batch log directory. Translations already written into your posts are left untouched.
+Deleting the plugin removes its settings and those tables. Translations already written into your posts are left untouched.
 
 == Screenshots ==
 
-1. Settings screen — API key and system prompt.
-2. Confirm screen — language, data selection, run mode and cost estimate.
-3. Progress screen — live translation status with preview and apply.
-4. Translation history.
+1. Dashboard — setup state, post picker and all-time totals.
+2. Confirm screen — language, data selection and cost estimate.
+3. Run screen — live translation progress.
+4. History of every run.
 
 == Changelog ==
 
 = 0.0.2 =
-* Bundle the shared Perxel admin-UI kit (vendor/perxel-ui). Full admin redesign in progress — this entry will be expanded before release.
+* Rebuilt the admin experience on the shared Perxel UI kit: a consistent left-sidebar layout across every screen and a new Dashboard landing page.
+* Removed the manual preview/apply step — every run translates and writes straight into WordPress; review the result in the editor.
+* Replaced the three run modes with one optional "Faster batched requests" toggle.
+* Moved the run queue from JSON files to custom database tables (faster history, cleaner concurrency, no uploads-dir dependency).
+* Menu moved from Settings to its own top-level "AI Translate" menu.
+
+= 0.0.1 =
+* First public release.
 
 = 0.0.1 =
 * First public release.

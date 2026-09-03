@@ -18,26 +18,15 @@
 
 	<rule ref="WordPress">
 		<!--
-			File operations: the batch queue legitimately uses fopen/flock (there
-			is no WP_Filesystem locking primitive). Direct calls are the right
-			tool. Silenced-error / direct-query sniffs are handled with targeted
-			`phpcs:ignore` at the call site (with a reason), not blanket-disabled.
-		-->
-		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fopen"/>
-		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fwrite"/>
-		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fclose"/>
-		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_file_get_contents"/>
-
-		<!--
 			House style, deliberately different from the WP-Docs defaults that
-			wpcs 3.4 folded into the base standard:
+			wpcs 3.x folded into the base standard:
 
 			- One PSR-4-ish class per file (Ucfirst.php), loaded by the
 			  hand-rolled autoloader in the main file - not `class-ucfirst.php`.
 			- Classes live in a namespace behind an ABSPATH guard; a redundant
 			  file-level `@package` docblock is noise.
-			- Internal helpers carry `@param`/`@return` docblocks without a prose
-			  summary line.
+			- Terse helpers and one-line accessors carry a `@param`/`@return`
+			  block or no docblock at all, never a mandatory prose summary.
 			- Inline comment terminal punctuation is not enforced.
 			- WP filter/action callbacks keep the full hook signature even when a
 			  later parameter is unused.
@@ -45,6 +34,10 @@
 		-->
 		<exclude name="WordPress.Files.FileName"/>
 		<exclude name="Squiz.Commenting.FileComment"/>
+		<exclude name="Squiz.Commenting.FunctionComment.Missing"/>
+		<exclude name="Squiz.Commenting.FunctionComment.MissingParamTag"/>
+		<exclude name="Squiz.Commenting.FunctionComment.WrongStyle"/>
+		<exclude name="Squiz.Commenting.BlockComment.CloserSameLine"/>
 		<exclude name="Generic.Commenting.DocComment.MissingShort"/>
 		<exclude name="Squiz.Commenting.InlineComment.InvalidEndChar"/>
 		<exclude name="Generic.CodeAnalysis.UnusedFunctionParameter"/>
@@ -52,6 +45,42 @@
 	</rule>
 
 	<rule ref="PHPCompatibilityWP"/>
+
+	<!--
+		The run queue lives in three plugin-owned custom tables (see
+		includes/Db.php). Table names are class constants, never user input;
+		every value is bound through $wpdb->prepare() placeholders. The base
+		sniffs can't see past the table-name concatenation, and there is no
+		object cache for a queue that must read fresh on every poll.
+	-->
+	<rule ref="WordPress.DB.DirectDatabaseQuery">
+		<exclude-pattern>/includes/Db.php</exclude-pattern>
+		<exclude-pattern>/includes/Runs.php</exclude-pattern>
+		<exclude-pattern>/includes/History.php</exclude-pattern>
+		<exclude-pattern>/includes/Admin.php</exclude-pattern>
+		<exclude-pattern>/uninstall.php</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.DB.PreparedSQL.NotPrepared">
+		<exclude-pattern>/includes/Db.php</exclude-pattern>
+		<exclude-pattern>/includes/Runs.php</exclude-pattern>
+		<exclude-pattern>/includes/Admin.php</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.DB.PreparedSQL.InterpolatedNotPrepared">
+		<exclude-pattern>/includes/Runs.php</exclude-pattern>
+		<exclude-pattern>/uninstall.php</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber">
+		<exclude-pattern>/includes/Runs.php</exclude-pattern>
+	</rule>
+
+	<!--
+		Wpml is a thin set of wrappers around WPML's own public filter/action
+		API (wpml_object_id, wpml_active_languages, …) — those hook names are
+		WPML's, not ours to prefix.
+	-->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound">
+		<exclude-pattern>/includes/Wpml.php</exclude-pattern>
+	</rule>
 
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
 		<properties>
@@ -82,7 +111,10 @@
 	-->
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound">
 		<exclude-pattern>/includes/views/*</exclude-pattern>
-		<exclude-pattern>/views/*</exclude-pattern>
+		<exclude-pattern>/uninstall.php</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.GlobalVariablesOverride.Prohibited">
+		<exclude-pattern>/includes/views/*</exclude-pattern>
 		<exclude-pattern>/uninstall.php</exclude-pattern>
 	</rule>
 </ruleset>

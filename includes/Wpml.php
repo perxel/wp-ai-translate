@@ -1,9 +1,6 @@
 <?php
-/**
- * WPML filter/action wrappers.
- *
- * @package Perxel_AI_Translate
- */
+
+namespace Perxel\AITranslate;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -11,9 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Thin wrappers around WPML's filter/action API. source_lang / dest_lang are
- * never hardcoded to vi/en anywhere in this plugin, always resolved via these.
+ * never hardcoded anywhere in this plugin, always resolved via these.
  */
-class PXAT_WPML {
+class Wpml {
 
 	public static function is_post_type_translated( $post_type ) {
 		return (bool) apply_filters( 'wpml_is_translated_post_type', null, $post_type );
@@ -33,14 +30,10 @@ class PXAT_WPML {
 	}
 
 	/**
-	 * The WPML language code a post is actually tagged with right now, e.g.
-	 * 'vi' or 'en' — independent of whatever "source_lang" the UI has
-	 * selected. Callers must verify a post's real language matches the
-	 * chosen source_lang before treating it as a translation source: if a
-	 * post that's already in dest_lang is fed to get_object_id() as if it
-	 * were in source_lang, WPML legitimately resolves "the dest_lang version
-	 * of this post" to the post itself, and this plugin would then overwrite
-	 * that post's own title/slug in place.
+	 * The WPML language code a post is actually tagged with right now —
+	 * independent of whatever "source_lang" the UI has selected. Callers must
+	 * verify a post's real language matches the chosen source_lang before
+	 * treating it as a translation source.
 	 *
 	 * @return string|null Language code, or null if WPML has no record for this post.
 	 */
@@ -52,8 +45,8 @@ class PXAT_WPML {
 	/**
 	 * @param int    $object_id    Post or term ID in the source language.
 	 * @param string $type         Post type slug, or taxonomy slug (unprefixed, WPML's own convention).
-	 * @param string $language_code
-	 * @param bool   $return_original_if_missing
+	 * @param string $language_code Target language.
+	 * @param bool   $return_original_if_missing Whether to fall back to the original.
 	 * @return int|null
 	 */
 	public static function get_object_id( $object_id, $type, $language_code, $return_original_if_missing = false ) {
@@ -72,5 +65,22 @@ class PXAT_WPML {
 				'source_language_code' => $source_language_code,
 			)
 		);
+	}
+
+	/**
+	 * Best display name for a language code from get_active_languages()'s map.
+	 *
+	 * @param array  $languages get_active_languages() result.
+	 * @param string $code      Language code.
+	 * @return string
+	 */
+	public static function language_label( array $languages, $code ) {
+		if ( isset( $languages[ $code ]['translated_name'] ) && '' !== $languages[ $code ]['translated_name'] ) {
+			return $languages[ $code ]['translated_name'];
+		}
+		if ( isset( $languages[ $code ]['native_name'] ) && '' !== $languages[ $code ]['native_name'] ) {
+			return $languages[ $code ]['native_name'];
+		}
+		return $code;
 	}
 }
