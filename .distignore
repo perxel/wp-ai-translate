@@ -1,4 +1,7 @@
 # Files and folders that must NOT ship in the WordPress.org / installable build.
+# vendor/ is git-ignored except vendor/perxel-ui/ (the shared admin-UI kit), so
+# only that one dependency is present here to begin with; its dev-only showcase
+# is stripped below.
 
 /.git
 /dist
@@ -7,8 +10,9 @@
 /.idea
 /.wordpress-org
 /node_modules
-/vendor
 /tests
+
+/vendor/perxel-ui/showcase
 
 .distignore
 .gitignore

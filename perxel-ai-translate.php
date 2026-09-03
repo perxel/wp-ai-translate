@@ -41,6 +41,21 @@ if ( ! defined( 'PXAT_LOG_DIR' ) ) {
 define( 'PXAT_NAME', 'Perxel AI Translate' );
 
 /**
+ * Shared Perxel admin-UI kit. Standalone, versioned independently of this
+ * plugin (github.com/perxel/wp-plugin-ui); vendored into vendor/perxel-ui/ via
+ * bin/update-ui.sh. Overwriting it can never change plugin behaviour — the
+ * loader keeps the highest registered version across active plugins and a
+ * second copy is inert. We host the kit's component showcase as a hidden
+ * maintainer-only screen, so suppress its own Tools page.
+ */
+define( 'PERXEL_UI_SHOWCASE_HOSTED', true );
+
+if ( is_readable( PXAT_DIR . '/vendor/perxel-ui/loader.php' ) ) {
+	require_once PXAT_DIR . '/vendor/perxel-ui/loader.php';
+	Perxel_UI_Loader::register( '0.16.0', PXAT_DIR . '/vendor/perxel-ui', PXAT_URL . '/vendor/perxel-ui' );
+}
+
+/**
  * Chat-completion models offered to the user, in the order they appear in the
  * model dropdown. Prices are USD per 1M tokens, matching OpenRouter's own unit.
  * Filterable so a site can add or replace models without editing the plugin.

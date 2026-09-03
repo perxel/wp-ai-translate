@@ -6,6 +6,7 @@
 
 	<exclude-pattern>/vendor/*</exclude-pattern>
 	<exclude-pattern>/node_modules/*</exclude-pattern>
+	<exclude-pattern>/dist/*</exclude-pattern>
 	<exclude-pattern>/languages/*</exclude-pattern>
 
 	<arg name="extensions" value="php"/>
@@ -16,10 +17,38 @@
 	<config name="testVersion" value="7.4-"/>
 
 	<rule ref="WordPress">
+		<!--
+			File operations: the batch queue legitimately uses fopen/flock (there
+			is no WP_Filesystem locking primitive). Direct calls are the right
+			tool. Silenced-error / direct-query sniffs are handled with targeted
+			`phpcs:ignore` at the call site (with a reason), not blanket-disabled.
+		-->
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fopen"/>
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fwrite"/>
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fclose"/>
 		<exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_file_get_contents"/>
+
+		<!--
+			House style, deliberately different from the WP-Docs defaults that
+			wpcs 3.4 folded into the base standard:
+
+			- One PSR-4-ish class per file (Ucfirst.php), loaded by the
+			  hand-rolled autoloader in the main file - not `class-ucfirst.php`.
+			- Classes live in a namespace behind an ABSPATH guard; a redundant
+			  file-level `@package` docblock is noise.
+			- Internal helpers carry `@param`/`@return` docblocks without a prose
+			  summary line.
+			- Inline comment terminal punctuation is not enforced.
+			- WP filter/action callbacks keep the full hook signature even when a
+			  later parameter is unused.
+			- The "commented-out code" heuristic fires on ordinary prose here.
+		-->
+		<exclude name="WordPress.Files.FileName"/>
+		<exclude name="Squiz.Commenting.FileComment"/>
+		<exclude name="Generic.Commenting.DocComment.MissingShort"/>
+		<exclude name="Squiz.Commenting.InlineComment.InvalidEndChar"/>
+		<exclude name="Generic.CodeAnalysis.UnusedFunctionParameter"/>
+		<exclude name="Squiz.PHP.CommentedOutCode"/>
 	</rule>
 
 	<rule ref="PHPCompatibilityWP"/>
@@ -29,6 +58,12 @@
 			<property name="prefixes" type="array">
 				<element value="pxat"/>
 				<element value="PXAT"/>
+				<element value="Perxel\AITranslate"/>
+				<!-- Shared admin-UI kit (vendor/perxel-ui/), versioned independently. -->
+				<element value="perxel_ui"/>
+				<element value="PERXEL_UI"/>
+				<element value="Perxel_UI"/>
+				<element value="pxui"/>
 			</property>
 		</properties>
 	</rule>
@@ -39,5 +74,15 @@
 				<element value="perxel-ai-translate"/>
 			</property>
 		</properties>
+	</rule>
+
+	<!--
+		Procedural scripts and view templates: top-level / include-scope
+		variables read by a static analyser as globals, but they are not.
+	-->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound">
+		<exclude-pattern>/includes/views/*</exclude-pattern>
+		<exclude-pattern>/views/*</exclude-pattern>
+		<exclude-pattern>/uninstall.php</exclude-pattern>
 	</rule>
 </ruleset>
