@@ -50,6 +50,17 @@
 	display: none;
 }
 
+/* Confirm: the Translation-column breadcrumb (verb -> target -> end status). */
+.pxat .pxat-flow {
+	font-weight: 600;
+}
+
+.pxat .pxat-flow__sep {
+	margin: 0 6px;
+	font-weight: 400;
+	color: var(--pxui-fg-muted, #646970);
+}
+
 /* Horizontal-scroll container for the wide preview / items tables. */
 .pxat .pxat-table-wrap {
 	overflow-x: auto;

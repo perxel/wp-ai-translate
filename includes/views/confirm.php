@@ -152,6 +152,14 @@ if ( 0 === $eligible_count ) {
 
 $source_label = Wpml::language_label( $languages, $source_lang );
 $dest_label   = Wpml::language_label( $languages, $dest_lang );
+
+// The Translation column reads as a breadcrumb: what we do -> where it lands ->
+// the status the post ends on. `$steps` is a list of already-escaped strings.
+$flow = static function ( array $steps ) {
+	return '<span class="pxat-flow">'
+		. implode( '<span class="pxat-flow__sep" aria-hidden="true">&rarr;</span>', $steps )
+		. '</span>';
+};
 ?>
 <div class="pxat-table-wrap">
 <table class="widefat striped">
@@ -179,35 +187,50 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 				</td>
 				<td>
 					<?php
+					$dest_link = '';
+					if ( $row['dest_exists'] ) {
+						$dl        = '' !== $row['dest_title'] ? $row['dest_title'] : __( '(no title)', 'perxel-ai-translate' );
+						$dest_link = $row['dest_url']
+							? '<a href="' . esc_url( $row['dest_url'] ) . '" target="_blank" rel="noopener">' . esc_html( $dl ) . '</a>'
+							: esc_html( $dl );
+					}
+
 					if ( 'unresolved' === $row['state'] ) {
 						echo '<span class="pxat-muted">' . esc_html__( 'No translation', 'perxel-ai-translate' ) . '</span>';
-					} elseif ( $row['dest_exists'] ) {
-						$dl = '' !== $row['dest_title'] ? $row['dest_title'] : __( '(no title)', 'perxel-ai-translate' );
-						if ( $row['dest_url'] ) {
-							echo '<a href="' . esc_url( $row['dest_url'] ) . '" target="_blank" rel="noopener">' . esc_html( $dl ) . '</a>';
-						} else {
-							echo esc_html( $dl );
+					} elseif ( 'skip' === $row['state'] ) {
+						echo '<span class="pxat-muted">' . (
+							$row['dest_exists']
+								? esc_html__( 'No change - already translated', 'perxel-ai-translate' )
+								: esc_html__( 'Not created - no existing translation', 'perxel-ai-translate' )
+						) . '</span>';
+						if ( '' !== $dest_link ) {
+							echo '<br /><span class="pxat-muted">' . $dest_link . '</span>';
 						}
+					} else {
+						$verb   = 'structural' === $row['state']
+							? esc_html__( 'Copy', 'perxel-ai-translate' )
+							: esc_html__( 'Translate', 'perxel-ai-translate' );
+						$target = $row['dest_exists']
+							? esc_html__( 'Overwrite', 'perxel-ai-translate' )
+							: esc_html__( 'New post', 'perxel-ai-translate' );
 
-						if ( 'skip' === $row['state'] ) {
-							$line = __( 'No change', 'perxel-ai-translate' );
-						} elseif ( $row['dest_status'] !== $row['status'] ) {
-							$line = sprintf(
-								/* translators: 1: current translation status, 2: status it will take after the run. */
-								__( 'Overwrite, %1$s → %2$s', 'perxel-ai-translate' ),
-								esc_html( $status_label( $row['dest_status'] ) ),
-								esc_html( $status_label( $row['status'] ) )
-							);
-						} else {
-							$line = sprintf(
-								/* translators: %s: translation status. */
-								__( 'Overwrite (%s)', 'perxel-ai-translate' ),
-								esc_html( $status_label( $row['dest_status'] ) )
+						echo $flow( array( $verb, $target, esc_html( $status_label( $row['status'] ) ) ) );
+
+						$ctx = array();
+						if ( '' !== $dest_link ) {
+							$ctx[] = $dest_link;
+						}
+						if ( $row['dest_exists'] && $row['dest_status'] !== $row['status'] ) {
+							$ctx[] = esc_html(
+								sprintf(
+									/* translators: %s: the translation's current status, e.g. "Draft". */
+									__( 'was %s', 'perxel-ai-translate' ),
+									$status_label( $row['dest_status'] )
+								)
 							);
 						}
-						echo '<br /><span class="pxat-muted">' . $line;
 						if ( '' !== $row['dest_modified'] ) {
-							echo ' · ' . esc_html(
+							$ctx[] = esc_html(
 								sprintf(
 									/* translators: %s: how long ago the translation was last edited, e.g. "3 days ago". */
 									__( 'edited %s', 'perxel-ai-translate' ),
@@ -215,18 +238,12 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 								)
 							);
 						}
-						echo '</span>';
-					} elseif ( 'skip' === $row['state'] ) {
-						echo '<span class="pxat-muted">' . esc_html__( 'Not created', 'perxel-ai-translate' ) . '</span>';
-					} else {
-						echo '<span class="pxat-muted">' . esc_html__( 'New translation', 'perxel-ai-translate' ) . '</span>';
-						echo '<br /><span class="pxat-muted">' . esc_html(
-							sprintf(
-								/* translators: %s: status the new translation will be created with. */
-								__( 'will be created (%s)', 'perxel-ai-translate' ),
-								$status_label( $row['status'] )
-							)
-						) . '</span>';
+						if ( ! $row['dest_exists'] ) {
+							$ctx[] = esc_html__( 'will be created', 'perxel-ai-translate' );
+						}
+						if ( $ctx ) {
+							echo '<br /><span class="pxat-muted">' . implode( ' &middot; ', $ctx ) . '</span>';
+						}
 					}
 					?>
 				</td>
