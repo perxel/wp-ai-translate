@@ -182,22 +182,26 @@
     outline:none;
 }
 
-/* A wide text field / textarea as row content fills the value slot rather than
-   sizing to its text - so two fields in a group line up. */
-.pxui-row__content input[type="text"],
-.pxui-row__content input[type="password"],
-.pxui-row__content input[type="email"],
-.pxui-row__content input[type="url"] {
-    width:100%;
-    max-width:340px;
+/* A field row (row content is a wide text input or a textarea): the value slot
+   grows to fill the row and the field fills it - so long values (an API key, a
+   model id) are readable and two such rows line up. */
+.pxui-row--field .pxui-row__content {
+    flex:1 1 auto;
+    max-width:640px;
+    justify-content:flex-end;
 }
 
-/* Group title bar - the title on the left, an optional action (a button) on
-   the right. Use `title_action` for a single action that belongs to the whole
-   group rather than crammed next to an input in a row. */
+.pxui-row--field .pxui-row__content > input,
+.pxui-row--field .pxui-row__content > textarea {
+    width:100%;
+}
+
+/* Group title bar - the title on the left, an optional action on the right.
+   The action renders as a small underlined link, never a full button, so it
+   sits on the title line without shouting. */
 .pxui-rows__titlebar {
     display:flex;
-    align-items:center;
+    align-items:baseline;
     justify-content:space-between;
     gap:var(--pxui-s4);
 }
@@ -205,7 +209,31 @@
 .pxui-rows__titlebar .pxui-rows__title { margin-bottom:0; }
 
 .pxui-rows__title-action { flex:0 0 auto; }
-.pxui-rows__title-action .button { box-shadow:none; }
+
+.pxui-rows__title-action a,
+.pxui-rows__title-action button,
+.pxui-rows__title-action .button {
+    padding:0;
+    border:0;
+    min-height:0;
+    height:auto;
+    background:none;
+    box-shadow:none;
+    font-size:11px;
+    font-weight:600;
+    line-height:1;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--pxui-accent);
+    text-decoration:underline;
+    cursor:pointer;
+}
+
+.pxui-rows__title-action a:hover,
+.pxui-rows__title-action button:hover,
+.pxui-rows__title-action .button:hover { color:var(--pxui-accent-dark, var(--pxui-accent)); }
+
+.pxui-rows__title-action button:disabled { opacity:.5; cursor:default; text-decoration:none; }
 
 .pxui-rows__titlebar + .pxui-rows__card { margin-top:var(--pxui-s2); }
 

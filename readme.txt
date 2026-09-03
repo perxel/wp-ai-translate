@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.2
+Stable tag: 0.0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Bulk-translate posts, pages and custom post types across WPML languages with an 
 
 Perxel AI Translate adds a bulk action to your post lists that sends the selected posts to an AI model (via OpenRouter) and writes the translations back as WPML translations - without spending WPML's own AI translation credits.
 
-It is aimed at sites that already run **WPML** and want to translate a lot of content quickly, with a review step before anything is published.
+It is aimed at sites that already run **WPML** and want to translate a lot of content quickly. Each post is written straight into WordPress as a WPML translation; you review the result in the normal editor.
 
 **What it translates**
 
@@ -96,7 +96,7 @@ Deleting the plugin removes its settings and those tables. Translations already 
 = 0.0.3 =
 * The AI model is now a setting, not code. Enter any OpenRouter model id on the Settings screen and press "Test model" to verify it and fetch its live pricing. No models are hard-coded any more.
 * Settings screen: new Environment section (WPML, languages, API key, model, PHP), the system prompt shown as a read-only field, consistent field styling from the shared UI kit.
-* Shared UI kit updated to 0.17.2 (consistent text-field / textarea styling, a Test button on the group title, status dots per row).
+* Shared UI kit updated to 0.17.3 (consistent text-field / textarea styling, a Test button on the group title, status dots per row).
 
 = 0.0.2 =
 * Rebuilt the admin experience on the shared Perxel UI kit: a consistent left-sidebar layout across every screen and a new Dashboard landing page.
@@ -104,9 +104,6 @@ Deleting the plugin removes its settings and those tables. Translations already 
 * Replaced the three run modes with one optional "Faster batched requests" toggle.
 * Moved the run queue from JSON files to custom database tables (faster history, cleaner concurrency, no uploads-dir dependency).
 * Menu moved from Settings to its own top-level "AI Translate" menu.
-
-= 0.0.1 =
-* First public release.
 
 = 0.0.1 =
 * First public release.

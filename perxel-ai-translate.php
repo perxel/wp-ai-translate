@@ -75,7 +75,7 @@ define( 'PERXEL_UI_SHOWCASE_HOSTED', true );
 
 if ( is_readable( PXAT_DIR . '/vendor/perxel-ui/loader.php' ) ) {
 	require_once PXAT_DIR . '/vendor/perxel-ui/loader.php';
-	Perxel_UI_Loader::register( '0.17.2', PXAT_DIR . '/vendor/perxel-ui', PXAT_URL . '/vendor/perxel-ui' );
+	Perxel_UI_Loader::register( '0.17.3', PXAT_DIR . '/vendor/perxel-ui', PXAT_URL . '/vendor/perxel-ui' );
 }
 
 register_activation_hook( __FILE__, array( 'Perxel\AITranslate\Plugin', 'activate' ) );

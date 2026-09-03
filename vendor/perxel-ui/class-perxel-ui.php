@@ -265,7 +265,15 @@ final class Perxel_UI {
 					continue;
 				}
 
-				$out .= '<div class="pxui-row' . $tone . $has_icon . '">';
+				// A row whose content is a wide text field / textarea gets the
+				// field-row class so the input fills the value slot (up to a
+				// generous cap) instead of sizing to its text.
+				$content = isset( $r['content'] ) ? (string) $r['content'] : '';
+				$field   = preg_match( '/<(?:textarea|input\b[^>]*\btype=["\'](?:text|password|url|email|search)["\'])/i', $content )
+					? ' pxui-row--field'
+					: '';
+
+				$out .= '<div class="pxui-row' . $tone . $has_icon . $field . '">';
 				$out .= $icon;
 				$out .= '<span class="pxui-row__label">' . esc_html( isset( $r['label'] ) ? $r['label'] : '' );
 
@@ -274,7 +282,7 @@ final class Perxel_UI {
 				}
 
 				$out .= '</span>';
-				$out .= '<span class="pxui-row__content">' . ( isset( $r['content'] ) ? $r['content'] : '' ) . '</span>';
+				$out .= '<span class="pxui-row__content">' . $content . '</span>';
 				$out .= '</div>';
 			}
 

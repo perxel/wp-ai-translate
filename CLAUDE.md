@@ -90,7 +90,7 @@ confirmed) wires `Admin`, `BulkAction`, `AdminBar`.
 
 ## The `vendor/perxel-ui/` kit
 
-Standalone repo `perxel/wp-plugin-ui` (currently **0.17.2**), vendored via
+Standalone repo `perxel/wp-plugin-ui` (currently **0.17.3**), vendored via
 `bin/update-ui.sh <version>` (curl a tagged tarball into `vendor/perxel-ui/`,
 Action Scheduler style - no Composer). Committed; `.gitignore` keeps it out of
 the general `vendor/` ignore, `.distignore` strips only its dev-only
