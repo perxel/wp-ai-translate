@@ -1,6 +1,6 @@
 /**
- * Settings screen: test the OpenRouter API key and the model without leaving
- * the page, and keep the "verified" hidden inputs honest.
+ * Settings screen: one "Test" button (on the OpenRouter group title) checks the
+ * API key, then the model, and updates each row's status dot + sub line.
  */
 ( function () {
 	'use strict';
@@ -12,6 +12,42 @@
 
 	function $( id ) {
 		return document.getElementById( id );
+	}
+
+	var keyInput = $( 'pxat-api-key' );
+	var modelInput = $( 'pxat-model-id' );
+	var testBtn = $( 'pxat-test' );
+
+	if ( ! keyInput || ! modelInput || ! testBtn ) {
+		return;
+	}
+
+	var hidden = {
+		keyVerified: $( 'pxat-api-key-verified' ),
+		modelVerified: $( 'pxat-model-verified' ),
+		label: $( 'pxat-model-label' ),
+		input: $( 'pxat-model-input' ),
+		output: $( 'pxat-model-output' ),
+		context: $( 'pxat-model-context' ),
+		maxOutput: $( 'pxat-model-max-output' )
+	};
+
+	function setDot( input, state ) {
+		var row = input.closest( '.pxui-row' );
+		if ( ! row ) {
+			return;
+		}
+		var icon = row.querySelector( '.pxui-row__icon' );
+		if ( icon ) {
+			icon.className = 'pxui-row__icon pxui-row__icon--' + state;
+		}
+	}
+
+	function setSub( id, text ) {
+		var node = $( id );
+		if ( node ) {
+			node.textContent = text;
+		}
 	}
 
 	function ajax( action, data ) {
@@ -31,99 +67,80 @@
 		} );
 	}
 
-	function setResult( node, text, ok ) {
-		if ( ! node ) {
-			return;
-		}
-		node.textContent = text;
-		node.className = 'pxat-test-result' + ( ok === true ? ' is-ok' : ok === false ? ' is-bad' : '' );
-	}
-
-	/* --- API key ------------------------------------------------- */
-
-	var keyInput = $( 'pxat-api-key' );
-	var keyResult = $( 'pxat-key-result' );
-	var keyVerified = $( 'pxat-api-key-verified' );
-	var keyBtn = $( 'pxat-test-key' );
-
-	if ( keyBtn && keyInput ) {
-		keyBtn.addEventListener( 'click', function () {
-			setResult( keyResult, __( 'Checking…', 'perxel-ai-translate' ), null );
-			ajax( 'pxat_test_api_key', { api_key: keyInput.value } ).then( function ( res ) {
-				if ( res && res.success ) {
-					setResult( keyResult, res.data.message || __( 'API key is valid.', 'perxel-ai-translate' ), true );
-					if ( keyVerified ) {
-						keyVerified.value = '1';
-					}
-				} else {
-					setResult( keyResult, ( res && res.data && res.data.message ) || __( 'Could not validate the key.', 'perxel-ai-translate' ), false );
-					if ( keyVerified ) {
-						keyVerified.value = '';
-					}
+	function testKey() {
+		setDot( keyInput, 'muted' );
+		setSub( 'pxat-key-sub', __( 'Checking…', 'perxel-ai-translate' ) );
+		return ajax( 'pxat_test_api_key', { api_key: keyInput.value } ).then( function ( res ) {
+			if ( res && res.success ) {
+				setDot( keyInput, 'good' );
+				setSub( 'pxat-key-sub', res.data.message || __( 'Verified', 'perxel-ai-translate' ) );
+				if ( hidden.keyVerified ) {
+					hidden.keyVerified.value = '1';
 				}
-			} ).catch( function () {
-				setResult( keyResult, __( 'Request failed.', 'perxel-ai-translate' ), false );
-			} );
-		} );
-
-		keyInput.addEventListener( 'input', function () {
-			if ( keyVerified ) {
-				keyVerified.value = '';
+				return true;
 			}
-			setResult( keyResult, '', null );
+			setDot( keyInput, 'bad' );
+			setSub( 'pxat-key-sub', ( res && res.data && res.data.message ) || __( 'Could not validate the key.', 'perxel-ai-translate' ) );
+			if ( hidden.keyVerified ) {
+				hidden.keyVerified.value = '';
+			}
+			return false;
 		} );
 	}
 
-	/* --- Model ------------------------------------------------- */
+	function testModel() {
+		setDot( modelInput, 'muted' );
+		setSub( 'pxat-model-detail', __( 'Checking…', 'perxel-ai-translate' ) );
+		return ajax( 'pxat_test_model', { model_id: modelInput.value } ).then( function ( res ) {
+			if ( res && res.success ) {
+				var d = res.data;
+				setDot( modelInput, 'good' );
+				setSub( 'pxat-model-detail', d.summary || '' );
+				if ( hidden.modelVerified ) { hidden.modelVerified.value = '1'; }
+				if ( hidden.label ) { hidden.label.value = d.label || ''; }
+				if ( hidden.input ) { hidden.input.value = d.input || 0; }
+				if ( hidden.output ) { hidden.output.value = d.output || 0; }
+				if ( hidden.context ) { hidden.context.value = d.context || 0; }
+				if ( hidden.maxOutput ) { hidden.maxOutput.value = d.max_output || 0; }
+				return true;
+			}
+			setDot( modelInput, 'bad' );
+			setSub( 'pxat-model-detail', ( res && res.data && res.data.message ) || __( 'Model not found.', 'perxel-ai-translate' ) );
+			if ( hidden.modelVerified ) { hidden.modelVerified.value = ''; }
+			return false;
+		} );
+	}
 
-	var modelInput = $( 'pxat-model-id' );
-	var modelResult = $( 'pxat-model-result' );
-	var modelDetail = $( 'pxat-model-detail' );
-	var modelBtn = $( 'pxat-test-model' );
+	testBtn.addEventListener( 'click', function () {
+		testBtn.disabled = true;
+		var original = testBtn.textContent;
+		testBtn.textContent = __( 'Testing…', 'perxel-ai-translate' );
 
-	var hidden = {
-		verified: $( 'pxat-model-verified' ),
-		label: $( 'pxat-model-label' ),
-		input: $( 'pxat-model-input' ),
-		output: $( 'pxat-model-output' ),
-		context: $( 'pxat-model-context' ),
-		maxOutput: $( 'pxat-model-max-output' )
-	};
-
-	function clearModelVerification() {
-		if ( hidden.verified ) {
-			hidden.verified.value = '';
+		function done() {
+			testBtn.disabled = false;
+			testBtn.textContent = original;
 		}
-	}
 
-	if ( modelBtn && modelInput ) {
-		modelBtn.addEventListener( 'click', function () {
-			setResult( modelResult, __( 'Checking…', 'perxel-ai-translate' ), null );
-			ajax( 'pxat_test_model', { model_id: modelInput.value } ).then( function ( res ) {
-				if ( res && res.success ) {
-					var d = res.data;
-					setResult( modelResult, __( 'Model found.', 'perxel-ai-translate' ), true );
-					if ( modelDetail ) {
-						modelDetail.textContent = d.summary || '';
-					}
-					if ( hidden.verified ) { hidden.verified.value = '1'; }
-					if ( hidden.label ) { hidden.label.value = d.label || ''; }
-					if ( hidden.input ) { hidden.input.value = d.input || 0; }
-					if ( hidden.output ) { hidden.output.value = d.output || 0; }
-					if ( hidden.context ) { hidden.context.value = d.context || 0; }
-					if ( hidden.maxOutput ) { hidden.maxOutput.value = d.max_output || 0; }
-				} else {
-					setResult( modelResult, ( res && res.data && res.data.message ) || __( 'Model not found.', 'perxel-ai-translate' ), false );
-					clearModelVerification();
-				}
-			} ).catch( function () {
-				setResult( modelResult, __( 'Request failed.', 'perxel-ai-translate' ), false );
-			} );
+		testKey().then( testModel ).then( done, function () {
+			setSub( 'pxat-key-sub', __( 'Request failed.', 'perxel-ai-translate' ) );
+			done();
 		} );
+	} );
 
-		modelInput.addEventListener( 'input', function () {
-			clearModelVerification();
-			setResult( modelResult, '', null );
-		} );
-	}
+	// Editing a field makes its verified state stale.
+	keyInput.addEventListener( 'input', function () {
+		if ( hidden.keyVerified ) {
+			hidden.keyVerified.value = '';
+		}
+		setDot( keyInput, 'muted' );
+		setSub( 'pxat-key-sub', __( 'not checked', 'perxel-ai-translate' ) );
+	} );
+
+	modelInput.addEventListener( 'input', function () {
+		if ( hidden.modelVerified ) {
+			hidden.modelVerified.value = '';
+		}
+		setDot( modelInput, 'muted' );
+		setSub( 'pxat-model-detail', __( 'not checked', 'perxel-ai-translate' ) );
+	} );
 }() );

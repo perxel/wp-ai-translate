@@ -40,7 +40,13 @@ $model_detail = $model['input'] > 0
 			$price( $model['output'] )
 		)
 	)
-	: esc_html__( 'Run Test to fetch pricing.', 'perxel-ai-translate' );
+	: esc_html__( 'not checked', 'perxel-ai-translate' );
+
+$key_icon   = $settings['api_key_verified'] ? 'good' : 'muted';
+$key_sub    = $settings['api_key_verified'] ? esc_html__( 'Verified', 'perxel-ai-translate' ) : esc_html__( 'not checked', 'perxel-ai-translate' );
+$model_icon = $settings['model_verified'] ? 'good' : 'muted';
+
+$test_button = '<button type="button" class="button" id="pxat-test">' . esc_html__( 'Test', 'perxel-ai-translate' ) . '</button>';
 ?>
 <form id="pxat-settings-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 	<input type="hidden" name="action" value="pxat_save_settings" />
@@ -58,40 +64,26 @@ $model_detail = $model['input'] > 0
 	echo \Perxel_UI::rows(
 		array(
 			array(
-				'title' => __( 'Connection', 'perxel-ai-translate' ),
-				'note'  => sprintf(
-					/* translators: %s: link to openrouter.ai. */
-					esc_html__( 'Create an account and an API key at %s. You pay OpenRouter directly for usage.', 'perxel-ai-translate' ),
-					'<a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer">openrouter.ai</a>'
+				'title'        => __( 'OpenRouter', 'perxel-ai-translate' ),
+				'title_action' => $test_button,
+				'note'         => sprintf(
+					/* translators: 1: link to openrouter.ai, 2: link to the model list. */
+					esc_html__( 'Get an API key at %1$s and browse model ids at %2$s. You pay OpenRouter directly for usage.', 'perxel-ai-translate' ),
+					'<a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer">openrouter.ai</a>',
+					'<a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer">openrouter.ai/models</a>'
 				),
-				'rows'  => array(
+				'rows'         => array(
 					array(
-						'label'   => __( 'OpenRouter API key', 'perxel-ai-translate' ),
-						'stacked' => true,
-						'sub'     => $settings['api_key_verified']
-							? '<span class="pxat-inline-ok">' . esc_html__( 'Verified', 'perxel-ai-translate' ) . '</span>'
-							: esc_html__( 'Not verified yet - press Test.', 'perxel-ai-translate' ),
-						'content' => '<input type="password" id="pxat-api-key" name="api_key" autocomplete="off" value="'
-							. esc_attr( $settings['api_key'] ) . '" /> '
-							. '<button type="button" class="button" id="pxat-test-key">' . esc_html__( 'Test', 'perxel-ai-translate' ) . '</button>'
-							. ' <span id="pxat-key-result" class="pxat-test-result"></span>',
+						'label'   => __( 'API key', 'perxel-ai-translate' ),
+						'icon'    => $key_icon,
+						'sub'     => '<span id="pxat-key-sub">' . $key_sub . '</span>',
+						'content' => '<input type="password" id="pxat-api-key" name="api_key" autocomplete="off" value="' . esc_attr( $settings['api_key'] ) . '" />',
 					),
-				),
-			),
-			array(
-				'title' => __( 'Model', 'perxel-ai-translate' ),
-				'note'  => '<a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer">'
-					. esc_html__( 'Browse models on openrouter.ai', 'perxel-ai-translate' ) . '</a> - '
-					. esc_html__( 'paste any model id. Test checks it exists and fetches its pricing.', 'perxel-ai-translate' ),
-				'rows'  => array(
 					array(
 						'label'   => __( 'Model id', 'perxel-ai-translate' ),
-						'stacked' => true,
+						'icon'    => $model_icon,
 						'sub'     => '<span id="pxat-model-detail">' . $model_detail . '</span>',
-						'content' => '<input type="text" class="pxui-mono" id="pxat-model-id" name="model_id" value="'
-							. esc_attr( $settings['model_id'] ) . '" placeholder="' . esc_attr( PXAT_DEFAULT_MODEL ) . '" /> '
-							. '<button type="button" class="button" id="pxat-test-model">' . esc_html__( 'Test model', 'perxel-ai-translate' ) . '</button>'
-							. ' <span id="pxat-model-result" class="pxat-test-result"></span>',
+						'content' => '<input type="text" class="pxui-mono" id="pxat-model-id" name="model_id" value="' . esc_attr( $settings['model_id'] ) . '" placeholder="' . esc_attr( PXAT_DEFAULT_MODEL ) . '" />',
 					),
 				),
 			),
@@ -99,16 +91,15 @@ $model_detail = $model['input'] > 0
 				'title' => __( 'Translation', 'perxel-ai-translate' ),
 				'rows'  => array(
 					array(
-						'label'   => __( 'Extra instructions', 'perxel-ai-translate' ),
-						'stacked' => true,
+						'summary' => __( 'Extra instructions', 'perxel-ai-translate' ),
 						'sub'     => esc_html__( 'Optional guidance appended to every request: glossary, tone of voice, terminology rules.', 'perxel-ai-translate' ),
-						'content' => '<textarea name="prompt" rows="3">' . esc_textarea( $settings['prompt'] ) . '</textarea>',
+						'open'    => '' !== trim( (string) $settings['prompt'] ),
+						'details' => '<textarea name="prompt" rows="4">' . esc_textarea( $settings['prompt'] ) . '</textarea>',
 					),
 					array(
-						'label'   => __( 'System prompt sent to the model', 'perxel-ai-translate' ),
-						'stacked' => true,
-						'sub'     => esc_html__( 'Read-only. Copy it to translate manually with any AI chat tool if your key stops working - replace {source_lang} / {dest_lang} with real codes.', 'perxel-ai-translate' ),
-						'content' => '<textarea class="pxui-mono" rows="7" readonly onclick="this.select()">' . esc_textarea( $system_prompt ) . '</textarea>',
+						'summary' => __( 'System prompt sent to the model', 'perxel-ai-translate' ),
+						'sub'     => esc_html__( 'Read-only. Copy it to translate manually with any AI chat tool if your key stops working. Replace {source_lang} / {dest_lang} with real codes.', 'perxel-ai-translate' ),
+						'details' => '<textarea class="pxui-mono" rows="8" readonly onclick="this.select()">' . esc_textarea( $system_prompt ) . '</textarea>',
 					),
 				),
 			),
@@ -133,11 +124,8 @@ $model_detail = $model['input'] > 0
 <?php
 /* --- Environment ------------------------------------------------------ */
 
-$env      = $environment;
-$env_ok   = $env['wpml_active'] && $env['lang_count'] >= 2 && $env['api_key_set'];
-$env_note = ( $env['api_key_ok'] && $env['model_ok'] )
-	? __( 'API key and model are verified.', 'perxel-ai-translate' )
-	: __( 'Run the Test buttons above so the key and model show as verified here.', 'perxel-ai-translate' );
+$env    = $environment;
+$env_ok = $env['wpml_active'] && $env['lang_count'] >= 2 && $env['api_key_set'];
 
 $lines = array(
 	sprintf( 'WPML                 %s', $env['wpml_active'] ? 'active ' . $env['wpml_version'] : 'NOT ACTIVE' ),
@@ -155,7 +143,6 @@ echo \Perxel_UI::rows(
 	array(
 		array(
 			'title' => __( 'Environment', 'perxel-ai-translate' ),
-			'note'  => esc_html( $env_note ),
 			'rows'  => array(
 				array(
 					'summary' => $env_ok

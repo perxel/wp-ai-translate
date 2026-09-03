@@ -173,13 +173,16 @@ final class Perxel_UI {
 	 *
 	 * Each row: `[ 'label' => plain text, 'sub' => trusted HTML (secondary
 	 * line under the label), 'content' => trusted HTML (text, a toggle(), a
-	 * <select> or a button), 'tone' => good|warn|bad, 'icon' => …,
-	 * 'stacked' => bool ]`. `stacked` drops the label onto its own line with the
-	 * control full-width beneath - for a long text field or a `<textarea>` that
-	 * the right-aligned value slot would squeeze.
+	 * <select> or a button), 'tone' => good|warn|bad, 'icon' => … ]`.
+	 *
+	 * A group takes an optional `title_action` - trusted HTML (a button)
+	 * pinned to the right of the group title. Use it instead of putting an
+	 * action button next to an input inside a row: a row has little room, so
+	 * one action for the whole group belongs on the title line.
 	 *
 	 * `icon` (any row) puts a fixed square left of the label + sub, centred
-	 * against both: `good|warn|bad` draws a filled status dot (✓ / ! / ✕);
+	 * against both: `good|warn|bad` draws a filled status dot (✓ / ! / ✕),
+	 * `muted` draws a neutral grey dot;
 	 * any other non-empty string is trusted HTML (a dashicon, an `<svg>`, an
 	 * emoji) sized to the same frame.
 	 *
@@ -208,8 +211,16 @@ final class Perxel_UI {
 			$danger = ! empty( $group['danger'] );
 			$out   .= '<div class="pxui-rows__group' . ( $danger ? ' pxui-rows__group--danger' : '' ) . '">';
 
-			if ( ! empty( $group['title'] ) ) {
-				$out .= '<p class="pxui-rows__title">' . esc_html( $group['title'] ) . '</p>';
+			$has_title  = ! empty( $group['title'] );
+			$has_action = isset( $group['title_action'] ) && '' !== trim( (string) $group['title_action'] );
+
+			if ( $has_title || $has_action ) {
+				$out .= '<div class="pxui-rows__titlebar">';
+				$out .= '<p class="pxui-rows__title">' . esc_html( $has_title ? $group['title'] : '' ) . '</p>';
+				if ( $has_action ) {
+					$out .= '<span class="pxui-rows__title-action">' . $group['title_action'] . '</span>';
+				}
+				$out .= '</div>';
 			}
 
 			$out .= '<div class="pxui-rows__card">';
@@ -219,22 +230,17 @@ final class Perxel_UI {
 
 				// Optional leading icon - its own fixed square, left of the
 				// label + sub and centred against both. `icon => good|warn|bad`
-				// draws a filled status dot (✓ / ! / ✕); any other non-empty
-				// string is trusted HTML (a dashicon, an <svg>, an emoji)
-				// dropped into the same frame so every icon lines up.
+				// draws a filled status dot (✓ / ! / ✕), `muted` a neutral grey
+				// dot; any other non-empty string is trusted HTML (a dashicon,
+				// an <svg>, an emoji) dropped into the same frame.
 				$icon = '';
 				if ( ! empty( $r['icon'] ) ) {
-					$preset = in_array( $r['icon'], array( 'good', 'warn', 'bad' ), true );
+					$preset = in_array( $r['icon'], array( 'good', 'warn', 'bad', 'muted' ), true );
 					$icon   = '<span class="pxui-row__icon' . ( $preset ? ' pxui-row__icon--' . $r['icon'] : '' ) . '" aria-hidden="true">'
 						. ( $preset ? '' : $r['icon'] )
 						. '</span>';
 				}
 				$has_icon = '' !== $icon ? ' pxui-row--has-icon' : '';
-
-				// Stacked plain row: label (+ sub) on its own line, the control
-				// full-width beneath - for a long text field or a textarea that
-				// the cramped right-aligned value slot would squeeze.
-				$stacked = ! empty( $r['stacked'] ) ? ' pxui-row--stacked' : '';
 
 				// Disclosure row: a native <details> styled as a row. The whole
 				// summary line is the click target; the reveal drops below.
@@ -259,7 +265,7 @@ final class Perxel_UI {
 					continue;
 				}
 
-				$out .= '<div class="pxui-row' . $tone . $has_icon . $stacked . '">';
+				$out .= '<div class="pxui-row' . $tone . $has_icon . '">';
 				$out .= $icon;
 				$out .= '<span class="pxui-row__label">' . esc_html( isset( $r['label'] ) ? $r['label'] : '' );
 

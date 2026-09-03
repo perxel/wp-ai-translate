@@ -182,31 +182,32 @@
     outline:none;
 }
 
-/* Stacked row: label (+ sub) on its own line, the control full-width beneath.
-   For a long text field, a textarea, or a control that needs the whole width
-   - anything the cramped right-aligned value slot would squeeze. */
-.pxui-row--stacked {
-    flex-direction:column;
-    align-items:stretch;
-}
-
-.pxui-row--stacked .pxui-row__label { flex:none; }
-
-.pxui-row--stacked .pxui-row__content {
-    max-width:none;
+/* A wide text field / textarea as row content fills the value slot rather than
+   sizing to its text - so two fields in a group line up. */
+.pxui-row__content input[type="text"],
+.pxui-row__content input[type="password"],
+.pxui-row__content input[type="email"],
+.pxui-row__content input[type="url"] {
     width:100%;
-    margin-top:var(--pxui-s2);
-    justify-content:flex-start;
-    text-align:left;
+    max-width:340px;
 }
 
-.pxui-row--stacked .pxui-row__content input[type="text"],
-.pxui-row--stacked .pxui-row__content input[type="password"],
-.pxui-row--stacked .pxui-row__content input[type="email"],
-.pxui-row--stacked .pxui-row__content input[type="url"],
-.pxui-row--stacked .pxui-row__content input[type="search"] {
-    flex:1 1 12em;
+/* Group title bar - the title on the left, an optional action (a button) on
+   the right. Use `title_action` for a single action that belongs to the whole
+   group rather than crammed next to an input in a row. */
+.pxui-rows__titlebar {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:var(--pxui-s4);
 }
+
+.pxui-rows__titlebar .pxui-rows__title { margin-bottom:0; }
+
+.pxui-rows__title-action { flex:0 0 auto; }
+.pxui-rows__title-action .button { box-shadow:none; }
+
+.pxui-rows__titlebar + .pxui-rows__card { margin-top:var(--pxui-s2); }
 
 .pxui-row--good .pxui-row__content { color:var(--pxui-good); font-weight:600; }
 .pxui-row--warn .pxui-row__content { color:var(--pxui-warn); font-weight:600; }
@@ -253,6 +254,15 @@
 .pxui-row__icon--good::before { content:"\2713"; }
 .pxui-row__icon--warn::before { content:"!"; }
 .pxui-row__icon--bad::before  { content:"\2715"; }
+
+/* Neutral "not checked yet" - a small grey dot, no glyph. */
+.pxui-row__icon--muted::before {
+    content:"";
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--pxui-fg-muted);
+}
 
 /* Disclosure row - a native <details>. The <summary> is the row line (label
    left, chevron right); the reveal drops full-width below. */

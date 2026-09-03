@@ -96,7 +96,7 @@ Deleting the plugin removes its settings and those tables. Translations already 
 = 0.0.3 =
 * The AI model is now a setting, not code. Enter any OpenRouter model id on the Settings screen and press "Test model" to verify it and fetch its live pricing. No models are hard-coded any more.
 * Settings screen: new Environment section (WPML, languages, API key, model, PHP), the system prompt shown as a read-only field, consistent field styling from the shared UI kit.
-* Shared UI kit updated to 0.17.1 (text-field / textarea consistency, stacked rows).
+* Shared UI kit updated to 0.17.2 (consistent text-field / textarea styling, a Test button on the group title, status dots per row).
 
 = 0.0.2 =
 * Rebuilt the admin experience on the shared Perxel UI kit: a consistent left-sidebar layout across every screen and a new Dashboard landing page.
