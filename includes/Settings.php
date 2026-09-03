@@ -20,6 +20,7 @@ class Settings {
 			'api_key'          => '',
 			'api_key_verified' => false,
 			'prompt'           => '',
+			'batched'          => false,
 			'display_unit'     => 'tokens',
 			'model_id'         => PXAT_DEFAULT_MODEL,
 			'model_verified'   => false,
@@ -54,6 +55,17 @@ class Settings {
 
 	public static function has_api_key() {
 		return '' !== trim( self::api_key() );
+	}
+
+	/**
+	 * Whether runs send several posts per model request (faster for many short
+	 * posts; one bad response affects a group). A global preference, snapshotted
+	 * into each run.
+	 *
+	 * @return bool
+	 */
+	public static function batched() {
+		return (bool) self::get( 'batched' );
 	}
 
 	/**
@@ -113,6 +125,7 @@ class Settings {
 			'api_key'          => isset( $raw['api_key'] ) ? sanitize_text_field( $raw['api_key'] ) : '',
 			'api_key_verified' => $key_verified,
 			'prompt'           => isset( $raw['prompt'] ) ? sanitize_textarea_field( $raw['prompt'] ) : '',
+			'batched'          => ! empty( $raw['batched'] ),
 			'display_unit'     => isset( $raw['display_unit'] ) && 'words' === $raw['display_unit'] ? 'words' : 'tokens',
 			'model_id'         => '' !== $model_id ? $model_id : PXAT_DEFAULT_MODEL,
 			'model_verified'   => $model_verified,

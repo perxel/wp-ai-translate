@@ -125,6 +125,17 @@ if ( $benchmark ) {
 				'title' => __( 'Translation', 'perxel-ai-translate' ),
 				'rows'  => array(
 					array(
+						'label'   => __( 'Faster batched requests', 'perxel-ai-translate' ),
+						'sub'     => esc_html__( 'Send several posts per model request. Faster for many short posts; one bad response affects a group.', 'perxel-ai-translate' ),
+						'content' => \Perxel_UI::toggle(
+							array(
+								'name'    => 'batched',
+								'checked' => (bool) $settings['batched'],
+								'label'   => __( 'Faster batched requests', 'perxel-ai-translate' ),
+							)
+						),
+					),
+					array(
 						'summary' => __( 'Extra instructions', 'perxel-ai-translate' ),
 						'sub'     => esc_html__( 'Optional guidance appended to every request: glossary, tone of voice, terminology rules.', 'perxel-ai-translate' ),
 						'open'    => '' !== trim( (string) $settings['prompt'] ),

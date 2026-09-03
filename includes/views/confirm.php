@@ -6,10 +6,8 @@
  *
  * @var string $source_lang
  * @var string $dest_lang
- * @var string $source_status
  * @var string $data_mode
  * @var array  $custom_types
- * @var bool   $batched
  * @var array  $model          Settings::model() - { id, label, input, output, … }
  * @var bool   $model_verified
  * @var string $settings_url
@@ -19,7 +17,6 @@
  * @var array|null $conflict
  * @var string $clear_url
  * @var array  $languages
- * @var array  $available_statuses
  * @var array  $rows
  * @var int    $total_tokens
  * @var float  $total_cost_usd
@@ -68,12 +65,13 @@ echo '<p class="pxat-step">' . esc_html__( 'Step 1 of 2 - configure', 'perxel-ai
 
 /* --- Step 1: configuration (GET self-submit) ------------------------ */
 
-$status_select  = '<select name="source_status">';
-$status_select .= '<option value="any"' . selected( $source_status, 'any', false ) . '>' . esc_html__( 'Any status', 'perxel-ai-translate' ) . '</option>';
-foreach ( $available_statuses as $slug => $label ) {
-	$status_select .= '<option value="' . esc_attr( $slug ) . '"' . selected( $source_status, $slug, false ) . '>' . esc_html( $label ) . '</option>';
-}
-$status_select .= '</select>';
+$status_label = static function ( $slug ) {
+	if ( '' === $slug ) {
+		return '';
+	}
+	$object = get_post_status_object( $slug );
+	return $object ? $object->label : $slug;
+};
 
 $dest_select = '<select name="dest_lang">';
 foreach ( $languages as $code => $lang ) {
@@ -125,10 +123,6 @@ $config_rows = array(
 		),
 		'content' => $dest_select,
 	),
-	array(
-		'label'   => __( 'Only source posts with status', 'perxel-ai-translate' ),
-		'content' => $status_select,
-	),
 );
 
 $model_note = $model['input'] > 0
@@ -140,19 +134,6 @@ $config_rows[] = array(
 	'sub'     => $model_note . ' · <a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'change in Settings', 'perxel-ai-translate' ) . '</a>',
 	'tone'    => $model_verified ? null : 'warn',
 	'content' => esc_html( $model['label'] ),
-);
-
-$config_rows[] = array(
-	'label'   => __( 'Faster batched requests', 'perxel-ai-translate' ),
-	'sub'     => esc_html__( 'Send several posts per model request. Faster for many short posts; one bad response affects a group.', 'perxel-ai-translate' ),
-	'content' => \Perxel_UI::toggle(
-		array(
-			'name'    => 'batched',
-			'form'    => 'pxat-config-form',
-			'checked' => $batched,
-			'label'   => __( 'Faster batched requests', 'perxel-ai-translate' ),
-		)
-	),
 );
 ?>
 <form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" id="pxat-config-form">
@@ -210,7 +191,7 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 <table class="widefat striped">
 	<thead>
 		<tr>
-			<th><?php esc_html_e( 'ID', 'perxel-ai-translate' ); ?></th>
+			<th class="pxat-col-num">#</th>
 			<th><?php echo esc_html( sprintf( '%s (%s)', __( 'Source post', 'perxel-ai-translate' ), $source_label ) ); ?></th>
 			<th><?php echo esc_html( sprintf( '%s (%s)', __( 'Translation', 'perxel-ai-translate' ), $dest_label ) ); ?></th>
 			<th><?php esc_html_e( 'Plan', 'perxel-ai-translate' ); ?></th>
@@ -218,28 +199,71 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 		</tr>
 	</thead>
 	<tbody>
+		<?php $num = 0; ?>
 		<?php foreach ( $rows as $row ) : ?>
+			<?php ++$num; ?>
 			<tr>
-				<td><?php echo (int) $row['id']; ?></td>
+				<td class="pxat-col-num"><?php echo (int) $num; ?></td>
 				<td>
 					<?php if ( $row['source_url'] ) : ?>
 						<a href="<?php echo esc_url( $row['source_url'] ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $row['title'] ); ?></a>
 					<?php else : ?>
 						<?php echo esc_html( $row['title'] ); ?>
 					<?php endif; ?>
-					<span class="pxat-muted">(<?php echo esc_html( $row['status'] ); ?>)</span>
+					<span class="pxat-muted">(<?php echo esc_html( $status_label( $row['status'] ) ); ?>)</span>
 				</td>
 				<td>
-					<?php if ( $row['dest_exists'] ) : ?>
-						<?php $dl = '' !== $row['dest_title'] ? $row['dest_title'] : __( '(no title)', 'perxel-ai-translate' ); ?>
-						<?php if ( $row['dest_url'] ) : ?>
-							<a href="<?php echo esc_url( $row['dest_url'] ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $dl ); ?></a>
-						<?php else : ?>
-							<?php echo esc_html( $dl ); ?>
-						<?php endif; ?>
-					<?php else : ?>
-						<span class="pxat-muted"><?php esc_html_e( 'will be created', 'perxel-ai-translate' ); ?></span>
-					<?php endif; ?>
+					<?php
+					if ( 'unresolved' === $row['state'] ) {
+						echo '<span class="pxat-muted">' . esc_html__( 'No translation', 'perxel-ai-translate' ) . '</span>';
+					} elseif ( $row['dest_exists'] ) {
+						$dl = '' !== $row['dest_title'] ? $row['dest_title'] : __( '(no title)', 'perxel-ai-translate' );
+						if ( $row['dest_url'] ) {
+							echo '<a href="' . esc_url( $row['dest_url'] ) . '" target="_blank" rel="noopener">' . esc_html( $dl ) . '</a>';
+						} else {
+							echo esc_html( $dl );
+						}
+
+						if ( 'skip' === $row['state'] ) {
+							$line = __( 'No change', 'perxel-ai-translate' );
+						} elseif ( $row['dest_status'] !== $row['status'] ) {
+							$line = sprintf(
+								/* translators: 1: current translation status, 2: status it will take after the run. */
+								__( 'Overwrite, %1$s → %2$s', 'perxel-ai-translate' ),
+								esc_html( $status_label( $row['dest_status'] ) ),
+								esc_html( $status_label( $row['status'] ) )
+							);
+						} else {
+							$line = sprintf(
+								/* translators: %s: translation status. */
+								__( 'Overwrite (%s)', 'perxel-ai-translate' ),
+								esc_html( $status_label( $row['dest_status'] ) )
+							);
+						}
+						echo '<br /><span class="pxat-muted">' . $line;
+						if ( '' !== $row['dest_modified'] ) {
+							echo ' · ' . esc_html(
+								sprintf(
+									/* translators: %s: how long ago the translation was last edited, e.g. "3 days ago". */
+									__( 'edited %s', 'perxel-ai-translate' ),
+									Format::time_ago( $row['dest_modified'] )
+								)
+							);
+						}
+						echo '</span>';
+					} elseif ( 'skip' === $row['state'] ) {
+						echo '<span class="pxat-muted">' . esc_html__( 'Not created', 'perxel-ai-translate' ) . '</span>';
+					} else {
+						echo '<span class="pxat-muted">' . esc_html__( 'New translation', 'perxel-ai-translate' ) . '</span>';
+						echo '<br /><span class="pxat-muted">' . esc_html(
+							sprintf(
+								/* translators: %s: status the new translation will be created with. */
+								__( 'will be created (%s)', 'perxel-ai-translate' ),
+								$status_label( $row['status'] )
+							)
+						) . '</span>';
+					}
+					?>
 				</td>
 				<td>
 					<?php
@@ -270,12 +294,10 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="pxat-start-form">
 	<input type="hidden" name="action" value="pxat_create_run" />
 	<input type="hidden" name="dest_lang" value="<?php echo esc_attr( $dest_lang ); ?>" />
-	<input type="hidden" name="source_status" value="<?php echo esc_attr( $source_status ); ?>" />
 	<input type="hidden" name="data_mode" value="<?php echo esc_attr( $data_mode ); ?>" />
 	<?php foreach ( ( 'full' === $data_mode ? array() : $custom_types ) as $t ) : ?>
 		<input type="hidden" name="custom_types[]" value="<?php echo esc_attr( $t ); ?>" />
 	<?php endforeach; ?>
-	<input type="hidden" name="batched" value="<?php echo $batched ? '1' : '0'; ?>" />
 	<?php wp_nonce_field( 'pxat_create_run' ); ?>
 	<p>
 		<?php if ( $eligible_count > 0 ) : ?>

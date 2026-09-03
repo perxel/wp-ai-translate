@@ -8,14 +8,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Confirm screen - the translation cart. Lists the posts collected in the cart
- * (Cart), lets you remove rows or empty it, then pick the destination language,
- * source-status filter and data scope, see a per-post plan with a cost estimate,
- * and start the run. The config block is a GET self-submit form (press "Update"
- * to recompute); "Start" is a POST that creates the run, empties the cart and
- * redirects to Progress.
+ * (Cart), lets you remove rows or empty it, then pick the destination language
+ * and data scope, see a per-post plan with a cost estimate, and start the run.
+ * The config block is a GET self-submit form (press "Update" to recompute);
+ * "Start" is a POST that creates the run, empties the cart and redirects to
+ * Progress.
  *
- * There is no run-mode choice any more - every run translates and writes. The
- * only speed knob is "batched" (several posts per model request).
+ * There is no run-mode choice any more - every run translates and writes. Every
+ * post in the cart is processed regardless of status. "Batched" (several posts
+ * per model request) is a global Settings toggle, snapshotted into each run.
  */
 class Confirm {
 
@@ -74,29 +75,27 @@ class Confirm {
 			return;
 		}
 
-		$available_statuses = self::available_statuses( $post_ids );
-		$config             = self::read_config( $languages, $available_statuses );
+		$config = self::read_config( $languages );
 
 		$plan = self::build_plan( $post_ids, $post_type, $config );
 
 		$vars = array_merge(
 			$config,
 			array(
-				'post_type'          => $post_type,
-				'post_type_label'    => self::post_type_label( $post_type, count( $post_ids ) ),
-				'cart_count'         => count( $post_ids ),
-				'conflict'           => is_array( $conflict ) ? $conflict : null,
-				'clear_url'          => wp_nonce_url( admin_url( 'admin-post.php?action=pxat_cart_clear' ), 'pxat_cart_clear' ),
-				'languages'          => $languages,
-				'available_statuses' => $available_statuses,
-				'model'              => Settings::model(),
-				'model_verified'     => Settings::model_verified(),
-				'settings_url'       => admin_url( 'admin.php?page=' . Admin::PAGE_SETTINGS ),
-				'rows'               => $plan['rows'],
-				'total_tokens'       => $plan['total_tokens'],
-				'total_cost_usd'     => $plan['total_cost_usd'],
-				'eligible_count'     => $plan['eligible_count'],
-				'type_labels'        => self::type_labels(),
+				'post_type'       => $post_type,
+				'post_type_label' => self::post_type_label( $post_type, count( $post_ids ) ),
+				'cart_count'      => count( $post_ids ),
+				'conflict'        => is_array( $conflict ) ? $conflict : null,
+				'clear_url'       => wp_nonce_url( admin_url( 'admin-post.php?action=pxat_cart_clear' ), 'pxat_cart_clear' ),
+				'languages'       => $languages,
+				'model'           => Settings::model(),
+				'model_verified'  => Settings::model_verified(),
+				'settings_url'    => admin_url( 'admin.php?page=' . Admin::PAGE_SETTINGS ),
+				'rows'            => $plan['rows'],
+				'total_tokens'    => $plan['total_tokens'],
+				'total_cost_usd'  => $plan['total_cost_usd'],
+				'eligible_count'  => $plan['eligible_count'],
+				'type_labels'     => self::type_labels(),
 			)
 		);
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
@@ -162,11 +161,10 @@ class Confirm {
 	 * ------------------------------------------------------------------- */
 
 	/**
-	 * @param array $languages          WPML active languages.
-	 * @param array $available_statuses status slug => label among the selection.
+	 * @param array $languages WPML active languages.
 	 * @return array
 	 */
-	protected static function read_config( array $languages, array $available_statuses ) {
+	protected static function read_config( array $languages ) {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only navigation params, each sanitised on use.
 		$saved = isset( $_GET['pxat_save_config'] );
 
@@ -180,11 +178,6 @@ class Confirm {
 			$dest_lang = reset( $other_langs );
 		}
 
-		$source_status = $saved && isset( $_GET['source_status'] ) ? sanitize_text_field( wp_unslash( $_GET['source_status'] ) ) : 'publish';
-		if ( 'any' !== $source_status && ! isset( $available_statuses[ $source_status ] ) ) {
-			$source_status = 'publish';
-		}
-
 		$data_mode = $saved && isset( $_GET['data_mode'] ) ? sanitize_text_field( wp_unslash( $_GET['data_mode'] ) ) : 'full';
 		if ( ! in_array( $data_mode, array( 'full', 'custom' ), true ) ) {
 			$data_mode = 'full';
@@ -194,37 +187,14 @@ class Confirm {
 		if ( $saved && isset( $_GET['custom_types'] ) ) {
 			$custom_types = array_values( array_intersect( array_map( 'sanitize_text_field', (array) wp_unslash( $_GET['custom_types'] ) ), Fields::DATA_TYPES ) );
 		}
-
-		$batched = $saved ? ! empty( $_GET['batched'] ) : false;
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		return array(
-			'source_lang'   => $source_lang,
-			'dest_lang'     => $dest_lang,
-			'source_status' => $source_status,
-			'data_mode'     => $data_mode,
-			'custom_types'  => $custom_types,
-			'batched'       => $batched,
+			'source_lang'  => $source_lang,
+			'dest_lang'    => $dest_lang,
+			'data_mode'    => $data_mode,
+			'custom_types' => $custom_types,
 		);
-	}
-
-	/**
-	 * Distinct post_status values among the selected posts.
-	 *
-	 * @param int[] $post_ids Post ids.
-	 * @return array status slug => label.
-	 */
-	protected static function available_statuses( array $post_ids ) {
-		$statuses = array();
-		foreach ( $post_ids as $post_id ) {
-			$post = get_post( $post_id );
-			if ( ! $post || isset( $statuses[ $post->post_status ] ) ) {
-				continue;
-			}
-			$object                         = get_post_status_object( $post->post_status );
-			$statuses[ $post->post_status ] = $object ? $object->label : $post->post_status;
-		}
-		return $statuses;
 	}
 
 	/*
@@ -297,25 +267,24 @@ class Confirm {
 		foreach ( $resolution['unresolved'] as $selected_id ) {
 			$post   = get_post( $selected_id );
 			$rows[] = array(
-				'id'          => $selected_id,
-				'title'       => $post ? $post->post_title : sprintf( '#%d', $selected_id ),
-				'source_url'  => $post ? get_permalink( $selected_id ) : '',
-				'status'      => $post ? $post->post_status : '',
-				'dest_exists' => false,
-				'dest_title'  => '',
-				'dest_url'    => '',
-				'state'       => 'unresolved',
-				'tokens'      => 0,
-				'cost_usd'    => 0.0,
+				'id'            => $selected_id,
+				'title'         => $post ? $post->post_title : sprintf( '#%d', $selected_id ),
+				'source_url'    => $post ? get_permalink( $selected_id ) : '',
+				'status'        => $post ? $post->post_status : '',
+				'dest_exists'   => false,
+				'dest_title'    => '',
+				'dest_url'      => '',
+				'dest_status'   => '',
+				'dest_modified' => '',
+				'state'         => 'unresolved',
+				'tokens'        => 0,
+				'cost_usd'      => 0.0,
 			);
 		}
 
 		foreach ( $resolution['resolved'] as $source_id ) {
 			$post = get_post( $source_id );
 			if ( ! $post ) {
-				continue;
-			}
-			if ( 'any' !== $config['source_status'] && $post->post_status !== $config['source_status'] ) {
 				continue;
 			}
 
@@ -356,17 +325,19 @@ class Confirm {
 			}
 
 			$rows[] = array(
-				'id'          => $source_id,
-				'title'       => $post->post_title,
-				'source_url'  => get_permalink( $source_id ),
-				'status'      => $post->post_status,
-				'dest_exists' => (bool) $dest_id,
-				'dest_title'  => $dest_post ? $dest_post->post_title : '',
-				'dest_url'    => $dest_id ? get_permalink( $dest_id ) : '',
-				'state'       => $eligible ? ( $structural_only ? 'structural' : 'translate' ) : 'skip',
-				'skip_reason' => $eligible ? '' : self::skip_reason( $config['data_mode'], (bool) $dest_id ),
-				'tokens'      => $row_tokens,
-				'cost_usd'    => $row_cost,
+				'id'            => $source_id,
+				'title'         => $post->post_title,
+				'source_url'    => get_permalink( $source_id ),
+				'status'        => $post->post_status,
+				'dest_exists'   => (bool) $dest_id,
+				'dest_title'    => $dest_post ? $dest_post->post_title : '',
+				'dest_url'      => $dest_id ? get_permalink( $dest_id ) : '',
+				'dest_status'   => $dest_post ? $dest_post->post_status : '',
+				'dest_modified' => $dest_post ? $dest_post->post_modified : '',
+				'state'         => $eligible ? ( $structural_only ? 'structural' : 'translate' ) : 'skip',
+				'skip_reason'   => $eligible ? '' : self::skip_reason( $config['data_mode'], (bool) $dest_id ),
+				'tokens'        => $row_tokens,
+				'cost_usd'      => $row_cost,
 			);
 		}
 
@@ -403,11 +374,10 @@ class Confirm {
 			wp_die( esc_html__( 'Your translation cart is empty.', 'perxel-ai-translate' ) );
 		}
 
-		$source_lang   = Wpml::get_default_language();
-		$dest_lang     = isset( $_POST['dest_lang'] ) ? sanitize_text_field( wp_unslash( $_POST['dest_lang'] ) ) : '';
-		$source_status = isset( $_POST['source_status'] ) ? sanitize_text_field( wp_unslash( $_POST['source_status'] ) ) : 'publish';
-		$batched       = ! empty( $_POST['batched'] );
-		$model         = Settings::model();
+		$source_lang = Wpml::get_default_language();
+		$dest_lang   = isset( $_POST['dest_lang'] ) ? sanitize_text_field( wp_unslash( $_POST['dest_lang'] ) ) : '';
+		$batched     = Settings::batched();
+		$model       = Settings::model();
 
 		$data_mode = isset( $_POST['data_mode'] ) ? sanitize_text_field( wp_unslash( $_POST['data_mode'] ) ) : 'full';
 		if ( ! in_array( $data_mode, array( 'full', 'custom' ), true ) ) {
@@ -445,10 +415,6 @@ class Confirm {
 		}
 
 		foreach ( $resolution['resolved'] as $source_id ) {
-			if ( 'any' !== $source_status && get_post_status( $source_id ) !== $source_status ) {
-				continue;
-			}
-
 			$existing = Wpml::get_object_id( $source_id, $post_type, $dest_lang, false );
 
 			if ( $existing && (int) $existing === (int) $source_id ) {

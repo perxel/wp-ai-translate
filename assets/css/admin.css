@@ -77,6 +77,15 @@
 	.pxat .pxat-spin { animation-duration: 2s; }
 }
 
+/* Translation cart: row-number column. */
+.pxat .pxat-col-num {
+	width: 1%;
+	white-space: nowrap;
+	text-align: right;
+	color: var(--pxui-fg-muted, #646970);
+	font-variant-numeric: tabular-nums;
+}
+
 /* Translation cart: per-row Remove control. */
 .pxat .pxat-col-remove {
 	width: 1%;
