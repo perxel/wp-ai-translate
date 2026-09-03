@@ -8,6 +8,7 @@
 
 	var cfg = window.PXAT_Progress || {};
 	var running = false;
+	var finished = false;
 	var activeWorkers = 0;
 	var pollTimer = null;
 
@@ -85,30 +86,35 @@
 
 	/* --- The loop -------------------------------------------------- */
 
+	function retire( reload ) {
+		activeWorkers--;
+		if ( activeWorkers <= 0 && reload ) {
+			window.location.reload();
+		}
+	}
+
 	function worker() {
 		if ( ! running ) {
-			activeWorkers--;
+			retire( finished );
 			return;
 		}
 		post( 'pxat_process', {} ).then( function ( res ) {
 			if ( ! res || ! res.success ) {
 				running = false;
-				activeWorkers--;
+				retire( false );
 				return;
 			}
 			render( res.data );
 			if ( res.data.done ) {
 				running = false;
-				activeWorkers--;
-				if ( activeWorkers <= 0 ) {
-					window.location.reload();
-				}
+				finished = true;
+				retire( true );
 				return;
 			}
 			worker();
 		} ).catch( function () {
 			running = false;
-			activeWorkers--;
+			retire( false );
 		} );
 	}
 
