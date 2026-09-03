@@ -306,7 +306,7 @@ class OpenRouter {
 			'pxat_model_unknown',
 			sprintf(
 				/* translators: %s: model id. */
-				__( 'OpenRouter has no model with the id "%s". Check it on openrouter.ai/models.', 'perxel-ai-translate' ),
+				__( 'OpenRouter has no model with the id "%s".', 'perxel-ai-translate' ),
 				$model_id
 			)
 		);
