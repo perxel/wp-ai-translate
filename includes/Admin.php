@@ -475,8 +475,20 @@ class Admin {
 		$result  = OpenRouter::test_api_key( $api_key );
 
 		if ( is_wp_error( $result ) ) {
+			// The stored key is only "verified" as long as it stays the tested one.
+			if ( $api_key === Settings::api_key() ) {
+				Settings::update( array( 'api_key_verified' => false ) );
+			}
 			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
 		}
+
+		// A pass means "this key works" - remember it and mark it verified.
+		Settings::update(
+			array(
+				'api_key'          => $api_key,
+				'api_key_verified' => true,
+			)
+		);
 
 		wp_send_json_success(
 			array(
@@ -499,8 +511,24 @@ class Admin {
 		$result   = OpenRouter::test_model( $model_id );
 
 		if ( is_wp_error( $result ) ) {
+			if ( $model_id === Settings::model()['id'] ) {
+				Settings::update( array( 'model_verified' => false ) );
+			}
 			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
 		}
+
+		// Remember the model and its live pricing / limits.
+		Settings::update(
+			array(
+				'model_id'         => $result['id'],
+				'model_verified'   => true,
+				'model_label'      => $result['label'],
+				'model_input'      => $result['input'],
+				'model_output'     => $result['output'],
+				'model_context'    => $result['context'],
+				'model_max_output' => $result['max_output'],
+			)
+		);
 
 		wp_send_json_success(
 			array(

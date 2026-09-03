@@ -111,21 +111,44 @@
 		} );
 	}
 
-	testBtn.addEventListener( 'click', function () {
+	var originalLabel = testBtn.textContent;
+
+	function runChecks( which ) {
 		testBtn.disabled = true;
-		var original = testBtn.textContent;
 		testBtn.textContent = __( 'Testing…', 'perxel-ai-translate' );
 
 		function done() {
 			testBtn.disabled = false;
-			testBtn.textContent = original;
+			testBtn.textContent = originalLabel;
 		}
 
-		testKey().then( testModel ).then( done, function () {
+		var chain = Promise.resolve();
+		if ( which.key ) {
+			chain = chain.then( testKey );
+		}
+		if ( which.model ) {
+			chain = chain.then( testModel );
+		}
+		chain.then( done, function () {
 			setSub( 'pxat-key-sub', __( 'Request failed.', 'perxel-ai-translate' ) );
 			done();
 		} );
+	}
+
+	testBtn.addEventListener( 'click', function () {
+		runChecks( { key: true, model: true } );
 	} );
+
+	// On load, verify anything set but not yet verified - so the status dots
+	// reflect reality, not just the last time someone pressed Test. An already
+	// verified value is trusted until it is edited or the key changes on save.
+	var pending = {
+		key: keyInput.value.trim() !== '' && ! ( hidden.keyVerified && hidden.keyVerified.value ),
+		model: modelInput.value.trim() !== '' && ! ( hidden.modelVerified && hidden.modelVerified.value )
+	};
+	if ( pending.key || pending.model ) {
+		runChecks( pending );
+	}
 
 	// Editing a field makes its verified state stale.
 	keyInput.addEventListener( 'input', function () {
@@ -136,10 +159,19 @@
 		setSub( 'pxat-key-sub', __( 'not checked', 'perxel-ai-translate' ) );
 	} );
 
-	modelInput.addEventListener( 'input', function () {
-		if ( hidden.modelVerified ) {
-			hidden.modelVerified.value = '';
+	function setHidden( node, value ) {
+		if ( node ) {
+			node.value = value;
 		}
+	}
+
+	modelInput.addEventListener( 'input', function () {
+		setHidden( hidden.modelVerified, '' );
+		setHidden( hidden.label, '' );
+		setHidden( hidden.input, '0' );
+		setHidden( hidden.output, '0' );
+		setHidden( hidden.context, '0' );
+		setHidden( hidden.maxOutput, '0' );
 		setDot( modelInput, 'muted' );
 		setSub( 'pxat-model-detail', __( 'not checked', 'perxel-ai-translate' ) );
 	} );
