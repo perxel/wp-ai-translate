@@ -1,5 +1,5 @@
 /**
- * Perxel shared admin UI — forms layer.
+ * Perxel shared admin UI - forms layer.
  *
  * Loaded right after ui.css (same handle family, depends on `perxel-ui`).
  * Everything here relies on the tokens declared on `.pxui-wrap` in ui.css.
@@ -9,9 +9,9 @@
  */
 
 /* ------------------------------------------------------------------ *
- * Row group — iOS-style settings list. Each group is an optional title
+ * Row group - iOS-style settings list. Each group is an optional title
  * above a rounded card of rows; the card is the only element that carries
- * a shadow. Each row is a flex line: label left, content right — text, a
+ * a shadow. Each row is a flex line: label left, content right - text, a
  * toggle, a <select> or a button.
  * ------------------------------------------------------------------ */
 
@@ -74,7 +74,7 @@
     max-width:400px;
 }
 
-/* Inner controls stay flat — the wrapper owns the only shadow. */
+/* Inner controls stay flat - the wrapper owns the only shadow. */
 .pxui-row__content .button,
 .pxui-row__content select,
 .pxui-row__content input { box-shadow:none; }
@@ -99,20 +99,47 @@
     color:var(--pxui-fg);
 }
 
-/* Text / number inputs as row content — a compact field sized to its value.
-   Hairline box at rest (the value is editable, so it always reads as a field),
-   muted border on hover, brand ring on focus. Same radius as the <select>. */
+/* Text-like inputs and textareas used as row content (or inside a disclosure
+   reveal) share one field treatment: hairline box at rest - the value is
+   editable, so it always reads as a field - muted border on hover, brand ring
+   on focus, the same radius as the <select>. A textarea gets `font:inherit` so
+   it never falls back to the browser monospace default; add `.pxui-mono` for a
+   deliberate monospace field. */
 .pxui-row__content input[type="text"],
+.pxui-row__content input[type="password"],
 .pxui-row__content input[type="number"],
 .pxui-row__content input[type="email"],
 .pxui-row__content input[type="url"],
-.pxui-row__content input[type="search"] {
+.pxui-row__content input[type="search"],
+.pxui-row__content textarea,
+.pxui-row__reveal input[type="text"],
+.pxui-row__reveal input[type="password"],
+.pxui-row__reveal input[type="email"],
+.pxui-row__reveal input[type="url"],
+.pxui-row__reveal input[type="search"],
+.pxui-row__reveal textarea {
     min-height:30px;
+    padding:var(--pxui-s1) var(--pxui-s2);
     border:1px solid var(--pxui-border);
     border-radius:var(--pxui-radius);
     background-color:var(--pxui-bg);
     color:var(--pxui-fg);
+    font:inherit;
+    line-height:1.5;
     transition:border-color .12s ease, box-shadow .12s ease;
+}
+
+.pxui-row__content textarea,
+.pxui-row__reveal textarea {
+    min-height:76px;
+    width:100%;
+    resize:vertical;
+}
+
+.pxui-row__content .pxui-mono,
+.pxui-row__reveal .pxui-mono {
+    font-family:var(--pxui-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size:12px;
 }
 
 .pxui-row__content input[type="number"] {
@@ -120,29 +147,72 @@
     text-align:right;
 }
 
+/* A readonly field reads as a value you can copy, not one you edit. */
+.pxui-row__content input:read-only,
+.pxui-row__content textarea:read-only,
+.pxui-row__reveal input:read-only,
+.pxui-row__reveal textarea:read-only {
+    background-color:#f6f7f7;
+    color:var(--pxui-fg-muted);
+}
+
 .pxui-row__content input[type="text"]:hover,
+.pxui-row__content input[type="password"]:hover,
 .pxui-row__content input[type="number"]:hover,
 .pxui-row__content input[type="email"]:hover,
 .pxui-row__content input[type="url"]:hover,
-.pxui-row__content input[type="search"]:hover {
+.pxui-row__content input[type="search"]:hover,
+.pxui-row__content textarea:hover,
+.pxui-row__reveal input:hover,
+.pxui-row__reveal textarea:hover {
     border-color:var(--pxui-fg-muted);
 }
 
 .pxui-row__content input[type="text"]:focus,
+.pxui-row__content input[type="password"]:focus,
 .pxui-row__content input[type="number"]:focus,
 .pxui-row__content input[type="email"]:focus,
 .pxui-row__content input[type="url"]:focus,
-.pxui-row__content input[type="search"]:focus {
+.pxui-row__content input[type="search"]:focus,
+.pxui-row__content textarea:focus,
+.pxui-row__reveal input:focus,
+.pxui-row__reveal textarea:focus {
     border-color:var(--pxui-accent);
     box-shadow:0 0 0 1px var(--pxui-accent);
     outline:none;
+}
+
+/* Stacked row: label (+ sub) on its own line, the control full-width beneath.
+   For a long text field, a textarea, or a control that needs the whole width
+   - anything the cramped right-aligned value slot would squeeze. */
+.pxui-row--stacked {
+    flex-direction:column;
+    align-items:stretch;
+}
+
+.pxui-row--stacked .pxui-row__label { flex:none; }
+
+.pxui-row--stacked .pxui-row__content {
+    max-width:none;
+    width:100%;
+    margin-top:var(--pxui-s2);
+    justify-content:flex-start;
+    text-align:left;
+}
+
+.pxui-row--stacked .pxui-row__content input[type="text"],
+.pxui-row--stacked .pxui-row__content input[type="password"],
+.pxui-row--stacked .pxui-row__content input[type="email"],
+.pxui-row--stacked .pxui-row__content input[type="url"],
+.pxui-row--stacked .pxui-row__content input[type="search"] {
+    flex:1 1 12em;
 }
 
 .pxui-row--good .pxui-row__content { color:var(--pxui-good); font-weight:600; }
 .pxui-row--warn .pxui-row__content { color:var(--pxui-warn); font-weight:600; }
 .pxui-row--bad .pxui-row__content { color:var(--pxui-bad); font-weight:600; }
 
-/* Leading row icon — a fixed 20px square before the label, centred against
+/* Leading row icon - a fixed 20px square before the label, centred against
    the label + sub. Any glyph (dashicon, <svg>, emoji) is scaled into the
    frame so rows line up regardless of the icon used. When a row carries one,
    the label group sits left and the content value is pushed to the right. */
@@ -166,7 +236,7 @@
 .pxui-row__icon img,
 .pxui-row__icon svg { display:block; width:auto; height:auto; }
 
-/* Preset status dots — filled circle + glyph in the tone colour. */
+/* Preset status dots - filled circle + glyph in the tone colour. */
 .pxui-row__icon--good,
 .pxui-row__icon--warn,
 .pxui-row__icon--bad {
@@ -184,7 +254,7 @@
 .pxui-row__icon--warn::before { content:"!"; }
 .pxui-row__icon--bad::before  { content:"\2715"; }
 
-/* Disclosure row — a native <details>. The <summary> is the row line (label
+/* Disclosure row - a native <details>. The <summary> is the row line (label
    left, chevron right); the reveal drops full-width below. */
 .pxui-row--disclosure { display:block; padding:0; }
 
@@ -222,7 +292,7 @@
     .pxui-row__chevron { transition:none; }
 }
 
-/* Danger group — a row group for destructive actions: red title, red hairline
+/* Danger group - a row group for destructive actions: red title, red hairline
    card over the warning tint, buttons in the warning colour. A screen's
    cleanup / destructive-action section. */
 .pxui-rows__group--danger .pxui-rows__title { color:var(--pxui-bad); }
@@ -252,7 +322,7 @@
 }
 
 /* ------------------------------------------------------------------ *
- * Form controls — checkbox renders as an iOS toggle, radio as a filled
+ * Form controls - checkbox renders as an iOS toggle, radio as a filled
  * dot, both in the brand accent. Scoped to `.pxui-wrap`.
  * ------------------------------------------------------------------ */
 
@@ -325,7 +395,7 @@
 }
 
 /* ------------------------------------------------------------------ *
- * Real checkbox — opt back out of the iOS toggle. Add `.pxui-checkbox`
+ * Real checkbox - opt back out of the iOS toggle. Add `.pxui-checkbox`
  * to an `<input type="checkbox">` for a square box with a brand tick.
  * ------------------------------------------------------------------ */
 
@@ -350,9 +420,9 @@
 }
 
 /* ------------------------------------------------------------------ *
- * Checkbox group — a "pick several" list rendered as selectable pills.
+ * Checkbox group - a "pick several" list rendered as selectable pills.
  * The real `<input type="checkbox">` stays in the DOM (form state,
- * keyboard, a11y) but is visually hidden; the pill is the control —
+ * keyboard, a11y) but is visually hidden; the pill is the control -
  * hairline border at rest, brand fill when its checkbox is checked.
  * Flows inline and wraps; sits happily as `.pxui-row__content`.
  * ------------------------------------------------------------------ */
@@ -398,7 +468,7 @@
     outline-offset:2px;
 }
 
-/* Visually hide the checkbox — the pill carries the state. */
+/* Visually hide the checkbox - the pill carries the state. */
 .pxui-wrap .pxui-checks input[type="checkbox"] {
     position:absolute;
     width:1px;
@@ -416,7 +486,7 @@
 .pxui-check__sub { font-size:12px; color:var(--pxui-fg-muted); }
 
 /* ------------------------------------------------------------------ *
- * Spinner — inline loading state
+ * Spinner - inline loading state
  * ------------------------------------------------------------------ */
 
 .pxui-spinner {

@@ -10,12 +10,13 @@
  * @var string $data_mode
  * @var array  $custom_types
  * @var bool   $batched
- * @var string $model_id
+ * @var array  $model          Settings::model() - { id, label, input, output, … }
+ * @var bool   $model_verified
+ * @var string $settings_url
  * @var string $token
  * @var string $post_type
  * @var array  $languages
  * @var array  $available_statuses
- * @var array  $models
  * @var array  $rows
  * @var int    $total_tokens
  * @var float  $total_cost_usd
@@ -40,7 +41,7 @@ $posts_phrase = sprintf(
 	number_format_i18n( $eligible_count )
 );
 
-echo '<p class="pxat-step">' . esc_html__( 'Step 1 of 2 — configure', 'perxel-ai-translate' ) . '</p>';
+echo '<p class="pxat-step">' . esc_html__( 'Step 1 of 2 - configure', 'perxel-ai-translate' ) . '</p>';
 
 /* --- Step 1: configuration (GET self-submit) ------------------------ */
 
@@ -84,7 +85,7 @@ $data_rows = array(
 	),
 	array(
 		'summary' => __( 'Choose specific fields', 'perxel-ai-translate' ),
-		'sub'     => esc_html__( 'Only affects posts that already have a translation — nothing new is created.', 'perxel-ai-translate' ),
+		'sub'     => esc_html__( 'Only affects posts that already have a translation - nothing new is created.', 'perxel-ai-translate' ),
 		'content' => '<input type="radio" name="data_mode" value="custom" class="pxui-checkbox" ' . checked( $data_mode, 'custom', false ) . ' />',
 		'details' => '<div id="pxat-custom-types">' . $type_pills . '</div>',
 		'open'    => 'custom' === $data_mode,
@@ -107,18 +108,16 @@ $config_rows = array(
 	),
 );
 
-if ( count( $models ) > 1 ) {
-	$model_select = '<select name="model">';
-	foreach ( $models as $model ) {
-		$model_select .= '<option value="' . esc_attr( $model['id'] ) . '"' . selected( $model_id, $model['id'], false ) . '>'
-			. esc_html( sprintf( '%s ($%s / $%s per 1M)', $model['label'], $model['input'], $model['output'] ) ) . '</option>';
-	}
-	$model_select .= '</select>';
-	$config_rows[] = array(
-		'label'   => __( 'Model', 'perxel-ai-translate' ),
-		'content' => $model_select,
-	);
-}
+$model_note = $model['input'] > 0
+	? esc_html( sprintf( /* translators: 1: input price, 2: output price. */ __( '$%1$s in / $%2$s out per 1M tokens', 'perxel-ai-translate' ), $model['input'], $model['output'] ) )
+	: esc_html__( 'pricing not checked yet', 'perxel-ai-translate' );
+
+$config_rows[] = array(
+	'label'   => __( 'Model', 'perxel-ai-translate' ),
+	'sub'     => $model_note . ' · <a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'change in Settings', 'perxel-ai-translate' ) . '</a>',
+	'tone'    => $model_verified ? null : 'warn',
+	'content' => esc_html( $model['label'] ),
+);
 
 $config_rows[] = array(
 	'label'   => __( 'Faster batched requests', 'perxel-ai-translate' ),
@@ -161,7 +160,7 @@ $config_rows[] = array(
 <?php
 /* --- Step 2: posts ------------------------------------------------- */
 
-echo '<p class="pxat-step">' . esc_html__( 'Step 2 of 2 — review & start', 'perxel-ai-translate' ) . '</p>';
+echo '<p class="pxat-step">' . esc_html__( 'Step 2 of 2 - review & start', 'perxel-ai-translate' ) . '</p>';
 
 if ( 0 === $eligible_count ) {
 	echo \Perxel_UI::notice( 'warning', esc_html__( 'Nothing to translate with the current selection.', 'perxel-ai-translate' ) );
@@ -179,7 +178,7 @@ if ( 0 === $eligible_count ) {
 		)
 	);
 } else {
-	echo \Perxel_UI::notice( 'info', esc_html__( 'These posts will be updated with no model call — structural copy only, no cost.', 'perxel-ai-translate' ) );
+	echo \Perxel_UI::notice( 'info', esc_html__( 'These posts will be updated with no model call - structural copy only, no cost.', 'perxel-ai-translate' ) );
 }
 
 $source_label = Wpml::language_label( $languages, $source_lang );
@@ -223,13 +222,13 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 					<?php
 					switch ( $row['state'] ) {
 						case 'unresolved':
-							echo '<span class="pxat-inline-error">' . esc_html__( 'Skipped — no source-language version', 'perxel-ai-translate' ) . '</span>';
+							echo '<span class="pxat-inline-error">' . esc_html__( 'Skipped - no source-language version', 'perxel-ai-translate' ) . '</span>';
 							break;
 						case 'skip':
 							echo '<span class="pxat-muted">' . esc_html( $row['skip_reason'] ) . '</span>';
 							break;
 						case 'structural':
-							echo '<span class="pxat-muted">' . esc_html__( 'Copy only — no model call', 'perxel-ai-translate' ) . '</span>';
+							echo '<span class="pxat-muted">' . esc_html__( 'Copy only - no model call', 'perxel-ai-translate' ) . '</span>';
 							break;
 						default:
 							echo esc_html( Format::cost( $row['cost_usd'] ) ) . ' <span class="pxat-muted">(' . esc_html( Format::unit_label( $row['tokens'] ) ) . ')</span>';
@@ -252,7 +251,6 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 		<input type="hidden" name="custom_types[]" value="<?php echo esc_attr( $t ); ?>" />
 	<?php endforeach; ?>
 	<input type="hidden" name="batched" value="<?php echo $batched ? '1' : '0'; ?>" />
-	<input type="hidden" name="model" value="<?php echo esc_attr( $model_id ); ?>" />
 	<?php wp_nonce_field( 'pxat_create_run' ); ?>
 	<p>
 		<?php if ( $eligible_count > 0 ) : ?>
@@ -261,7 +259,7 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 				echo esc_html(
 					sprintf(
 						/* translators: 1: post count, 2: cost. */
-						__( 'Start — %1$s (%2$s)', 'perxel-ai-translate' ),
+						__( 'Start - %1$s (%2$s)', 'perxel-ai-translate' ),
 						$posts_phrase,
 						Format::cost( $total_cost_usd )
 					)

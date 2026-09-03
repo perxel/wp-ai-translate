@@ -12,7 +12,7 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 
 /**
  * Translation-run history, native WP admin table chrome (checkboxes, bulk
- * actions, pagination — all core admin JS).
+ * actions, pagination - all core admin JS).
  */
 class RunsListTable extends \WP_List_Table {
 
@@ -132,7 +132,7 @@ class RunsListTable extends \WP_List_Table {
 				'started'  => Format::time_ago( $run['created_at'] ),
 				'run_time' => Format::duration( $run['active_seconds'] ),
 				'langs'    => esc_html( Wpml::language_label( $languages, $run['source_lang'] ) . ' → ' . Wpml::language_label( $languages, $run['dest_lang'] ) ),
-				'model'    => esc_html( OpenRouter::get_model( $run['model'] )['label'] ),
+				'model'    => esc_html( '' !== $run['model_label'] ? $run['model_label'] : $run['model'] ),
 				'posts'    => number_format_i18n( $counts['total'] ),
 				'done'     => number_format_i18n( $counts['done'] ) . ' / ' . number_format_i18n( $counts['total'] ),
 				'issues'   => $issues ? implode( ' ', $issues ) : '&mdash;',

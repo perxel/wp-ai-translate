@@ -1,5 +1,5 @@
 /**
- * Perxel shared admin UI — minimal behaviour.
+ * Perxel shared admin UI - minimal behaviour.
  *
  * WordPress core already wires dismiss buttons onto `.notice.is-dismissible`,
  * so the kit only adds a confirm guard for destructive actions:

@@ -1,6 +1,6 @@
 <?php
 /**
- * Perxel shared admin UI — render helpers.
+ * Perxel shared admin UI - render helpers.
  *
  * Stateless. Every method returns an HTML string; callers echo it, e.g.
  *
@@ -9,7 +9,7 @@
  * Escaping contract:
  *   - Structural markup and the `title` / `label` fields are escaped here.
  *   - `body`, `actions`, `value`, `content`, `sub` are treated as trusted HTML
- *     — the caller is responsible for escaping their dynamic parts.
+ *     - the caller is responsible for escaping their dynamic parts.
  *
  * @package Perxel_UI
  */
@@ -162,18 +162,21 @@ final class Perxel_UI {
 	 * Pass either a flat list of rows (one implicit group) or a list of
 	 * groups: `[ [ 'title' => 'Group', 'rows' => [ row, row ] ], … ]`.
 	 *
-	 * A group with `'danger' => true` is styled as a destructive zone — red
-	 * title, red hairline card, buttons in the warning colour — for a screen's
+	 * A group with `'danger' => true` is styled as a destructive zone - red
+	 * title, red hairline card, buttons in the warning colour - for a screen's
 	 * cleanup / destructive-action section.
 	 *
 	 * A group with a `note` key renders that trusted HTML (or plain string) as a
-	 * muted footnote below the card — a description, a caveat, a "learn more"
+	 * muted footnote below the card - a description, a caveat, a "learn more"
 	 * link for the whole group. Left-aligned with the title. Groups only; a flat
 	 * row list has nowhere to put one.
 	 *
 	 * Each row: `[ 'label' => plain text, 'sub' => trusted HTML (secondary
 	 * line under the label), 'content' => trusted HTML (text, a toggle(), a
-	 * <select> or a button), 'tone' => good|warn|bad, 'icon' => … ]`.
+	 * <select> or a button), 'tone' => good|warn|bad, 'icon' => …,
+	 * 'stacked' => bool ]`. `stacked` drops the label onto its own line with the
+	 * control full-width beneath - for a long text field or a `<textarea>` that
+	 * the right-aligned value slot would squeeze.
 	 *
 	 * `icon` (any row) puts a fixed square left of the label + sub, centred
 	 * against both: `good|warn|bad` draws a filled status dot (✓ / ! / ✕);
@@ -182,9 +185,9 @@ final class Perxel_UI {
 	 *
 	 * A row with a `summary` key becomes a disclosure instead: the summary text
 	 * sits where the label goes, the chevron takes the right edge (with optional
-	 * `content` trusted HTML — a count, a status — just left of it), and
+	 * `content` trusted HTML - a count, a status - just left of it), and
 	 * `details` (trusted HTML) reveals full-width below when the row is clicked.
-	 * Native `<details>` — no JS. `[ 'summary' => plain text, 'sub' => trusted
+	 * Native `<details>` - no JS. `[ 'summary' => plain text, 'sub' => trusted
 	 * HTML, 'content' => trusted HTML, 'details' => trusted HTML, 'open' => bool,
 	 * 'tone' => good|warn|bad, 'icon' => … ]`.
 	 *
@@ -214,7 +217,7 @@ final class Perxel_UI {
 			foreach ( (array) ( isset( $group['rows'] ) ? $group['rows'] : array() ) as $r ) {
 				$tone = isset( $r['tone'] ) && in_array( $r['tone'], array( 'good', 'warn', 'bad' ), true ) ? ' pxui-row--' . $r['tone'] : '';
 
-				// Optional leading icon — its own fixed square, left of the
+				// Optional leading icon - its own fixed square, left of the
 				// label + sub and centred against both. `icon => good|warn|bad`
 				// draws a filled status dot (✓ / ! / ✕); any other non-empty
 				// string is trusted HTML (a dashicon, an <svg>, an emoji)
@@ -227,6 +230,11 @@ final class Perxel_UI {
 						. '</span>';
 				}
 				$has_icon = '' !== $icon ? ' pxui-row--has-icon' : '';
+
+				// Stacked plain row: label (+ sub) on its own line, the control
+				// full-width beneath - for a long text field or a textarea that
+				// the cramped right-aligned value slot would squeeze.
+				$stacked = ! empty( $r['stacked'] ) ? ' pxui-row--stacked' : '';
 
 				// Disclosure row: a native <details> styled as a row. The whole
 				// summary line is the click target; the reveal drops below.
@@ -251,7 +259,7 @@ final class Perxel_UI {
 					continue;
 				}
 
-				$out .= '<div class="pxui-row' . $tone . $has_icon . '">';
+				$out .= '<div class="pxui-row' . $tone . $has_icon . $stacked . '">';
 				$out .= $icon;
 				$out .= '<span class="pxui-row__label">' . esc_html( isset( $r['label'] ) ? $r['label'] : '' );
 
@@ -279,7 +287,7 @@ final class Perxel_UI {
 	}
 
 	/**
-	 * A toggle — a checkbox, which the kit CSS renders as an iOS switch.
+	 * A toggle - a checkbox, which the kit CSS renders as an iOS switch.
 	 * Handy as row `content`; a plain `<input type="checkbox">` inside
 	 * `.pxui-wrap` renders identically.
 	 *
@@ -311,14 +319,14 @@ final class Perxel_UI {
 	}
 
 	/**
-	 * A checkbox group — a "pick several" list rendered as selectable pills.
+	 * A checkbox group - a "pick several" list rendered as selectable pills.
 	 * Each option keeps a real `<input type="checkbox">` in the DOM (form
-	 * state, keyboard, a11y) but hidden; the pill is the control — hairline
+	 * state, keyboard, a11y) but hidden; the pill is the control - hairline
 	 * border at rest, brand fill when selected. Flows inline and wraps.
 	 * Handy as row `content`.
 	 *
 	 * Each option is `value => label`, or an array with `value`, `label`,
-	 * `sub` (a muted second line under the label — dimensions, a hint),
+	 * `sub` (a muted second line under the label - dimensions, a hint),
 	 * `checked` (overrides `selected`). `label` and `sub` are escaped as
 	 * plain text.
 	 *
@@ -382,7 +390,7 @@ final class Perxel_UI {
 	}
 
 	/**
-	 * A read-only preformatted block — config snippets, generated rules, log
+	 * A read-only preformatted block - config snippets, generated rules, log
 	 * output. Scrolls sideways rather than wrapping. Reads well inside a
 	 * disclosure row's `details`.
 	 *

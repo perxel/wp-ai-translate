@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Runs one item of a translation run end to end: translate the text through
  * OpenRouter, then write everything (text fields, ACF, taxonomy, featured
- * image) into the WPML destination post. There is no separate "apply" step —
+ * image) into the WPML destination post. There is no separate "apply" step -
  * a run always writes; review the result in the editor.
  *
  * Full mode's per-type failures are non-blocking warnings (the destination
@@ -52,7 +52,7 @@ class Translator {
 	}
 
 	/**
-	 * Subset of $types that need an OpenRouter call — everything except the
+	 * Subset of $types that need an OpenRouter call - everything except the
 	 * structural-only 'taxonomy' and 'thumbnail'.
 	 *
 	 * @param array $types Type list.
@@ -156,7 +156,7 @@ class Translator {
 		}
 
 		$usage = $result['usage'];
-		$cost  = OpenRouter::estimate_cost( $usage['prompt_tokens'], $usage['completion_tokens'], $run['model'] );
+		$cost  = OpenRouter::estimate_cost( $usage['prompt_tokens'], $usage['completion_tokens'], $run['input_rate'], $run['output_rate'] );
 
 		self::warn_missing_keys( $run, $item, $result['fields'] );
 
@@ -246,9 +246,9 @@ class Translator {
 					$results[ $type ] = $result;
 
 					if ( ! $result['success'] ) {
-						Runs::log( $run['id'], $item['id'], sprintf( '%s: %s failed — %s', $label, self::type_label( $type ), $result['message'] ) );
+						Runs::log( $run['id'], $item['id'], sprintf( '%s: %s failed - %s', $label, self::type_label( $type ), $result['message'] ) );
 					} elseif ( $result['message'] ) {
-						Runs::log( $run['id'], $item['id'], sprintf( '%s: %s — %s', $label, self::type_label( $type ), $result['message'] ) );
+						Runs::log( $run['id'], $item['id'], sprintf( '%s: %s - %s', $label, self::type_label( $type ), $result['message'] ) );
 					}
 				}
 
@@ -322,9 +322,8 @@ class Translator {
 			return array();
 		}
 
-		$model_id = $run['model'];
-		$free     = array();
-		$llm      = array();
+		$free = array();
+		$llm  = array();
 
 		foreach ( $pending as $item ) {
 			if ( empty( $item['fields'] ) ) {
@@ -339,7 +338,7 @@ class Translator {
 		}
 
 		$system_prompt_chars = mb_strlen( OpenRouter::build_batch_system_prompt( Settings::get( 'prompt' ), $run['source_lang'], $run['dest_lang'] ) );
-		$token_budget        = OpenRouter::get_batch_output_budget( $model_id );
+		$token_budget        = OpenRouter::get_batch_output_budget( $run['max_output'] );
 
 		$selected = array();
 		$total    = 0;
@@ -484,7 +483,7 @@ class Translator {
 		$results = $result['results'];
 		$usage   = $result['usage'];
 
-		// OpenRouter returns one aggregate usage for the batch — split it across
+		// OpenRouter returns one aggregate usage for the batch - split it across
 		// items proportional to each item's estimated size so the run total
 		// stays exact.
 		$system_prompt_chars = mb_strlen( OpenRouter::build_batch_system_prompt( Settings::get( 'prompt' ), $run['source_lang'], $run['dest_lang'] ) );
@@ -521,7 +520,7 @@ class Translator {
 				'prompt_tokens'     => (int) round( $usage['prompt_tokens'] * $share ),
 				'completion_tokens' => (int) round( $usage['completion_tokens'] * $share ),
 			);
-			$cost      = OpenRouter::estimate_cost( $job_usage['prompt_tokens'], $job_usage['completion_tokens'], $run['model'] );
+			$cost      = OpenRouter::estimate_cost( $job_usage['prompt_tokens'], $job_usage['completion_tokens'], $run['input_rate'], $run['output_rate'] );
 
 			Runs::log( $run['id'], $id, sprintf( '%s: translated (batched, %s)', $label, Format::cost( $cost ) ) );
 
@@ -662,7 +661,7 @@ class Translator {
 			return array(
 				'success' => false,
 				/* translators: %s: comma-separated field keys. */
-				'message' => sprintf( __( 'Missing translation for: %s — nothing in this group was written.', 'perxel-ai-translate' ), implode( ', ', $missing ) ),
+				'message' => sprintf( __( 'Missing translation for: %s - nothing in this group was written.', 'perxel-ai-translate' ), implode( ', ', $missing ) ),
 			);
 		}
 

@@ -62,7 +62,7 @@ if ( $is_done ) {
 		esc_html(
 			sprintf(
 				/* translators: %s: post count. */
-				__( 'Run finished. %s written into WordPress — open each post to review.', 'perxel-ai-translate' ),
+				__( 'Run finished. %s written into WordPress - open each post to review.', 'perxel-ai-translate' ),
 				$posts_n( $counts['done'] )
 			)
 		)
@@ -106,7 +106,7 @@ if ( $counts['warnings'] > 0 ) {
 		esc_html(
 			sprintf(
 				/* translators: %s: post count. */
-				__( '%s finished with a warning — some data did not copy completely. See the Note column.', 'perxel-ai-translate' ),
+				__( '%s finished with a warning - some data did not copy completely. See the Note column.', 'perxel-ai-translate' ),
 				$posts_n( $counts['warnings'] )
 			)
 		),

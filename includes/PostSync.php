@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PostSync {
 
 	/**
-	 * Finds the destination post, or — only when $allow_create is true —
+	 * Finds the destination post, or - only when $allow_create is true -
 	 * creates it. Does NOT copy any data of its own.
 	 *
 	 * @param int    $source_post_id Source post ID.
@@ -36,7 +36,7 @@ class PostSync {
 				'post_id' => null,
 				'error'   => sprintf(
 					/* translators: 1: post ID, 2: destination language code. */
-					__( 'WPML returned a destination post (#%1$d, language %2$s) that is the same as the source post — skipped to avoid overwriting the original. Check the translation link (trid) for post #%1$d in WPML.', 'perxel-ai-translate' ),
+					__( 'WPML returned a destination post (#%1$d, language %2$s) that is the same as the source post - skipped to avoid overwriting the original. Check the translation link (trid) for post #%1$d in WPML.', 'perxel-ai-translate' ),
 					$source_post_id,
 					$dest_lang
 				),
@@ -228,7 +228,7 @@ class PostSync {
 				'success' => false,
 				'message' => sprintf(
 					/* translators: 1: language code, 2: comma-separated term references. */
-					__( 'No %1$s translation for: %2$s — no taxonomy was written.', 'perxel-ai-translate' ),
+					__( 'No %1$s translation for: %2$s - no taxonomy was written.', 'perxel-ai-translate' ),
 					$dest_lang,
 					implode( ', ', $missing )
 				),

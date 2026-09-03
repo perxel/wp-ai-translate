@@ -12,12 +12,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * one per log line.
  *
  * Direct $wpdb is deliberate and standard for a plugin-owned table; every query
- * here and in Runs goes through $wpdb->prepare(). No caching layer — a live run
+ * here and in Runs goes through $wpdb->prepare(). No caching layer - a live run
  * needs fresh reads on every poll.
  */
 class Db {
 
-	const SCHEMA_VERSION = 1;
+	const SCHEMA_VERSION = 2;
 	const VERSION_OPTION = 'pxat_db_version';
 
 	public static function runs() {
@@ -56,6 +56,10 @@ class Db {
 				created_by BIGINT UNSIGNED NOT NULL DEFAULT 0,
 				created_by_name VARCHAR(191) NOT NULL DEFAULT '',
 				model VARCHAR(191) NOT NULL DEFAULT '',
+				model_label VARCHAR(191) NOT NULL DEFAULT '',
+				input_rate DECIMAL(14,6) NOT NULL DEFAULT 0,
+				output_rate DECIMAL(14,6) NOT NULL DEFAULT 0,
+				max_output INT UNSIGNED NOT NULL DEFAULT 0,
 				source_lang VARCHAR(20) NOT NULL DEFAULT '',
 				dest_lang VARCHAR(20) NOT NULL DEFAULT '',
 				data_mode VARCHAR(20) NOT NULL DEFAULT 'full',

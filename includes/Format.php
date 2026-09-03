@@ -49,7 +49,7 @@ class Format {
 	}
 
 	/**
-	 * "~$0.0123" — a rough USD cost estimate. OpenRouter bills in USD.
+	 * "~$0.0123" - a rough USD cost estimate. OpenRouter bills in USD.
 	 *
 	 * @param float $cost_usd Cost in US dollars.
 	 * @return string
@@ -65,7 +65,7 @@ class Format {
 	}
 
 	/**
-	 * "02:15" or "1:02:15" — elapsed seconds as a clock-style duration.
+	 * "02:15" or "1:02:15" - elapsed seconds as a clock-style duration.
 	 *
 	 * @param int $seconds Elapsed seconds.
 	 * @return string
@@ -83,7 +83,7 @@ class Format {
 	}
 
 	/**
-	 * "5 mins ago" — relative time for a MySQL datetime stored site-local via
+	 * "5 mins ago" - relative time for a MySQL datetime stored site-local via
 	 * current_time( 'mysql' ).
 	 *
 	 * @param string $mysql_datetime A 'Y-m-d H:i:s' timestamp.

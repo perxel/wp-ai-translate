@@ -75,7 +75,7 @@
 
 	<!--
 		Wpml is a thin set of wrappers around WPML's own public filter/action
-		API (wpml_object_id, wpml_active_languages, …) — those hook names are
+		API (wpml_object_id, wpml_active_languages, …) - those hook names are
 		WPML's, not ours to prefix.
 	-->
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound">

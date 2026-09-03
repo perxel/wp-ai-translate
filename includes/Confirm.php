@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * a GET self-submit form (press "Update" to recompute); "Start" is a POST that
  * creates the run and redirects to Progress.
  *
- * There is no run-mode choice any more — every run translates and writes. The
+ * There is no run-mode choice any more - every run translates and writes. The
  * only speed knob is "batched" (several posts per model request).
  */
 class Confirm {
@@ -84,7 +84,9 @@ class Confirm {
 				'post_type'          => $post_type,
 				'languages'          => $languages,
 				'available_statuses' => $available_statuses,
-				'models'             => OpenRouter::get_models(),
+				'model'              => Settings::model(),
+				'model_verified'     => Settings::model_verified(),
+				'settings_url'       => admin_url( 'admin.php?page=' . Admin::PAGE_SETTINGS ),
 				'rows'               => $plan['rows'],
 				'total_tokens'       => $plan['total_tokens'],
 				'total_cost_usd'     => $plan['total_cost_usd'],
@@ -105,7 +107,7 @@ class Confirm {
 				. esc_html(
 					sprintf(
 						/* translators: 1: post count, 2: estimated cost. */
-						__( 'Start — %1$s (%2$s)', 'perxel-ai-translate' ),
+						__( 'Start - %1$s (%2$s)', 'perxel-ai-translate' ),
 						$posts_phrase,
 						Format::cost( $plan['total_cost_usd'] )
 					)
@@ -176,9 +178,6 @@ class Confirm {
 		}
 
 		$batched = $saved ? ! empty( $_GET['batched'] ) : false;
-
-		$model_id = $saved && isset( $_GET['model'] ) ? sanitize_text_field( wp_unslash( $_GET['model'] ) ) : '';
-		$model_id = OpenRouter::get_model( $model_id )['id'];
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		return array(
@@ -188,7 +187,6 @@ class Confirm {
 			'data_mode'     => $data_mode,
 			'custom_types'  => $custom_types,
 			'batched'       => $batched,
-			'model_id'      => $model_id,
 		);
 	}
 
@@ -267,6 +265,7 @@ class Confirm {
 	 */
 	protected static function build_plan( array $post_ids, $post_type, array $config ) {
 		$selected_types = 'full' === $config['data_mode'] ? Fields::DATA_TYPES : $config['custom_types'];
+		$model          = Settings::model();
 
 		$system_prompt_chars = mb_strlen( OpenRouter::build_system_prompt( Settings::get( 'prompt' ), $config['source_lang'], $config['dest_lang'] ) );
 
@@ -328,7 +327,7 @@ class Confirm {
 				}
 				$estimate      = OpenRouter::estimate_job_tokens( $payload, $system_prompt_chars );
 				$row_tokens    = $estimate['prompt_tokens'] + $estimate['completion_tokens'];
-				$row_cost      = OpenRouter::estimate_cost( $estimate['prompt_tokens'], $estimate['completion_tokens'], $config['model_id'] );
+				$row_cost      = OpenRouter::estimate_cost( $estimate['prompt_tokens'], $estimate['completion_tokens'], $model['input'], $model['output'] );
 				$total_prompt += $estimate['prompt_tokens'];
 				$total_output += $estimate['completion_tokens'];
 				$total_cost   += $row_cost;
@@ -363,7 +362,7 @@ class Confirm {
 
 	protected static function skip_reason( $data_mode, $dest_exists ) {
 		if ( 'custom' === $data_mode && ! $dest_exists ) {
-			return __( 'No existing translation — Custom mode does not create posts.', 'perxel-ai-translate' );
+			return __( 'No existing translation - Custom mode does not create posts.', 'perxel-ai-translate' );
 		}
 		return __( 'Nothing left to process.', 'perxel-ai-translate' );
 	}
@@ -391,8 +390,8 @@ class Confirm {
 		$source_lang   = Wpml::get_default_language();
 		$dest_lang     = isset( $_POST['dest_lang'] ) ? sanitize_text_field( wp_unslash( $_POST['dest_lang'] ) ) : '';
 		$source_status = isset( $_POST['source_status'] ) ? sanitize_text_field( wp_unslash( $_POST['source_status'] ) ) : 'publish';
-		$model_id      = OpenRouter::get_model( isset( $_POST['model'] ) ? sanitize_text_field( wp_unslash( $_POST['model'] ) ) : '' )['id'];
 		$batched       = ! empty( $_POST['batched'] );
+		$model         = Settings::model();
 
 		$data_mode = isset( $_POST['data_mode'] ) ? sanitize_text_field( wp_unslash( $_POST['data_mode'] ) ) : 'full';
 		if ( ! in_array( $data_mode, array( 'full', 'custom' ), true ) ) {
@@ -444,7 +443,7 @@ class Confirm {
 					'status'         => 'error',
 					'error_message'  => sprintf(
 						/* translators: 1: post ID, 2: destination language code. */
-						__( 'WPML returned the source post itself as its %2$s translation (post #%1$d) — skipped to avoid overwriting the original.', 'perxel-ai-translate' ),
+						__( 'WPML returned the source post itself as its %2$s translation (post #%1$d) - skipped to avoid overwriting the original.', 'perxel-ai-translate' ),
 						$source_id,
 						$dest_lang
 					),
@@ -495,7 +494,11 @@ class Confirm {
 
 		$run_id = Runs::create(
 			array(
-				'model'        => $model_id,
+				'model'        => $model['id'],
+				'model_label'  => $model['label'],
+				'input_rate'   => $model['input'],
+				'output_rate'  => $model['output'],
+				'max_output'   => $model['max_output'],
 				'source_lang'  => $source_lang,
 				'dest_lang'    => $dest_lang,
 				'data_mode'    => $data_mode,

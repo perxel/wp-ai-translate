@@ -1,8 +1,8 @@
 <?php
 /**
- * Perxel shared admin UI — component showcase.
+ * Perxel shared admin UI - component showcase.
  *
- * Renders every component in the real layout — the review surface: change a
+ * Renders every component in the real layout - the review surface: change a
  * component, reload this page, see it everywhere. By default it self-registers
  * as a hidden page under Tools ("Perxel UI"). A plugin that would rather host
  * the showcase as one of its own screens defines `PERXEL_UI_SHOWCASE_HOSTED`
@@ -25,7 +25,7 @@ final class Perxel_UI_Showcase {
 
 	/**
 	 * Hook registration. Skipped when a plugin hosts the showcase itself
-	 * (`PERXEL_UI_SHOWCASE_HOSTED`) — no Tools page in that case.
+	 * (`PERXEL_UI_SHOWCASE_HOSTED`) - no Tools page in that case.
 	 */
 	public static function init() {
 		if ( defined( 'PERXEL_UI_SHOWCASE_HOSTED' ) && PERXEL_UI_SHOWCASE_HOSTED ) {
@@ -95,7 +95,7 @@ final class Perxel_UI_Showcase {
 	}
 
 	/**
-	 * Echo just the component showcase — every component in document order, no
+	 * Echo just the component showcase - every component in document order, no
 	 * layout wrapper. A plugin hosting the showcase as one of its own screens
 	 * calls this between its own `Perxel_UI_Layout::open()` / `close()`.
 	 */
@@ -157,7 +157,7 @@ final class Perxel_UI_Showcase {
 						array(
 							'icon'    => 'good',
 							'label'   => 'WebP encoding',
-							'sub'     => 'Preset status dot — centred against label + sub.',
+							'sub'     => 'Preset status dot - centred against label + sub.',
 							'content' => 'Imagick',
 							'tone'    => 'good',
 						),
@@ -176,7 +176,7 @@ final class Perxel_UI_Showcase {
 				),
 				array(
 					'title' => 'Conversion',
-					'note'  => 'A group <code>note</code> — trusted HTML below the card for a description or caveat. <a href="#">Learn more</a> about conversion settings.',
+					'note'  => 'A group <code>note</code> - trusted HTML below the card for a description or caveat. <a href="#">Learn more</a> about conversion settings.',
 					'rows'  => array(
 						array(
 							'label'   => 'Convert new uploads',
@@ -194,7 +194,7 @@ final class Perxel_UI_Showcase {
 						),
 						array(
 							'label'   => 'Sizes to convert',
-							'sub'     => 'A "pick several" list — real checkboxes, not toggles.',
+							'sub'     => 'A "pick several" list - real checkboxes, not toggles.',
 							'content' => Perxel_UI::checkbox_group(
 								array(
 									'name'     => 'demo_sizes',
@@ -221,7 +221,7 @@ final class Perxel_UI_Showcase {
 						),
 						array(
 							'label'   => 'Skip images larger than',
-							'sub'     => 'A number input as row content — sized to its value.',
+							'sub'     => 'A number input as row content - sized to its value.',
 							'content' => '<input type="number" min="1" max="200" value="24" /> megapixels',
 						),
 						array(
@@ -234,18 +234,18 @@ final class Perxel_UI_Showcase {
 						),
 						array(
 							'summary' => 'Managed .htaccess block',
-							'sub'     => 'A disclosure row — click to reveal.',
+							'sub'     => 'A disclosure row - click to reveal.',
 							'details' => Perxel_UI::code( "# BEGIN Perxel Image Optimizer\n<IfModule mod_rewrite.c>\n  RewriteEngine On\n  RewriteCond %{HTTP_ACCEPT} image/webp\n  RewriteCond %{REQUEST_FILENAME}.webp -f\n  RewriteRule ^(.+)\\.(jpe?g|png)$ $1.$2.webp [T=image/webp,L]\n</IfModule>\n# END Perxel Image Optimizer" ),
 						),
 						array(
 							'summary' => '2025',
-							'sub'     => 'Disclosure with a right-edge value — a count sits just left of the chevron.',
+							'sub'     => 'Disclosure with a right-edge value - a count sits just left of the chevron.',
 							'content' => '8 months &middot; 842 images',
 							'details' => Perxel_UI::code( "08/2025   420 images\n07/2025   180 images\n06/2025   242 images" ),
 						),
 						array(
 							'summary' => 'WebP conversion is supported',
-							'sub'     => 'Disclosure with an icon — the status dot reads pass/fail closed.',
+							'sub'     => 'Disclosure with an icon - the status dot reads pass/fail closed.',
 							'icon'    => 'good',
 							'details' => Perxel_UI::code( "Engine       Imagick - PNG lossless available\nPHP          8.2.0\nMemory limit 256M" ),
 						),
@@ -262,7 +262,7 @@ final class Perxel_UI_Showcase {
 
 		echo '<h2>Form controls</h2>';
 		echo '<p class="pxui-field"><label><input type="checkbox" checked /> Checkbox renders as a toggle</label></p>';
-		echo '<p class="pxui-field"><label><input type="checkbox" class="pxui-checkbox" checked /> With <code>.pxui-checkbox</code> — a real square box</label></p>';
+		echo '<p class="pxui-field"><label><input type="checkbox" class="pxui-checkbox" checked /> With <code>.pxui-checkbox</code> - a real square box</label></p>';
 		echo '<p class="pxui-field">Checkbox group: ' . Perxel_UI::checkbox_group(
 			array(
 				'name'     => 'demo_group',

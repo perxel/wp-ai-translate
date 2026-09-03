@@ -8,8 +8,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * ID lookup tool: paste post/product IDs in one language, get their WPML
- * counterparts in another, same order. Pure read-only lookup — no run, no
- * writes — so it runs synchronously in a self-submitting GET form. Post type is
+ * counterparts in another, same order. Pure read-only lookup - no run, no
+ * writes - so it runs synchronously in a self-submitting GET form. Post type is
  * auto-detected per ID.
  */
 class IdLookup {

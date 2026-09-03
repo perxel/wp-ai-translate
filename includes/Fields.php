@@ -31,7 +31,7 @@ class Fields {
 
 	// The "Data to process" checklist on the confirm page, and the granular
 	// per-type apply functions in Translator / PostSync. 'taxonomy' and
-	// 'thumbnail' contribute no LLM field defs at all — both are structural.
+	// 'thumbnail' contribute no LLM field defs at all - both are structural.
 	const DATA_TYPES = array( 'title', 'content', 'acf', 'rankmath', 'taxonomy', 'thumbnail' );
 
 	public static function get_title_field_defs() {

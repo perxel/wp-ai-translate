@@ -39,6 +39,7 @@ class Admin {
 		add_action( 'admin_post_pxat_dashboard_select', array( Dashboard::class, 'handle_select' ) );
 
 		add_action( 'wp_ajax_pxat_test_api_key', array( $this, 'ajax_test_api_key' ) );
+		add_action( 'wp_ajax_pxat_test_model', array( $this, 'ajax_test_model' ) );
 		add_action( 'wp_ajax_pxat_post_search', array( Dashboard::class, 'ajax_post_search' ) );
 		add_action( 'wp_ajax_pxat_process', array( Progress::class, 'ajax_process' ) );
 		add_action( 'wp_ajax_pxat_retry', array( Progress::class, 'ajax_retry' ) );
@@ -69,10 +70,10 @@ class Admin {
 		);
 
 		foreach ( $submenus as $slug => $entry ) {
-			add_submenu_page( self::MENU, $entry[0] . ' – ' . PXAT_NAME, $entry[0], 'manage_options', $slug, $entry[1] );
+			add_submenu_page( self::MENU, $entry[0] . ' - ' . PXAT_NAME, $entry[0], 'manage_options', $slug, $entry[1] );
 		}
 
-		// Flow screens — reachable mid-task, kept off the menu.
+		// Flow screens - reachable mid-task, kept off the menu.
 		add_submenu_page( null, __( 'Confirm translation', 'perxel-ai-translate' ), '', 'manage_options', self::PAGE_CONFIRM, array( Confirm::class, 'render' ) );
 		add_submenu_page( null, __( 'Translation run', 'perxel-ai-translate' ), '', 'manage_options', self::PAGE_PROGRESS, array( Progress::class, 'render' ) );
 
@@ -96,7 +97,7 @@ class Admin {
 	}
 
 	/**
-	 * Whether the current user may see the bundled UI-kit showcase — the
+	 * Whether the current user may see the bundled UI-kit showcase - the
 	 * maintainer only, and only in a build that still ships showcase/.
 	 *
 	 * @return bool
@@ -331,9 +332,11 @@ class Admin {
 	public function render_settings() {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- display-only flash flags set by our own redirect.
 		$vars = array(
-			'settings'  => Settings::all(),
-			'updated'   => isset( $_GET['updated'] ),
-			'was_reset' => isset( $_GET['reset'] ),
+			'settings'    => Settings::all(),
+			'model'       => Settings::model(),
+			'environment' => self::environment(),
+			'updated'     => isset( $_GET['updated'] ),
+			'was_reset'   => isset( $_GET['reset'] ),
 		);
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
@@ -482,6 +485,66 @@ class Admin {
 				'usage'   => $result['usage'] ?? null,
 				'limit'   => $result['limit'] ?? null,
 			)
+		);
+	}
+
+	public function ajax_test_model() {
+		check_ajax_referer( self::NONCE, 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'perxel-ai-translate' ) ), 403 );
+		}
+
+		$model_id = isset( $_POST['model_id'] ) ? sanitize_text_field( wp_unslash( $_POST['model_id'] ) ) : '';
+		$result   = OpenRouter::test_model( $model_id );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+		}
+
+		wp_send_json_success(
+			array(
+				'id'         => $result['id'],
+				'label'      => $result['label'],
+				'input'      => $result['input'],
+				'output'     => $result['output'],
+				'context'    => $result['context'],
+				'max_output' => $result['max_output'],
+				'summary'    => sprintf(
+					/* translators: 1: model name, 2: input price, 3: output price, 4: context length. */
+					__( '%1$s - $%2$s in / $%3$s out per 1M tokens · %4$s context', 'perxel-ai-translate' ),
+					$result['label'],
+					rtrim( rtrim( number_format( $result['input'], 4 ), '0' ), '.' ),
+					rtrim( rtrim( number_format( $result['output'], 4 ), '0' ), '.' ),
+					$result['context'] ? number_format_i18n( $result['context'] ) . ' tokens' : __( 'unknown', 'perxel-ai-translate' )
+				),
+			)
+		);
+	}
+
+	/**
+	 * Read-only environment snapshot for the Settings screen's Environment
+	 * section - the equivalents of "can this plugin do its job".
+	 *
+	 * @return array
+	 */
+	public static function environment() {
+		$languages = Wpml::get_active_languages();
+		$settings  = Settings::all();
+
+		return array(
+			'wpml_active'   => defined( 'ICL_SITEPRESS_VERSION' ),
+			'wpml_version'  => defined( 'ICL_SITEPRESS_VERSION' ) ? ICL_SITEPRESS_VERSION : '',
+			'lang_count'    => count( $languages ),
+			'default_lang'  => (string) Wpml::get_default_language(),
+			'api_key_set'   => Settings::has_api_key(),
+			'api_key_ok'    => ! empty( $settings['api_key_verified'] ),
+			'model_id'      => Settings::model()['id'],
+			'model_ok'      => Settings::model_verified(),
+			'php_version'   => PHP_VERSION,
+			'max_execution' => (int) ini_get( 'max_execution_time' ),
+			'acf'           => class_exists( 'ACF' ) || function_exists( 'get_field' ),
+			'rankmath'      => defined( 'RANK_MATH_VERSION' ),
 		);
 	}
 }

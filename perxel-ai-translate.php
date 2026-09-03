@@ -1,9 +1,9 @@
 <?php
 /**
  * Plugin Name:       Perxel AI Translate
- * Plugin URI:        https://github.com/phucbm/perxel-ai-translate
+ * Plugin URI:        https://github.com/perxel/wp-ai-translate
  * Description:        Bulk-translate posts, pages and custom post types across WPML languages with an AI model of your choice via OpenRouter.
- * Version:           0.0.2
+ * Version:           0.0.3
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Perxel
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PXAT_VERSION', '0.0.2' );
+define( 'PXAT_VERSION', '0.0.3' );
 define( 'PXAT_FILE', __FILE__ );
 define( 'PXAT_DIR', __DIR__ );
 define( 'PXAT_URL', untrailingslashit( plugin_dir_url( __FILE__ ) ) );
@@ -32,24 +32,18 @@ define( 'PXAT_OPTION_KEY', 'pxat_settings' );
 define( 'PXAT_NAME', 'Perxel AI Translate' );
 
 /**
- * Chat-completion models offered to the user, in dropdown order. Prices are USD
- * per 1M tokens, matching OpenRouter's own unit. Filterable via
- * `pxat_openrouter_models`, or define this constant to replace the list.
+ * Model id used until the site owner sets their own on the Settings screen.
+ * The model is a setting, never hard-coded work - this is only a first-run
+ * placeholder.
  */
-if ( ! defined( 'PXAT_OPENROUTER_MODELS' ) ) {
-	define(
-		'PXAT_OPENROUTER_MODELS',
-		array(
-			array(
-				'id'                => 'google/gemini-2.0-flash-001',
-				'label'             => 'Gemini 2.0 Flash',
-				'input'             => 0.10,
-				'output'            => 0.40,
-				'max_output_tokens' => 8192,
-			),
-		)
-	);
-}
+define( 'PXAT_DEFAULT_MODEL', 'google/gemini-2.0-flash-001' );
+
+/**
+ * Completion-token ceiling assumed for a model whose real limit hasn't been
+ * fetched yet (the "Test model" button fills the real one in). Bounds how many
+ * posts a batched request groups.
+ */
+define( 'PXAT_DEFAULT_MAX_OUTPUT', 8192 );
 
 /**
  * PSR-4-ish autoloader for Perxel\AITranslate\* -> includes/*.php.
@@ -72,7 +66,7 @@ spl_autoload_register(
 /**
  * Shared Perxel admin-UI kit. Standalone, versioned independently of this
  * plugin (github.com/perxel/wp-plugin-ui); vendored into vendor/perxel-ui/ via
- * bin/update-ui.sh. Overwriting it can never change plugin behaviour — the
+ * bin/update-ui.sh. Overwriting it can never change plugin behaviour - the
  * loader keeps the highest registered version across active plugins and a
  * second copy is inert. We host the kit's component showcase as a hidden
  * maintainer-only screen, so suppress its own Tools page.
@@ -81,7 +75,7 @@ define( 'PERXEL_UI_SHOWCASE_HOSTED', true );
 
 if ( is_readable( PXAT_DIR . '/vendor/perxel-ui/loader.php' ) ) {
 	require_once PXAT_DIR . '/vendor/perxel-ui/loader.php';
-	Perxel_UI_Loader::register( '0.16.0', PXAT_DIR . '/vendor/perxel-ui', PXAT_URL . '/vendor/perxel-ui' );
+	Perxel_UI_Loader::register( '0.17.1', PXAT_DIR . '/vendor/perxel-ui', PXAT_URL . '/vendor/perxel-ui' );
 }
 
 register_activation_hook( __FILE__, array( 'Perxel\AITranslate\Plugin', 'activate' ) );

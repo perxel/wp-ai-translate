@@ -35,7 +35,7 @@ class PostTypes {
 	}
 
 	/**
-	 * [ post_type slug => plural label ] for every translatable post type — the
+	 * [ post_type slug => plural label ] for every translatable post type - the
 	 * Dashboard's "open a list" links.
 	 *
 	 * @return array<string,string>

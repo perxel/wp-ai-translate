@@ -33,7 +33,9 @@ class Runs {
 	 * ------------------------------------------------------------------- */
 
 	/**
-	 * @param array $data source_lang, dest_lang, model, data_mode, custom_types (array), batched (bool).
+	 * @param array $data source_lang, dest_lang, data_mode, custom_types (array),
+	 *              batched (bool), and the model snapshot: model, model_label,
+	 *              input_rate, output_rate, max_output.
 	 * @return int New run id.
 	 */
 	public static function create( array $data ) {
@@ -50,6 +52,10 @@ class Runs {
 				'created_by'      => $user ? (int) $user->ID : 0,
 				'created_by_name' => $user && $user->exists() ? $user->display_name : '',
 				'model'           => (string) ( $data['model'] ?? '' ),
+				'model_label'     => (string) ( $data['model_label'] ?? '' ),
+				'input_rate'      => (float) ( $data['input_rate'] ?? 0 ),
+				'output_rate'     => (float) ( $data['output_rate'] ?? 0 ),
+				'max_output'      => (int) ( $data['max_output'] ?? 0 ),
 				'source_lang'     => (string) ( $data['source_lang'] ?? '' ),
 				'dest_lang'       => (string) ( $data['dest_lang'] ?? '' ),
 				'data_mode'       => 'custom' === ( $data['data_mode'] ?? 'full' ) ? 'custom' : 'full',
@@ -58,7 +64,7 @@ class Runs {
 				'status'          => 'running',
 				'active_seconds'  => 0,
 			),
-			array( '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%f' )
+			array( '%s', '%s', '%d', '%s', '%s', '%s', '%f', '%f', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%f' )
 		);
 
 		return (int) $wpdb->insert_id;
@@ -101,8 +107,23 @@ class Runs {
 	}
 
 	/**
+	 * @param array $row Raw run row (ARRAY_A).
+	 * @return array Typed run row, custom_types as an array.
+	 */
+	protected static function hydrate_run( array $row ) {
+		$row['id']             = (int) $row['id'];
+		$row['batched']        = (bool) $row['batched'];
+		$row['active_seconds'] = (float) $row['active_seconds'];
+		$row['input_rate']     = (float) ( $row['input_rate'] ?? 0 );
+		$row['output_rate']    = (float) ( $row['output_rate'] ?? 0 );
+		$row['max_output']     = (int) ( $row['max_output'] ?? 0 );
+		$row['custom_types']   = '' !== $row['custom_types'] ? explode( ',', $row['custom_types'] ) : array();
+		return $row;
+	}
+
+	/**
 	 * @param int $run_id Run id.
-	 * @return array|null Run row, custom_types as an array.
+	 * @return array|null Typed run row.
 	 */
 	public static function get( $run_id ) {
 		global $wpdb;
@@ -112,22 +133,13 @@ class Runs {
 			ARRAY_A
 		);
 
-		if ( ! $row ) {
-			return null;
-		}
-
-		$row['id']             = (int) $row['id'];
-		$row['batched']        = (bool) $row['batched'];
-		$row['active_seconds'] = (float) $row['active_seconds'];
-		$row['custom_types']   = '' !== $row['custom_types'] ? explode( ',', $row['custom_types'] ) : array();
-
-		return $row;
+		return $row ? self::hydrate_run( $row ) : null;
 	}
 
 	/**
 	 * @param int $limit  Max rows.
 	 * @param int $offset Offset.
-	 * @return array Run rows, newest first.
+	 * @return array Typed run rows, newest first.
 	 */
 	public static function list_runs( $limit = 50, $offset = 0 ) {
 		global $wpdb;
@@ -141,16 +153,7 @@ class Runs {
 			ARRAY_A
 		);
 
-		return array_map(
-			static function ( $row ) {
-				$row['id']             = (int) $row['id'];
-				$row['batched']        = (bool) $row['batched'];
-				$row['active_seconds'] = (float) $row['active_seconds'];
-				$row['custom_types']   = '' !== $row['custom_types'] ? explode( ',', $row['custom_types'] ) : array();
-				return $row;
-			},
-			$rows ? $rows : array()
-		);
+		return array_map( array( __CLASS__, 'hydrate_run' ), $rows ? $rows : array() );
 	}
 
 	public static function count_runs() {
@@ -541,7 +544,7 @@ class Runs {
 	}
 
 	/**
-	 * All-time totals across every run — the Dashboard's "at a glance".
+	 * All-time totals across every run - the Dashboard's "at a glance".
 	 *
 	 * @return array runs, posts_done, warnings, apply_errors, cost_usd, tokens.
 	 */

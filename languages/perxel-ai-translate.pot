@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Perxel AI Translate 0.0.1\n"
-"Report-Msgid-Bugs-To: https://github.com/phucbm/perxel-ai-translate/issues\n"
+"Report-Msgid-Bugs-To: https://github.com/perxel/wp-ai-translate/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -13,5 +13,5 @@ msgstr ""
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Domain: perxel-ai-translate\n"
 
-# Strings are extracted at build time with `wp i18n make-pot .` — this header is
+# Strings are extracted at build time with `wp i18n make-pot .` - this header is
 # a placeholder so translators and tooling have a file to start from.

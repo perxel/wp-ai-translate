@@ -113,8 +113,8 @@ class OpenRouter {
 			$log = static function ( $message ) {};
 		}
 
-		$api_key = Settings::get( 'api_key' );
-		$model   = self::get_model( $model_id );
+		$api_key  = Settings::api_key();
+		$model_id = '' !== trim( (string) $model_id ) ? trim( (string) $model_id ) : Settings::model()['id'];
 
 		if ( empty( $api_key ) ) {
 			return new WP_Error(
@@ -128,7 +128,7 @@ class OpenRouter {
 		}
 
 		$body = array(
-			'model'           => $model['id'],
+			'model'           => $model_id,
 			'response_format' => array( 'type' => 'json_object' ),
 			'messages'        => $messages,
 		);
@@ -216,41 +216,12 @@ class OpenRouter {
 	}
 
 	/**
-	 * @param string $model_id OpenRouter model id.
-	 * @return int Token budget one batch request should stay under, or 0 if the model has none configured.
+	 * @param int $max_output_tokens The model's completion-token ceiling (Settings::model()['max_output']).
+	 * @return int Token budget one batched request should stay under.
 	 */
-	public static function get_batch_output_budget( $model_id ) {
-		$model      = self::get_model( $model_id );
-		$max_output = isset( $model['max_output_tokens'] ) ? (int) $model['max_output_tokens'] : 0;
-
-		return $max_output > 0 ? (int) floor( $max_output * self::BATCH_OUTPUT_SAFETY_FACTOR ) : 0;
-	}
-
-	/**
-	 * @return array[] All configured models: {id, label, input, output, max_output_tokens?}.
-	 */
-	public static function get_models() {
-		/**
-		 * Filters the list of OpenRouter models offered to the user.
-		 *
-		 * @param array[] $models Each entry: {id, label, input, output, max_output_tokens?}.
-		 */
-		$models = apply_filters( 'pxat_openrouter_models', PXAT_OPENROUTER_MODELS );
-
-		return ( is_array( $models ) && $models ) ? array_values( $models ) : PXAT_OPENROUTER_MODELS;
-	}
-
-	/**
-	 * @param string $model_id OpenRouter model id.
-	 * @return array Matching model def, or the first configured model if $model_id is empty/unknown.
-	 */
-	public static function get_model( $model_id ) {
-		foreach ( self::get_models() as $model ) {
-			if ( $model['id'] === $model_id ) {
-				return $model;
-			}
-		}
-		return self::get_models()[0];
+	public static function get_batch_output_budget( $max_output_tokens ) {
+		$max_output_tokens = (int) $max_output_tokens > 0 ? (int) $max_output_tokens : PXAT_DEFAULT_MAX_OUTPUT;
+		return (int) floor( $max_output_tokens * self::BATCH_OUTPUT_SAFETY_FACTOR );
 	}
 
 	/**
@@ -270,14 +241,75 @@ class OpenRouter {
 	}
 
 	/**
-	 * @param int    $prompt_tokens     Prompt token count.
-	 * @param int    $completion_tokens Completion token count.
-	 * @param string $model_id          OpenRouter model id.
+	 * @param int   $prompt_tokens     Prompt token count.
+	 * @param int   $completion_tokens Completion token count.
+	 * @param float $input_rate        USD per 1M prompt tokens.
+	 * @param float $output_rate       USD per 1M completion tokens.
 	 * @return float USD cost.
 	 */
-	public static function estimate_cost( $prompt_tokens, $completion_tokens, $model_id ) {
-		$model = self::get_model( $model_id );
-		return ( $prompt_tokens / 1000000 ) * $model['input'] + ( $completion_tokens / 1000000 ) * $model['output'];
+	public static function estimate_cost( $prompt_tokens, $completion_tokens, $input_rate, $output_rate ) {
+		return ( $prompt_tokens / 1000000 ) * (float) $input_rate + ( $completion_tokens / 1000000 ) * (float) $output_rate;
+	}
+
+	/**
+	 * Validate a model id against OpenRouter's model catalogue and pull its
+	 * pricing / limits. Costs nothing (a GET on the public list).
+	 *
+	 * @param string $model_id OpenRouter model id, e.g. "google/gemini-2.0-flash-001".
+	 * @return array|WP_Error { id, label, input, output, context, max_output } on success.
+	 */
+	public static function test_model( $model_id ) {
+		$model_id = trim( (string) $model_id );
+		if ( '' === $model_id ) {
+			return new WP_Error( 'pxat_no_model', __( 'Enter a model id first.', 'perxel-ai-translate' ) );
+		}
+
+		$response = wp_remote_get(
+			'https://openrouter.ai/api/v1/models',
+			array( 'timeout' => 20 )
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		$json = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( $code < 200 || $code >= 300 || empty( $json['data'] ) || ! is_array( $json['data'] ) ) {
+			return new WP_Error( 'pxat_model_lookup_failed', __( 'Could not reach OpenRouter to check the model.', 'perxel-ai-translate' ) );
+		}
+
+		foreach ( $json['data'] as $model ) {
+			if ( ! isset( $model['id'] ) || $model['id'] !== $model_id ) {
+				continue;
+			}
+
+			$pricing    = isset( $model['pricing'] ) && is_array( $model['pricing'] ) ? $model['pricing'] : array();
+			$max_output = 0;
+			if ( isset( $model['top_provider']['max_completion_tokens'] ) ) {
+				$max_output = (int) $model['top_provider']['max_completion_tokens'];
+			}
+
+			return array(
+				'id'         => $model_id,
+				'label'      => isset( $model['name'] ) ? (string) $model['name'] : $model_id,
+				// OpenRouter quotes USD per token; the plugin shows per 1M.
+				'input'      => isset( $pricing['prompt'] ) ? (float) $pricing['prompt'] * 1000000 : 0.0,
+				'output'     => isset( $pricing['completion'] ) ? (float) $pricing['completion'] * 1000000 : 0.0,
+				'context'    => isset( $model['context_length'] ) ? (int) $model['context_length'] : 0,
+				'max_output' => $max_output,
+			);
+		}
+
+		return new WP_Error(
+			'pxat_model_unknown',
+			sprintf(
+				/* translators: %s: model id. */
+				__( 'OpenRouter has no model with the id "%s". Check it on openrouter.ai/models.', 'perxel-ai-translate' ),
+				$model_id
+			)
+		);
 	}
 
 	/**

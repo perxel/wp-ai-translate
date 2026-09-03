@@ -30,7 +30,7 @@ class Wpml {
 	}
 
 	/**
-	 * The WPML language code a post is actually tagged with right now —
+	 * The WPML language code a post is actually tagged with right now -
 	 * independent of whatever "source_lang" the UI has selected. Callers must
 	 * verify a post's real language matches the chosen source_lang before
 	 * treating it as a translation source.

@@ -27,7 +27,7 @@ if ( '' !== $error ) {
 	return;
 }
 ?>
-<p class="pxat-muted"><?php esc_html_e( 'Paste a list of IDs (commas, spaces or new lines) to get their matching translation IDs, in the same order. Post type is detected per ID. Read-only — nothing is written.', 'perxel-ai-translate' ); ?></p>
+<p class="pxat-muted"><?php esc_html_e( 'Paste a list of IDs (commas, spaces or new lines) to get their matching translation IDs, in the same order. Post type is detected per ID. Read-only - nothing is written.', 'perxel-ai-translate' ); ?></p>
 
 <form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="pxat-lookup">
 	<input type="hidden" name="page" value="<?php echo esc_attr( Admin::PAGE_ID_LOOKUP ); ?>" />

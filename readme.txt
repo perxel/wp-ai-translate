@@ -12,7 +12,7 @@ Bulk-translate posts, pages and custom post types across WPML languages with an 
 
 == Description ==
 
-Perxel AI Translate adds a bulk action to your post lists that sends the selected posts to an AI model (via OpenRouter) and writes the translations back as WPML translations — without spending WPML's own AI translation credits.
+Perxel AI Translate adds a bulk action to your post lists that sends the selected posts to an AI model (via OpenRouter) and writes the translations back as WPML translations - without spending WPML's own AI translation credits.
 
 It is aimed at sites that already run **WPML** and want to translate a lot of content quickly, with a review step before anything is published.
 
@@ -20,16 +20,16 @@ It is aimed at sites that already run **WPML** and want to translate a lot of co
 
 * Post title and slug
 * Excerpt and content (HTML and page-builder shortcodes such as `[vc_row]` are preserved; only the readable text is translated)
-* Advanced Custom Fields text, textarea and WYSIWYG fields (including fields nested in Groups, Repeaters and Flexible Content) — other ACF field types are copied as-is
+* Advanced Custom Fields text, textarea and WYSIWYG fields (including fields nested in Groups, Repeaters and Flexible Content) - other ACF field types are copied as-is
 * Rank Math SEO fields (title, description, focus keyword, social meta) when Rank Math is active
-* Taxonomy terms — remapped to their WPML translations
+* Taxonomy terms - remapped to their WPML translations
 * Featured image
 
 **How it works**
 
 1. From the **AI Translate** menu, pick a few posts, or open any post list, tick some rows and choose **Perxel AI Translate…** from the bulk actions (or use *Translate this page* in the toolbar while editing one post).
 2. On the confirm screen, pick the destination language and which data to process. You get a cost and token estimate before anything runs.
-3. Press **Start**. Each post is translated and written straight into WordPress as a WPML translation; review the result in the normal editor. Close the tab any time — the run resumes where it left off.
+3. Press **Start**. Each post is translated and written straight into WordPress as a WPML translation; review the result in the normal editor. Close the tab any time - the run resumes where it left off.
 4. Every run is kept under **AI Translate → History** until you delete it.
 
 Turn on **Faster batched requests** on the confirm screen to send several short posts per model request.
@@ -46,7 +46,8 @@ This plugin connects to the **OpenRouter API** (https://openrouter.ai) to perfor
 **What is sent, and when**
 
 * When you run a translation: the text content of the posts you selected (title, excerpt, content, the ACF/SEO fields listed above), the source and destination language codes, and the AI model you chose are sent to OpenRouter, which forwards the request to the model provider you selected (for example Google, OpenAI or Anthropic, depending on the model).
-* When you click *Test* on the settings screen: your API key is sent to OpenRouter's key-info endpoint to check that it is valid. No post content is sent.
+* When you click *Test* on the settings screen: your API key is sent to OpenRouter's key-info endpoint (`/api/v1/auth/key`) to check that it is valid. No post content is sent.
+* When you click *Test model* on the settings screen: the plugin fetches OpenRouter's public model list (`/api/v1/models`, no authentication) to confirm the model id exists and read its pricing. No key or post content is sent.
 
 Data is sent only when you explicitly start a translation or test the key. Your OpenRouter API key is stored in your site's database and sent as an authorization header with each request.
 
@@ -73,7 +74,7 @@ No. The plugin depends on WPML for language configuration and translation linkin
 
 = Which AI models can I use? =
 
-The plugin ships with one economical default model. Developers can change or extend the list with the `pxat_openrouter_models` filter using any model id available on OpenRouter.
+Any model id listed on openrouter.ai/models. Set it on **AI Translate → Settings**, then press *Test model* to confirm it and pull its pricing. The default is an economical Gemini Flash model until you change it.
 
 = Where does the plugin store its runs? =
 
@@ -85,16 +86,21 @@ Deleting the plugin removes its settings and those tables. Translations already 
 
 == Screenshots ==
 
-1. Dashboard — setup state, post picker and all-time totals.
-2. Confirm screen — language, data selection and cost estimate.
-3. Run screen — live translation progress.
+1. Dashboard - setup state, post picker and all-time totals.
+2. Confirm screen - language, data selection and cost estimate.
+3. Run screen - live translation progress.
 4. History of every run.
 
 == Changelog ==
 
+= 0.0.3 =
+* The AI model is now a setting, not code. Enter any OpenRouter model id on the Settings screen and press "Test model" to verify it and fetch its live pricing. No models are hard-coded any more.
+* Settings screen: new Environment section (WPML, languages, API key, model, PHP), the system prompt shown as a read-only field, consistent field styling from the shared UI kit.
+* Shared UI kit updated to 0.17.1 (text-field / textarea consistency, stacked rows).
+
 = 0.0.2 =
 * Rebuilt the admin experience on the shared Perxel UI kit: a consistent left-sidebar layout across every screen and a new Dashboard landing page.
-* Removed the manual preview/apply step — every run translates and writes straight into WordPress; review the result in the editor.
+* Removed the manual preview/apply step - every run translates and writes straight into WordPress; review the result in the editor.
 * Replaced the three run modes with one optional "Faster batched requests" toggle.
 * Moved the run queue from JSON files to custom database tables (faster history, cleaner concurrency, no uploads-dir dependency).
 * Menu moved from Settings to its own top-level "AI Translate" menu.

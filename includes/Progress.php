@@ -82,7 +82,7 @@ class Progress {
 				'items'       => array_map( array( __CLASS__, 'with_snapshots' ), Runs::items( $run_id ) ),
 				'log_lines'   => Runs::log_lines( $run_id ),
 				'languages'   => $languages,
-				'model_label' => OpenRouter::get_model( $run['model'] )['label'],
+				'model_label' => '' !== $run['model_label'] ? $run['model_label'] : $run['model'],
 				'elapsed'     => Runs::duration_seconds( $run_id ),
 			),
 			array( 'actions' => $actions )

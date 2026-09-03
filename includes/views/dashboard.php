@@ -23,7 +23,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use Perxel\AITranslate\Admin;
 use Perxel\AITranslate\Format;
-use Perxel\AITranslate\OpenRouter;
 use Perxel\AITranslate\Runs;
 use Perxel\AITranslate\Wpml;
 
@@ -174,7 +173,7 @@ if ( $recent ) {
 				Wpml::language_label( $languages, $run['source_lang'] ),
 				Wpml::language_label( $languages, $run['dest_lang'] )
 			),
-			'sub'     => esc_html( Format::time_ago( $run['created_at'] ) . ' · ' . OpenRouter::get_model( $run['model'] )['label'] ),
+			'sub'     => esc_html( Format::time_ago( $run['created_at'] ) . ' · ' . ( '' !== $run['model_label'] ? $run['model_label'] : $run['model'] ) ),
 			'content' => esc_html( number_format_i18n( $counts['done'] ) . ' / ' . number_format_i18n( $counts['total'] ) ),
 			'details' => '<a class="button button-small" href="' . esc_url(
 				add_query_arg(
