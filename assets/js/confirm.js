@@ -54,5 +54,21 @@
 		scheduleSubmit();
 	} );
 
+	// Back-button: the browser restores this page from the bfcache with the
+	// start buttons still disabled and the "updating" spinner still showing
+	// (both were left mid-submit). Reset them so the screen is usable again.
+	window.addEventListener( 'pageshow', function ( e ) {
+		if ( ! e.persisted ) {
+			return;
+		}
+		clearTimeout( timer );
+		if ( status ) {
+			status.hidden = true;
+		}
+		startBtns.forEach( function ( b ) {
+			b.disabled = false;
+		} );
+	} );
+
 	syncFields();
 }() );

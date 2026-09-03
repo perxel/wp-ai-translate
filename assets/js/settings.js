@@ -63,8 +63,23 @@
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: body.toString()
 		} ).then( function ( r ) {
+			// A 401/403 is an expired nonce (tab open past its lifetime).
+			if ( 401 === r.status || 403 === r.status ) {
+				var expiredErr = new Error( 'session expired' );
+				expiredErr.expired = true;
+				throw expiredErr;
+			}
+			if ( ! r.ok ) {
+				throw new Error( 'HTTP ' + r.status );
+			}
 			return r.json();
 		} );
+	}
+
+	function failMsg( err ) {
+		return ( err && err.expired )
+			? __( 'Your session expired. Reload the page.', 'perxel-ai-translate' )
+			: __( 'Request failed. Check your connection and try again.', 'perxel-ai-translate' );
 	}
 
 	function testKey() {
@@ -81,6 +96,13 @@
 			}
 			setDot( keyInput, 'bad' );
 			setSub( 'pxat-key-sub', ( res && res.data && res.data.message ) || __( 'Could not validate the key.', 'perxel-ai-translate' ) );
+			if ( hidden.keyVerified ) {
+				hidden.keyVerified.value = '';
+			}
+			return false;
+		} ).catch( function ( err ) {
+			setDot( keyInput, 'bad' );
+			setSub( 'pxat-key-sub', failMsg( err ) );
 			if ( hidden.keyVerified ) {
 				hidden.keyVerified.value = '';
 			}
@@ -108,6 +130,11 @@
 			setSub( 'pxat-model-detail', ( res && res.data && res.data.message ) || __( 'Model not found.', 'perxel-ai-translate' ) );
 			if ( hidden.modelVerified ) { hidden.modelVerified.value = ''; }
 			return false;
+		} ).catch( function ( err ) {
+			setDot( modelInput, 'bad' );
+			setSub( 'pxat-model-detail', failMsg( err ) );
+			if ( hidden.modelVerified ) { hidden.modelVerified.value = ''; }
+			return false;
 		} );
 	}
 
@@ -122,6 +149,8 @@
 			testBtn.textContent = originalLabel;
 		}
 
+		// testKey / testModel each own their own failure reporting and never
+		// reject, so the chain just needs to re-enable the button at the end.
 		var chain = Promise.resolve();
 		if ( which.key ) {
 			chain = chain.then( testKey );
@@ -129,10 +158,7 @@
 		if ( which.model ) {
 			chain = chain.then( testModel );
 		}
-		chain.then( done, function () {
-			setSub( 'pxat-key-sub', __( 'Request failed.', 'perxel-ai-translate' ) );
-			done();
-		} );
+		chain.then( done, done );
 	}
 
 	testBtn.addEventListener( 'click', function () {

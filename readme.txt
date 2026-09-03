@@ -104,6 +104,11 @@ Deleting the plugin removes its settings and those tables. Translations already 
 * Run screen: **Start translating** no longer stays visible while a run is in progress (a WordPress button style was overriding the hidden state).
 * **Stop** now gives feedback: the button reads "Stopping..." while the current post finishes, then the screen settles into a **Resume translating** state with a one-line status ("Stopped. Press Resume to translate the remaining posts.").
 * If a translate request fails, the run screen recovers instead of freezing, telling you to press Resume to retry; if the run had actually finished, it reloads into the completion screen.
+* **Retry** on a failed row now shows "Retrying..." and re-enables itself with a reason if the retry does not go through, instead of staying greyed out forever. Clearing the last error reloads into the "Complete" screen.
+* Every admin request (run loop, status poll, Retry, Settings "Test") now recognises an expired session and tells you to reload the page, rather than failing silently. A dropped connection during a run is surfaced too.
+* Settings "Test": a failed model check reports on the model row itself (it no longer gets stuck on "Checking...", and no longer mislabels the API-key row).
+* Confirm screen: using the browser Back button no longer leaves the Start buttons disabled.
+* ID lookup: the "Copied" confirmation now only shows when the copy actually succeeded.
 
 = 0.0.12 =
 * When your OpenRouter key has a credit limit set, the Settings > API key row shows how much of it is left ("Verified · $37.66 left of $50.00") and turns amber below 20%, red at zero.
