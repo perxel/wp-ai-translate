@@ -20,7 +20,7 @@ class Admin {
 	const PAGE_HISTORY   = 'pxat-history';
 	const PAGE_ID_LOOKUP = 'pxat-id-lookup';
 	const PAGE_SETTINGS  = 'pxat-settings';
-	const PAGE_CONFIRM   = 'pxat-confirm';
+	const PAGE_CONFIRM   = 'pxat-cart';
 	const PAGE_PROGRESS  = 'pxat-progress';
 	const PAGE_UI        = 'pxat-ui';
 
@@ -75,7 +75,6 @@ class Admin {
 
 		$submenus = array(
 			self::PAGE_DASHBOARD => array( __( 'Dashboard', 'perxel-ai-translate' ), array( $this, 'render_dashboard' ), __( 'Dashboard', 'perxel-ai-translate' ) ),
-			self::PAGE_CONFIRM   => array( $cart_label, array( Confirm::class, 'render' ), __( 'Translation cart', 'perxel-ai-translate' ) ),
 			self::PAGE_HISTORY   => array( __( 'History', 'perxel-ai-translate' ), array( $this, 'render_history' ), __( 'History', 'perxel-ai-translate' ) ),
 			self::PAGE_ID_LOOKUP => array( __( 'ID lookup', 'perxel-ai-translate' ), array( $this, 'render_id_lookup' ), __( 'ID lookup', 'perxel-ai-translate' ) ),
 			self::PAGE_SETTINGS  => array( __( 'Settings', 'perxel-ai-translate' ), array( $this, 'render_settings' ), __( 'Settings', 'perxel-ai-translate' ) ),
@@ -85,7 +84,17 @@ class Admin {
 			add_submenu_page( self::MENU, $entry[2] . ' - ' . PXAT_NAME, $entry[0], 'manage_options', $slug, $entry[1] );
 		}
 
-		// Flow screen - reachable mid-task, kept off the menu.
+		// Cart + run screens - reachable mid-task via redirect from the bulk
+		// action / admin bar / re-run. The cart only joins the menu while it
+		// holds posts; empty, it is off the menu but still renders on visit.
+		add_submenu_page(
+			$cart_count > 0 ? self::MENU : null,
+			__( 'Translation cart', 'perxel-ai-translate' ) . ' - ' . PXAT_NAME,
+			$cart_label,
+			'manage_options',
+			self::PAGE_CONFIRM,
+			array( Confirm::class, 'render' )
+		);
 		add_submenu_page( null, __( 'Translation run', 'perxel-ai-translate' ), '', 'manage_options', self::PAGE_PROGRESS, array( Progress::class, 'render' ) );
 
 		$titles = array(
@@ -230,11 +239,15 @@ class Admin {
 
 		$pages = array(
 			self::PAGE_DASHBOARD => __( 'Dashboard', 'perxel-ai-translate' ),
-			self::PAGE_CONFIRM   => __( 'Translation cart', 'perxel-ai-translate' ),
 			self::PAGE_HISTORY   => __( 'History', 'perxel-ai-translate' ),
 			self::PAGE_ID_LOOKUP => __( 'ID lookup', 'perxel-ai-translate' ),
 			self::PAGE_SETTINGS  => __( 'Settings', 'perxel-ai-translate' ),
 		);
+
+		// The cart joins the sidebar only while it holds posts (or is on screen).
+		if ( Cart::count() > 0 || self::PAGE_CONFIRM === $current ) {
+			$pages[ self::PAGE_CONFIRM ] = __( 'Translation cart', 'perxel-ai-translate' );
+		}
 
 		if ( self::can_see_showcase() ) {
 			$pages[ self::PAGE_UI ] = 'Perxel UI';
@@ -316,7 +329,8 @@ class Admin {
 			self::PAGE_HISTORY,
 			__( 'History', 'perxel-ai-translate' ),
 			'history',
-			History::data()
+			History::data(),
+			array( 'wrap_class' => 'pxat pxat-wide' )
 		);
 	}
 

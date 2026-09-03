@@ -1,16 +1,16 @@
 /* Perxel AI Translate - plugin-specific admin styles.
- * Layout, rows, cards, stat grid, notices and buttons come from the shared kit
+ * Layout, rows, cards, notices and buttons come from the shared kit
  * (vendor/perxel-ui/assets/*.css). Only translate-specific bits live here, and
  * they read the kit's tokens. */
 
-.pxat .pxat-muted {
-	color: var(--pxui-fg-muted, #646970);
+/* Full-width screens (History): drop the kit's reading-width cap on the main
+ * column so a wide list table has room. */
+.pxat-wide .pxui-main__body {
+	max-width: none;
 }
 
-.pxat .pxat-h2 {
-	margin: 28px 0 10px;
-	font-size: 14px;
-	font-weight: 600;
+.pxat .pxat-muted {
+	color: var(--pxui-fg-muted, #646970);
 }
 
 .pxat .pxat-step {

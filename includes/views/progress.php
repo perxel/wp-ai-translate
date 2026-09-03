@@ -71,31 +71,36 @@ if ( $is_done ) {
 
 echo \Perxel_UI::progress_bar( $done_pct, array( 'id' => 'pxat-progress-bar' ) );
 
-echo \Perxel_UI::stat_grid(
+echo \Perxel_UI::rows(
 	array(
 		array(
-			'label' => __( 'Done', 'perxel-ai-translate' ),
-			'value' => '<span id="pxat-stat-done">' . esc_html( number_format_i18n( $counts['done'] ) ) . '</span> / ' . esc_html( number_format_i18n( $counts['total'] ) ),
-			'tone'  => 'good',
-		),
-		array(
-			'label' => __( 'Errors', 'perxel-ai-translate' ),
-			'value' => '<span id="pxat-stat-error">' . esc_html( number_format_i18n( $counts['error'] ) ) . '</span>',
-			'sub'   => '<span id="pxat-stat-skipped">' . esc_html( number_format_i18n( $counts['skipped'] ) ) . '</span> ' . esc_html__( 'skipped', 'perxel-ai-translate' ),
-			'tone'  => $counts['error'] > 0 ? 'bad' : null,
-		),
-		array(
-			'label' => __( 'Cost', 'perxel-ai-translate' ),
-			'value' => '<span id="pxat-stat-cost">' . esc_html( Format::cost( $counts['cost_usd'] ) ) . '</span>',
-			'sub'   => esc_html( $model_label ),
-		),
-		array(
-			'label' => __( 'Volume', 'perxel-ai-translate' ),
-			'value' => '<span id="pxat-stat-tokens">' . esc_html( Format::unit_label( $counts['prompt_tokens'] + $counts['completion_tokens'] ) ) . '</span>',
-		),
-		array(
-			'label' => __( 'Time', 'perxel-ai-translate' ),
-			'value' => '<span id="pxat-stat-time">' . esc_html( Format::duration( $elapsed ) ) . '</span>',
+			'title' => __( 'This run', 'perxel-ai-translate' ),
+			'rows'  => array(
+				array(
+					'label'   => __( 'Done', 'perxel-ai-translate' ),
+					'content' => '<span id="pxat-stat-done">' . esc_html( number_format_i18n( $counts['done'] ) ) . '</span> / ' . esc_html( number_format_i18n( $counts['total'] ) ),
+					'tone'    => 'good',
+				),
+				array(
+					'label'   => __( 'Errors', 'perxel-ai-translate' ),
+					'sub'     => '<span id="pxat-stat-skipped">' . esc_html( number_format_i18n( $counts['skipped'] ) ) . '</span> ' . esc_html__( 'skipped', 'perxel-ai-translate' ),
+					'content' => '<span id="pxat-stat-error">' . esc_html( number_format_i18n( $counts['error'] ) ) . '</span>',
+					'tone'    => $counts['error'] > 0 ? 'bad' : null,
+				),
+				array(
+					'label'   => __( 'Cost', 'perxel-ai-translate' ),
+					'sub'     => esc_html( $model_label ),
+					'content' => '<span id="pxat-stat-cost">' . esc_html( Format::cost( $counts['cost_usd'] ) ) . '</span>',
+				),
+				array(
+					'label'   => __( 'Volume', 'perxel-ai-translate' ),
+					'content' => '<span id="pxat-stat-tokens">' . esc_html( Format::unit_label( $counts['prompt_tokens'] + $counts['completion_tokens'] ) ) . '</span>',
+				),
+				array(
+					'label'   => __( 'Time', 'perxel-ai-translate' ),
+					'content' => '<span id="pxat-stat-time">' . esc_html( Format::duration( $elapsed ) ) . '</span>',
+				),
+			),
 		),
 	)
 );

@@ -237,4 +237,11 @@
 			}
 		}
 	} );
+
+	/* Auto-begin on landing: the cart's "Start" is the only click. The run
+	   state lives in the DB, so a reopened unfinished run resumes the same way.
+	   #pxat-start is only rendered while the run still has work to do. */
+	if ( cfg.runId && el( '#pxat-start' ) ) {
+		start();
+	}
 }() );

@@ -287,8 +287,7 @@
     margin:var(--pxui-s3) 0 var(--pxui-s1);
 }
 
-.pxui-progress__fill,
-.pxui-stat__bar > span {
+.pxui-progress__fill {
     display:block;
     height:100%;
     background:var(--pxui-accent);
@@ -300,59 +299,6 @@
     font-size:12px;
     color:var(--pxui-fg-muted);
 }
-
-/* ------------------------------------------------------------------ *
- * Stat grid
- * ------------------------------------------------------------------ */
-
-.pxui-stat-grid {
-    display:grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap:var(--pxui-s3);
-    margin:0 0 var(--pxui-s6);
-}
-
-.pxui-stat {
-    background:var(--pxui-surface);
-    border:var(--pxui-surface-border);
-    border-radius:var(--pxui-radius-lg);
-    box-shadow:var(--pxui-shadow);
-    padding:var(--pxui-s4);
-}
-
-.pxui-stat__label {
-    font-size:11px;
-    font-weight:600;
-    text-transform:uppercase;
-    letter-spacing:.04em;
-    color:var(--pxui-fg-muted);
-}
-
-.pxui-stat__value {
-    margin-top:var(--pxui-s1);
-    font-size:22px;
-    font-weight:600;
-    line-height:1.2;
-    font-variant-numeric:tabular-nums;
-}
-
-.pxui-stat__sub {
-    margin-top:2px;
-    font-size:12px;
-    color:var(--pxui-fg-muted);
-}
-
-.pxui-stat__bar {
-    margin-top:var(--pxui-s2);
-    height:6px;
-    background:var(--pxui-bg-subtle);
-    border-radius:3px;
-    overflow:hidden;
-}
-
-.pxui-stat--good .pxui-stat__value { color:var(--pxui-good); }
-.pxui-stat--warn .pxui-stat__value { color:var(--pxui-warn); }
-.pxui-stat--bad .pxui-stat__value { color:var(--pxui-bad); }
 
 /* ------------------------------------------------------------------ *
  * Card

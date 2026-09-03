@@ -105,31 +105,35 @@ final class Perxel_UI_Showcase {
 		echo '<h2>Progress bar</h2>';
 		echo Perxel_UI::progress_bar( 62, array( 'label' => '1,842 / 4,110 · ETA 4m' ) );
 
-		echo '<h2>Stat grid</h2>';
-		echo Perxel_UI::stat_grid(
+		echo '<h2>Stats (a rows group)</h2>';
+		echo Perxel_UI::rows(
 			array(
 				array(
-					'label' => 'Library',
-					'value' => '1,240',
-					'sub'   => 'images',
-				),
-				array(
-					'label' => 'Converted',
-					'value' => '7,284',
-					'sub'   => '98% coverage',
-					'bar'   => 98,
-				),
-				array(
-					'label' => 'Unconverted',
-					'value' => '128',
-					'sub'   => '12 failed',
-					'tone'  => 'warn',
-				),
-				array(
-					'label' => 'Saved',
-					'value' => '&minus;340 MB',
-					'sub'   => '62% smaller',
-					'tone'  => 'good',
+					'title' => 'At a glance',
+					'rows'  => array(
+						array(
+							'label'   => 'Library',
+							'sub'     => 'images',
+							'content' => '1,240',
+						),
+						array(
+							'label'   => 'Converted',
+							'sub'     => '98% coverage',
+							'content' => '7,284',
+						),
+						array(
+							'label'   => 'Unconverted',
+							'sub'     => '12 failed',
+							'content' => '128',
+							'tone'    => 'warn',
+						),
+						array(
+							'label'   => 'Saved',
+							'sub'     => '62% smaller',
+							'content' => '&minus;340 MB',
+							'tone'    => 'good',
+						),
+					),
 				),
 			)
 		);

@@ -85,38 +85,6 @@ final class Perxel_UI {
 	}
 
 	/**
-	 * A grid of stat tiles.
-	 *
-	 * @param array $tiles Each: [ 'label', 'value', 'sub', 'bar' (0-100|null), 'tone' ].
-	 * @return string
-	 */
-	public static function stat_grid( $tiles ) {
-		$out = '<div class="pxui-stat-grid">';
-
-		foreach ( (array) $tiles as $t ) {
-			$tone = isset( $t['tone'] ) && in_array( $t['tone'], array( 'good', 'warn', 'bad' ), true ) ? ' pxui-stat--' . $t['tone'] : '';
-			$out .= '<div class="pxui-stat' . $tone . '">';
-			$out .= '<div class="pxui-stat__label">' . esc_html( isset( $t['label'] ) ? $t['label'] : '' ) . '</div>';
-			$out .= '<div class="pxui-stat__value">' . ( isset( $t['value'] ) ? $t['value'] : '' ) . '</div>';
-
-			if ( ! empty( $t['sub'] ) ) {
-				$out .= '<div class="pxui-stat__sub">' . $t['sub'] . '</div>';
-			}
-
-			if ( isset( $t['bar'] ) && null !== $t['bar'] ) {
-				$bar  = max( 0, min( 100, (int) $t['bar'] ) );
-				$out .= '<div class="pxui-stat__bar"><span style="width:' . esc_attr( (string) $bar ) . '%"></span></div>';
-			}
-
-			$out .= '</div>';
-		}
-
-		$out .= '</div>';
-
-		return $out;
-	}
-
-	/**
 	 * A plain content card.
 	 *
 	 * @param array $args [ 'title', 'body', 'actions', 'id', 'class' ].

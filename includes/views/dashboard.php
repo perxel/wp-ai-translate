@@ -105,36 +105,42 @@ echo \Perxel_UI::notice(
 
 /* --- At a glance ------------------------------------------------------ */
 
-$tiles = array(
+$glance = array(
 	array(
-		'label' => __( 'Runs', 'perxel-ai-translate' ),
-		'value' => esc_html( number_format_i18n( $totals['runs'] ) ),
+		'label'   => __( 'Runs', 'perxel-ai-translate' ),
+		'content' => esc_html( number_format_i18n( $totals['runs'] ) ),
 	),
 	array(
-		'label' => __( 'Posts translated', 'perxel-ai-translate' ),
-		'value' => esc_html( number_format_i18n( $totals['posts_done'] ) ),
+		'label'   => __( 'Posts translated', 'perxel-ai-translate' ),
+		'content' => esc_html( number_format_i18n( $totals['posts_done'] ) ),
 	),
 	array(
-		'label' => __( 'Spent', 'perxel-ai-translate' ),
-		'value' => esc_html( Format::cost( $totals['cost_usd'] ) ),
+		'label'   => __( 'Spent', 'perxel-ai-translate' ),
+		'content' => esc_html( Format::cost( $totals['cost_usd'] ) ),
 	),
 	array(
-		'label' => __( 'Volume', 'perxel-ai-translate' ),
-		'value' => esc_html( Format::unit_label( $totals['tokens'] ) ),
+		'label'   => __( 'Volume', 'perxel-ai-translate' ),
+		'content' => esc_html( Format::unit_label( $totals['tokens'] ) ),
 	),
 );
 
 if ( $totals['warnings'] > 0 || $totals['apply_errors'] > 0 ) {
-	$tiles[] = array(
-		'label' => __( 'Issues', 'perxel-ai-translate' ),
-		'value' => esc_html( number_format_i18n( $totals['warnings'] + $totals['apply_errors'] ) ),
-		'sub'   => esc_html__( 'warnings + errors across all runs', 'perxel-ai-translate' ),
-		'tone'  => 'warn',
+	$glance[] = array(
+		'label'   => __( 'Issues', 'perxel-ai-translate' ),
+		'sub'     => esc_html__( 'warnings + errors across all runs', 'perxel-ai-translate' ),
+		'content' => esc_html( number_format_i18n( $totals['warnings'] + $totals['apply_errors'] ) ),
+		'tone'    => 'warn',
 	);
 }
 
-echo '<h2 class="pxat-h2">' . esc_html__( 'At a glance', 'perxel-ai-translate' ) . '</h2>';
-echo \Perxel_UI::stat_grid( $tiles );
+echo \Perxel_UI::rows(
+	array(
+		array(
+			'title' => __( 'At a glance', 'perxel-ai-translate' ),
+			'rows'  => $glance,
+		),
+	)
+);
 
 /* --- Recent runs ---------------------------------------------------- */
 

@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.4
+Stable tag: 0.0.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -93,6 +93,14 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.6 =
+* The translation run now begins on its own when the run screen opens - pressing **Start** on the cart is the only step.
+* **Translation cart** appears in the AI Translate menu only while it holds posts; its address is now `admin.php?page=pxat-cart`.
+
+= 0.0.5 =
+* Run and Dashboard figures now read as a grouped list (label left, value right) instead of a tile grid; the History screen runs full width.
+* Shared UI kit updated to 0.18.0 (dropped the stat tile grid).
 
 = 0.0.4 =
 * Posts you pick now collect into a persistent **translation cart** instead of going straight to a one-off confirm screen. Add posts from the bulk action or a post's toolbar over as many sittings as you like, then start one run.
