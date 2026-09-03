@@ -46,6 +46,10 @@
 	font-size: 13px;
 }
 
+.pxat .pxat-config-status[hidden] {
+	display: none;
+}
+
 /* Horizontal-scroll container for the wide preview / items tables. */
 .pxat .pxat-table-wrap {
 	overflow-x: auto;

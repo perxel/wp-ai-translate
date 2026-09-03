@@ -280,7 +280,7 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 		<?php endif; ?>
 		<a class="button" href="<?php echo esc_url( wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=' . Admin::PAGE_DASHBOARD ) ); ?>"><?php esc_html_e( 'Cancel', 'perxel-ai-translate' ); ?></a>
 	</p>
-	<p class="pxat-muted"><?php esc_html_e( 'Review each result in the editor afterwards.', 'perxel-ai-translate' ); ?></p>
+	<p class="pxat-muted"><?php esc_html_e( 'Each translation is written straight into WordPress - open the destination post to review or adjust it.', 'perxel-ai-translate' ); ?></p>
 </form>
 
 <?php
