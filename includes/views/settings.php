@@ -66,18 +66,11 @@ $openrouter_rows = array(
 );
 
 if ( $benchmark ) {
-	$bench_volume = 'words' === \Perxel\AITranslate\Format::display_unit()
-		? sprintf(
-			/* translators: %s: approximate word count. */
-			esc_html__( '~%s words', 'perxel-ai-translate' ),
-			number_format_i18n( $benchmark['words'] )
-		)
-		: sprintf(
-			/* translators: 1: prompt token count, 2: completion token count. */
-			esc_html__( '%1$s in / %2$s out tokens', 'perxel-ai-translate' ),
-			number_format_i18n( $benchmark['prompt_tokens'] ),
-			number_format_i18n( $benchmark['completion_tokens'] )
-		);
+	$bench_volume = sprintf(
+		/* translators: %s: approximate word count. */
+		esc_html__( '~%s words', 'perxel-ai-translate' ),
+		number_format_i18n( $benchmark['words'] )
+	);
 
 	$openrouter_rows[] = array(
 		'label'   => __( 'Homepage benchmark', 'perxel-ai-translate' ),
@@ -145,19 +138,6 @@ if ( $benchmark ) {
 						'summary' => __( 'System prompt sent to the model', 'perxel-ai-translate' ),
 						'sub'     => esc_html__( 'Read-only. Copy it to translate manually with any AI chat tool if your key stops working. Replace {source_lang} / {dest_lang} with real codes.', 'perxel-ai-translate' ),
 						'details' => '<textarea class="pxui-mono" rows="8" readonly onclick="this.select()">' . esc_textarea( $system_prompt ) . '</textarea>',
-					),
-				),
-			),
-			array(
-				'title' => __( 'Display', 'perxel-ai-translate' ),
-				'rows'  => array(
-					array(
-						'label'   => __( 'Volume unit', 'perxel-ai-translate' ),
-						'sub'     => esc_html__( 'How translation volume is shown: real token count, or an estimated word count.', 'perxel-ai-translate' ),
-						'content' => '<select name="display_unit">'
-							. '<option value="tokens"' . selected( $settings['display_unit'], 'tokens', false ) . '>' . esc_html__( 'Tokens', 'perxel-ai-translate' ) . '</option>'
-							. '<option value="words"' . selected( $settings['display_unit'], 'words', false ) . '>' . esc_html__( 'Words (estimated)', 'perxel-ai-translate' ) . '</option>'
-							. '</select>',
 					),
 				),
 			),
@@ -238,7 +218,7 @@ echo \Perxel_UI::rows(
 			'rows'   => array(
 				array(
 					'label'   => __( 'Reset settings to defaults', 'perxel-ai-translate' ),
-					'sub'     => esc_html__( 'Clears the API key, model, extra instructions and display unit. Translation runs and their history are kept.', 'perxel-ai-translate' ),
+					'sub'     => esc_html__( 'Clears the API key, model and extra instructions. Translation runs and their history are kept.', 'perxel-ai-translate' ),
 					'content' => '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
 						. '<input type="hidden" name="action" value="pxat_reset_settings" />'
 						. wp_nonce_field( 'pxat_reset_settings', '_wpnonce', true, false )

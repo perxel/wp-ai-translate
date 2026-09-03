@@ -103,7 +103,8 @@ class Progress {
 				'runId'       => $run_id,
 				'batched'     => $run ? (bool) $run['batched'] : false,
 				'workerCount' => $run ? Translator::worker_count( $run ) : 1,
-				'displayUnit' => Format::display_unit(),
+				'currency'    => Format::currency(),
+				'usdToVnd'    => Format::USD_TO_VND,
 			)
 		);
 	}

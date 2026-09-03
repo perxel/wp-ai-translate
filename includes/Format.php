@@ -7,23 +7,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Single source of truth for how token/word counts and USD cost are displayed.
+ * Single source of truth for how volume and estimated cost are displayed.
  * Every PHP call site renders these through here; assets/js/format.js mirrors
  * the same rules for the progress screen's AJAX-polled counters.
+ *
+ * Volume is always shown as an estimated word count - "token" is an
+ * implementation detail the site owner never needs. Cost is our own estimate of
+ * spend: shown in USD, or converted to VND on sites whose WPML default language
+ * is Vietnamese. Model price sheets ($/1M tokens) are rendered elsewhere and
+ * stay in USD to keep OpenRouter's exact rates intact.
  */
 class Format {
 
-	// OpenRouter/OpenAI's own rule of thumb: ~750 words per 1000 tokens.
+	// OpenRouter/OpenAI's own rule of thumb: ~750 words per 1000 tokens. The
+	// word count is English-centric and only ever a sense of scale, hence "~".
 	const WORDS_PER_TOKEN = 0.75;
 
-	/**
-	 * 'tokens' or 'words', per the "Display unit" setting.
-	 *
-	 * @return string
-	 */
-	public static function display_unit() {
-		return 'words' === Settings::get( 'display_unit' ) ? 'words' : 'tokens';
-	}
+	// Fixed display rate, no setting. Approximate, set 2026-09. OpenRouter
+	// always bills in USD; this only converts our own estimate for readability.
+	const USD_TO_VND = 26000;
 
 	/**
 	 * @param int $tokens Token count.
@@ -34,28 +36,44 @@ class Format {
 	}
 
 	/**
-	 * "1,234 tokens" or "~926 words", depending on the configured display unit.
+	 * "~926 words" - an estimated word count for a token total.
 	 *
 	 * @param int $tokens Token count.
 	 * @return string
 	 */
 	public static function unit_label( $tokens ) {
-		if ( 'words' === self::display_unit() ) {
-			/* translators: %s: approximate word count. */
-			return sprintf( __( '~%s words', 'perxel-ai-translate' ), number_format_i18n( self::tokens_to_words( $tokens ) ) );
-		}
-		/* translators: %s: token count. */
-		return sprintf( __( '%s tokens', 'perxel-ai-translate' ), number_format_i18n( $tokens ) );
+		/* translators: %s: approximate word count. */
+		return sprintf( __( '~%s words', 'perxel-ai-translate' ), number_format_i18n( self::tokens_to_words( $tokens ) ) );
 	}
 
 	/**
-	 * "~$0.0123" - a rough USD cost estimate. OpenRouter bills in USD.
+	 * Currency our estimated costs are displayed in: 'VND' on a Vietnamese
+	 * default-language site, 'USD' everywhere else. Resolved once per request.
+	 *
+	 * @return string
+	 */
+	public static function currency() {
+		static $currency = null;
+		if ( null === $currency ) {
+			$currency = 'vi' === Wpml::get_default_language() ? 'VND' : 'USD';
+		}
+		return $currency;
+	}
+
+	/**
+	 * "~$0.0123" or "~319,800₫" - a rough estimate of spend. OpenRouter bills
+	 * in USD; the VND figure is a fixed-rate convenience conversion.
 	 *
 	 * @param float $cost_usd Cost in US dollars.
 	 * @return string
 	 */
 	public static function cost( $cost_usd ) {
 		$cost_usd = (float) $cost_usd;
+
+		if ( 'VND' === self::currency() ) {
+			/* translators: %s: approximate cost in Vietnamese dong. */
+			return sprintf( __( '~%s₫', 'perxel-ai-translate' ), number_format_i18n( round( $cost_usd * self::USD_TO_VND ) ) );
+		}
 
 		if ( $cost_usd > 0 && $cost_usd < 0.01 ) {
 			return '~$' . number_format( $cost_usd, 4 );

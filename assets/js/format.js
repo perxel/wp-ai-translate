@@ -7,10 +7,6 @@
 
 	var WORDS_PER_TOKEN = 0.75;
 
-	function displayUnit() {
-		return ( window.PXAT_Progress && window.PXAT_Progress.displayUnit ) || 'tokens';
-	}
-
 	function numberFormat( n ) {
 		return String( Math.round( n ) ).replace( /\B(?=(\d{3})+(?!\d))/g, ',' );
 	}
@@ -18,13 +14,14 @@
 	window.PXAT_Format = {
 		unitLabel: function ( tokens ) {
 			tokens = tokens || 0;
-			if ( 'words' === displayUnit() ) {
-				return '~' + numberFormat( tokens * WORDS_PER_TOKEN ) + ' words';
-			}
-			return numberFormat( tokens ) + ' tokens';
+			return '~' + numberFormat( tokens * WORDS_PER_TOKEN ) + ' words';
 		},
 		cost: function ( usd ) {
 			usd = parseFloat( usd ) || 0;
+			var p = window.PXAT_Progress || {};
+			if ( 'VND' === p.currency ) {
+				return '~' + numberFormat( usd * ( p.usdToVnd || 26000 ) ) + '₫';
+			}
 			if ( usd > 0 && usd < 0.01 ) {
 				return '~$' + usd.toFixed( 4 );
 			}

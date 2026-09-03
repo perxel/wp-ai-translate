@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.8
+Stable tag: 0.0.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,7 +28,7 @@ It is aimed at sites that already run **WPML** and want to translate a lot of co
 **How it works**
 
 1. Open any post list, tick some rows and choose **Perxel AI Translate…** from the bulk actions (or use *Translate this page* in the toolbar while editing one post).
-2. You land on a confirm screen for exactly those posts: pick the destination language and which data to process. You get a cost and token estimate before anything runs.
+2. You land on a confirm screen for exactly those posts: pick the destination language and which data to process. You get a cost and word-count estimate before anything runs.
 3. Press **Start**. Each post is translated and written straight into WordPress as a WPML translation; review the result in the normal editor. Close the tab any time - the run resumes where it left off.
 4. Every run is kept under **AI Translate → History** until you delete it.
 
@@ -92,6 +92,10 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.9 =
+* Translation volume is always shown as an estimated word count now - the Tokens/Words display setting is gone. "Token" was a concept you had to learn to read a number you only glance at; cost is computed from real usage either way.
+* On sites whose WPML default language is Vietnamese, estimated and run costs are shown in VND (fixed rate, ~26,000₫ to the dollar). Model price sheets stay in USD to show OpenRouter's exact rates.
 
 = 0.0.8 =
 * Slimmed down the Translation screen: one settings group instead of two, no step captions, and the redundant "About to translate…" summary is gone (the count and cost are on the button).

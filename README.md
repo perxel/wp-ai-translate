@@ -16,7 +16,8 @@ spending WPML's own AI translation credits.
   editing one post. Either lands on a confirm screen for exactly those posts -
   there is no persistent, accumulating list.
 - The confirm screen takes a destination language, data selection and a
-  cost / token estimate before anything runs.
+  cost / word-count estimate before anything runs. Costs show in USD, or in VND
+  on sites whose WPML default language is Vietnamese.
 - A live, resumable Run screen. Each post is translated and written straight
   into WordPress as a WPML translation - review it in the normal editor.
 - The AI model is a setting: enter any OpenRouter model id, press *Test model*
