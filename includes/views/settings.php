@@ -95,7 +95,7 @@ if ( $benchmark ) {
 	);
 }
 ?>
-<form id="pxat-settings-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+<form id="pxat-settings-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-pxui-dirty-guard>
 	<input type="hidden" name="action" value="pxat_save_settings" />
 	<?php wp_nonce_field( 'pxat_save_settings' ); ?>
 

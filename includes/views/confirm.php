@@ -40,21 +40,16 @@ $posts_phrase = sprintf(
 	number_format_i18n( $eligible_count )
 );
 
-echo \Perxel_UI::notice(
-	'info',
-	esc_html(
-		sprintf(
-			/* translators: 1: number of posts, 2: post type name. */
-			__( '%1$s %2$s selected.', 'perxel-ai-translate' ),
-			number_format_i18n( $selected_count ),
-			$post_type_label
-		)
+echo '<p class="pxat-lead">' . esc_html(
+	sprintf(
+		/* translators: 1: number of posts, 2: post type name. */
+		__( '%1$s %2$s selected.', 'perxel-ai-translate' ),
+		number_format_i18n( $selected_count ),
+		$post_type_label
 	)
-);
+) . '</p>';
 
-echo '<p class="pxat-step">' . esc_html__( 'Step 1 of 2 - configure', 'perxel-ai-translate' ) . '</p>';
-
-/* --- Step 1: configuration (GET self-submit) ------------------------ */
+/* --- Configuration (GET self-submit, auto-applied) ---------------- */
 
 $status_label = static function ( $slug ) {
 	if ( '' === $slug ) {
@@ -89,20 +84,19 @@ $type_pills = \Perxel_UI::checkbox_group(
 	)
 );
 
-$data_rows = array(
-	array(
-		'label'   => __( 'Everything', 'perxel-ai-translate' ),
-		'sub'     => esc_html__( 'Title, content, ACF, Rank Math, taxonomy, featured image. Missing translations are created.', 'perxel-ai-translate' ),
-		'content' => '<input type="radio" name="data_mode" value="full" ' . checked( $data_mode, 'full', false ) . ' />',
-	),
-	array(
-		'summary' => __( 'Choose specific fields', 'perxel-ai-translate' ),
-		'sub'     => esc_html__( 'Only affects posts that already have a translation - nothing new is created.', 'perxel-ai-translate' ),
-		'content' => '<input type="radio" name="data_mode" value="custom" ' . checked( $data_mode, 'custom', false ) . ' />',
-		'details' => '<div id="pxat-custom-types">' . $type_pills . '</div>',
-		'open'    => 'custom' === $data_mode,
-	),
-);
+$data_radios =
+	'<label class="pxat-radio"><input type="radio" name="data_mode" value="full" ' . checked( $data_mode, 'full', false ) . ' /> '
+		. esc_html__( 'Everything', 'perxel-ai-translate' ) . '</label>'
+	. '<label class="pxat-radio"><input type="radio" name="data_mode" value="custom" ' . checked( $data_mode, 'custom', false ) . ' /> '
+		. esc_html__( 'Specific fields', 'perxel-ai-translate' ) . '</label>';
+
+$data_sub = 'custom' === $data_mode
+	? esc_html__( 'Only updates posts that already have a translation. Nothing new is created.', 'perxel-ai-translate' )
+	: esc_html__( 'Title, content, ACF, Rank Math, taxonomy, featured image. Missing translations are created.', 'perxel-ai-translate' );
+
+$model_note = $model['input'] > 0
+	? esc_html( sprintf( /* translators: 1: input price, 2: output price. */ __( '$%1$s in / $%2$s out per 1M tokens', 'perxel-ai-translate' ), $model['input'], $model['output'] ) )
+	: esc_html__( 'pricing not checked yet', 'perxel-ai-translate' );
 
 $config_rows = array(
 	array(
@@ -114,17 +108,22 @@ $config_rows = array(
 		),
 		'content' => $dest_select,
 	),
-);
-
-$model_note = $model['input'] > 0
-	? esc_html( sprintf( /* translators: 1: input price, 2: output price. */ __( '$%1$s in / $%2$s out per 1M tokens', 'perxel-ai-translate' ), $model['input'], $model['output'] ) )
-	: esc_html__( 'pricing not checked yet', 'perxel-ai-translate' );
-
-$config_rows[] = array(
-	'label'   => __( 'Model', 'perxel-ai-translate' ),
-	'sub'     => $model_note . ' · <a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'change in Settings', 'perxel-ai-translate' ) . '</a>',
-	'tone'    => $model_verified ? null : 'warn',
-	'content' => esc_html( $model['label'] ),
+	array(
+		'label'   => __( 'Model', 'perxel-ai-translate' ),
+		'sub'     => $model_note . ' · <a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'change in Settings', 'perxel-ai-translate' ) . '</a>',
+		'tone'    => $model_verified ? null : 'warn',
+		'content' => esc_html( $model['label'] ),
+	),
+	array(
+		'label'   => __( 'What to translate', 'perxel-ai-translate' ),
+		'sub'     => $data_sub,
+		'content' => $data_radios,
+	),
+	array(
+		'label'   => __( 'Fields', 'perxel-ai-translate' ),
+		'sub'     => esc_html__( 'Pick the data types to translate.', 'perxel-ai-translate' ),
+		'content' => '<div id="pxat-fields">' . $type_pills . '</div>',
+	),
 );
 ?>
 <form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" id="pxat-config-form">
@@ -132,49 +131,23 @@ $config_rows[] = array(
 	<input type="hidden" name="pxat_save_config" value="1" />
 	<input type="hidden" name="ids" value="<?php echo esc_attr( $ids_csv ); ?>" />
 	<input type="hidden" name="post_type" value="<?php echo esc_attr( $post_type ); ?>" />
-	<?php
-	echo \Perxel_UI::rows(
-		array(
-			array(
-				'title' => __( 'Settings', 'perxel-ai-translate' ),
-				'rows'  => $config_rows,
-			),
-		)
-	);
-	echo \Perxel_UI::rows(
-		array(
-			array(
-				'title' => __( 'What to translate', 'perxel-ai-translate' ),
-				'rows'  => $data_rows,
-			),
-		)
-	);
-	?>
-	<p><button type="submit" class="button" id="pxat-config-update"><?php esc_html_e( 'Update preview', 'perxel-ai-translate' ); ?></button></p>
+	<?php echo \Perxel_UI::rows( $config_rows ); ?>
+	<p class="pxat-config-status" id="pxat-config-status" hidden>
+		<span class="pxat-spin" aria-hidden="true"></span>
+		<?php esc_html_e( 'Updating the plan…', 'perxel-ai-translate' ); ?>
+	</p>
+	<noscript>
+		<p><button type="submit" class="button"><?php esc_html_e( 'Update plan', 'perxel-ai-translate' ); ?></button></p>
+	</noscript>
 </form>
 
 <?php
-/* --- Step 2: posts ------------------------------------------------- */
-
-echo '<p class="pxat-step">' . esc_html__( 'Step 2 of 2 - review & start', 'perxel-ai-translate' ) . '</p>';
+/* --- Review & start ---------------------------------------------- */
 
 if ( 0 === $eligible_count ) {
 	echo \Perxel_UI::notice( 'warning', esc_html__( 'Nothing to translate with the current selection.', 'perxel-ai-translate' ) );
-} elseif ( $total_tokens > 0 ) {
-	echo \Perxel_UI::notice(
-		'info',
-		esc_html(
-			sprintf(
-				/* translators: 1: post count, 2: cost, 3: volume. */
-				__( 'About to translate %1$s for roughly %2$s (%3$s). Review each result in the editor afterwards.', 'perxel-ai-translate' ),
-				$posts_phrase,
-				Format::cost( $total_cost_usd ),
-				Format::unit_label( $total_tokens )
-			)
-		)
-	);
-} else {
-	echo \Perxel_UI::notice( 'info', esc_html__( 'These posts will be updated with no model call - structural copy only, no cost.', 'perxel-ai-translate' ) );
+} elseif ( 0 === $total_tokens ) {
+	echo \Perxel_UI::notice( 'info', esc_html__( 'Structural copy only - no model call, no cost.', 'perxel-ai-translate' ) );
 }
 
 $source_label = Wpml::language_label( $languages, $source_lang );
@@ -297,7 +270,7 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 				echo esc_html(
 					sprintf(
 						/* translators: 1: post count, 2: cost. */
-						__( 'Start - %1$s (%2$s)', 'perxel-ai-translate' ),
+						__( 'Translate and apply - %1$s (%2$s)', 'perxel-ai-translate' ),
 						$posts_phrase,
 						Format::cost( $total_cost_usd )
 					)
@@ -307,6 +280,7 @@ $dest_label   = Wpml::language_label( $languages, $dest_lang );
 		<?php endif; ?>
 		<a class="button" href="<?php echo esc_url( wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=' . Admin::PAGE_DASHBOARD ) ); ?>"><?php esc_html_e( 'Cancel', 'perxel-ai-translate' ); ?></a>
 	</p>
+	<p class="pxat-muted"><?php esc_html_e( 'Review each result in the editor afterwards.', 'perxel-ai-translate' ); ?></p>
 </form>
 
 <?php

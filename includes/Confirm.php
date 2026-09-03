@@ -11,8 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * separated, plus `post_type`) from the bulk action, the "Translate this page"
  * bar item or a re-run - there is no stored selection. Pick the destination
  * language and data scope, see a per-post plan with a cost estimate, and start
- * the run. The config block is a GET self-submit form (press "Update" to
- * recompute) that carries the ids through as hidden fields; "Start" is a POST
+ * the run. The config block is a GET self-submit form that carries the ids
+ * through as hidden fields and re-runs the plan on change (JS auto-submits; the
+ * "Update plan" button is the no-JS fallback); "Translate and apply" is a POST
  * that creates the run and redirects to Progress.
  *
  * There is no run-mode choice any more - every run translates and writes. Every
@@ -103,7 +104,7 @@ class Confirm {
 				. esc_html(
 					sprintf(
 						/* translators: 1: post count, 2: estimated cost. */
-						__( 'Start - %1$s (%2$s)', 'perxel-ai-translate' ),
+						__( 'Translate and apply - %1$s (%2$s)', 'perxel-ai-translate' ),
 						$posts_phrase,
 						Format::cost( $plan['total_cost_usd'] )
 					)

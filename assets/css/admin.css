@@ -13,12 +13,37 @@
 	color: var(--pxui-fg-muted, #646970);
 }
 
-.pxat .pxat-step {
+.pxat .pxat-lead {
 	margin: 4px 0 14px;
+	font-size: 13px;
+}
+
+/* Confirm: "Everything / Specific fields" choice. */
+.pxat .pxat-radio {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-left: 16px;
+}
+
+.pxat .pxat-radio:first-child {
+	margin-left: 0;
+}
+
+/* Confirm: the "Fields" row is server-rendered but hidden until "Specific
+ * fields" is picked - override the kit's flex display on the row. */
+.pxat .pxui-row[hidden] {
+	display: none;
+}
+
+/* Confirm: pending-reload notice by the config controls. */
+.pxat .pxat-config-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 10px 0 4px;
 	color: var(--pxui-fg-muted, #646970);
-	font-size: 12px;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
+	font-size: 13px;
 }
 
 /* Horizontal-scroll container for the wide preview / items tables. */

@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.7
+Stable tag: 0.0.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,14 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.8 =
+* Slimmed down the Translation screen: one settings group instead of two, no step captions, and the redundant "About to translate…" summary is gone (the count and cost are on the button).
+* "What to translate" is now a single **Everything / Specific fields** choice; the field list only appears when you pick **Specific fields**.
+* Changing the language or scope re-runs the plan on its own - a spinner shows while it updates and the start button is held until it is ready. The **Update plan** button remains for browsers without JavaScript.
+* The start button now reads **Translate and apply**.
+* The Settings screen now warns before you leave with unsaved changes (edited a field, then clicked another menu item or the back button).
+* Shared UI kit updated to 0.20.0 (adds the unsaved-changes guard).
 
 = 0.0.7 =
 * Removed the translation cart. Picking posts from a bulk action or the *Translate this page* toolbar item now goes straight to a confirm screen for exactly those posts - no persistent, accumulating list, and no more "different post type" refusal.

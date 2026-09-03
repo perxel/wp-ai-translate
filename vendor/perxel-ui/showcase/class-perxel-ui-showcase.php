@@ -283,6 +283,37 @@ final class Perxel_UI_Showcase {
 			. '<label><input type="radio" name="pxui-demo" /> Radio two</label></p>';
 		echo '<p class="pxui-field"><button type="button" class="button">' . Perxel_UI::spinner() . ' Working</button></p>';
 
+		echo '<h2>Unsaved-changes guard</h2>';
+		echo '<p class="pxui-muted">This form carries <code>data-pxui-dirty-guard</code>. '
+			. 'Edit a field, then try to reload or leave - the browser asks to confirm. '
+			. 'The read-only field and the one marked <code>data-pxui-dirty-ignore</code> do not count.</p>';
+		echo '<form id="pxui-demo-guard" data-pxui-dirty-guard>';
+		echo Perxel_UI::rows(
+			array(
+				array(
+					'title'        => 'Guarded form',
+					'title_action' => '<button type="submit" class="button button-primary" form="pxui-demo-guard">Save</button>',
+					'rows'         => array(
+						array(
+							'label'   => 'Tracked field',
+							'content' => '<input type="text" name="demo_tracked" value="edit me" />',
+						),
+						array(
+							'label'   => 'Read-only field',
+							'sub'     => 'Skipped - [readonly].',
+							'content' => '<input type="text" name="demo_ro" value="fixed" readonly onclick="this.select()" />',
+						),
+						array(
+							'label'   => 'Ignored field',
+							'sub'     => 'Skipped - data-pxui-dirty-ignore.',
+							'content' => '<span data-pxui-dirty-ignore><input type="text" name="demo_ignored" value="scratch" /></span>',
+						),
+					),
+				),
+			)
+		);
+		echo '</form>';
+
 		echo '<h2>Danger row group</h2>';
 		echo Perxel_UI::rows(
 			array(

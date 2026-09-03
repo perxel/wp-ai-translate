@@ -1,7 +1,9 @@
 /**
- * Confirm screen: keep the "choose specific fields" pills enabled only when the
- * Custom radio is picked, and re-run the preview automatically when the config
- * changes (the "Update preview" button is the no-JS fallback).
+ * Confirm screen: reveal the "Fields" row only when "Specific fields" is picked,
+ * and re-run the plan automatically when the config changes - a spinner shows by
+ * the controls while the reload is pending and the start buttons are held
+ * disabled so a run can't start against a stale plan. The <noscript> "Update
+ * plan" button is the fallback when this script does not run.
  */
 ( function () {
 	'use strict';
@@ -11,34 +13,46 @@
 		return;
 	}
 
-	var customBox = document.getElementById( 'pxat-custom-types' );
+	var fieldsBox = document.getElementById( 'pxat-fields' );
+	var fieldsRow = fieldsBox ? fieldsBox.closest( '.pxui-row' ) : null;
+	var status    = document.getElementById( 'pxat-config-status' );
+	var startBtns = document.querySelectorAll( '#pxat-start-form button[type="submit"], button[type="submit"][form="pxat-start-form"]' );
 
-	function syncCustomState() {
-		if ( ! customBox ) {
-			return;
-		}
+	function specificChosen() {
 		var custom = form.querySelector( 'input[name="data_mode"][value="custom"]' );
-		var on = custom && custom.checked;
-		customBox.style.opacity = on ? '1' : '0.45';
-		customBox.querySelectorAll( 'input' ).forEach( function ( i ) {
-			i.disabled = ! on;
-		} );
+		return !! ( custom && custom.checked );
 	}
 
-	var submitTimer = null;
-	function scheduleSubmit() {
-		clearTimeout( submitTimer );
-		submitTimer = setTimeout( function () {
-			form.submit();
-		}, 400 );
-	}
-
-	form.addEventListener( 'change', function ( ev ) {
-		syncCustomState();
-		if ( ev.target && ev.target.id !== 'pxat-config-update' ) {
-			scheduleSubmit();
+	function syncFields() {
+		var on = specificChosen();
+		if ( fieldsRow ) {
+			fieldsRow.hidden = ! on;
 		}
+		if ( fieldsBox ) {
+			fieldsBox.querySelectorAll( 'input' ).forEach( function ( i ) {
+				i.disabled = ! on;
+			} );
+		}
+	}
+
+	var timer = null;
+	function scheduleSubmit() {
+		clearTimeout( timer );
+		if ( status ) {
+			status.hidden = false;
+		}
+		startBtns.forEach( function ( b ) {
+			b.disabled = true;
+		} );
+		timer = setTimeout( function () {
+			form.submit();
+		}, 350 );
+	}
+
+	form.addEventListener( 'change', function () {
+		syncFields();
+		scheduleSubmit();
 	} );
 
-	syncCustomState();
+	syncFields();
 }() );
