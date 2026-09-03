@@ -4,11 +4,13 @@
  *
  * @package Perxel_AI_Translate
  *
- * @var array $settings    Settings::all().
- * @var array $model       Settings::model().
- * @var array $environment Admin::environment().
- * @var bool  $updated     Whether the form just saved.
- * @var bool  $was_reset   Whether settings were just reset.
+ * @var array      $settings      Settings::all().
+ * @var array      $model         Settings::model().
+ * @var array      $environment   Admin::environment().
+ * @var array[]    $compatibility Admin::compatibility().
+ * @var array|null $benchmark     Admin::homepage_benchmark().
+ * @var bool       $updated       Whether the form just saved.
+ * @var bool       $was_reset     Whether settings were just reset.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -47,6 +49,51 @@ $key_sub    = $settings['api_key_verified'] ? esc_html__( 'Verified', 'perxel-ai
 $model_icon = $settings['model_verified'] ? 'good' : 'muted';
 
 $test_button = '<button type="button" class="button" id="pxat-test">' . esc_html__( 'Test', 'perxel-ai-translate' ) . '</button>';
+
+$openrouter_rows = array(
+	array(
+		'label'   => __( 'API key', 'perxel-ai-translate' ),
+		'icon'    => $key_icon,
+		'sub'     => '<span id="pxat-key-sub">' . $key_sub . '</span>',
+		'content' => '<input type="password" id="pxat-api-key" name="api_key" autocomplete="off" value="' . esc_attr( $settings['api_key'] ) . '" />',
+	),
+	array(
+		'label'   => __( 'Model id', 'perxel-ai-translate' ),
+		'icon'    => $model_icon,
+		'sub'     => '<span id="pxat-model-detail">' . $model_detail . '</span>',
+		'content' => '<input type="text" class="pxui-mono" id="pxat-model-id" name="model_id" value="' . esc_attr( $settings['model_id'] ) . '" placeholder="' . esc_attr( PXAT_DEFAULT_MODEL ) . '" />',
+	),
+);
+
+if ( $benchmark ) {
+	$bench_volume = 'words' === \Perxel\AITranslate\Format::display_unit()
+		? sprintf(
+			/* translators: %s: approximate word count. */
+			esc_html__( '~%s words', 'perxel-ai-translate' ),
+			number_format_i18n( $benchmark['words'] )
+		)
+		: sprintf(
+			/* translators: 1: prompt token count, 2: completion token count. */
+			esc_html__( '%1$s in / %2$s out tokens', 'perxel-ai-translate' ),
+			number_format_i18n( $benchmark['prompt_tokens'] ),
+			number_format_i18n( $benchmark['completion_tokens'] )
+		);
+
+	$openrouter_rows[] = array(
+		'label'   => __( 'Homepage benchmark', 'perxel-ai-translate' ),
+		'icon'    => 'muted',
+		'sub'     => sprintf(
+			/* translators: %s: word or token volume of the front page. */
+			esc_html__( 'Your front page (%s) translated once at this model\'s rates. A fixed sample for comparing models.', 'perxel-ai-translate' ),
+			$bench_volume
+		),
+		'content' => sprintf(
+			/* translators: %s: estimated USD cost, e.g. "~$0.0021". */
+			esc_html__( '%s per language', 'perxel-ai-translate' ),
+			esc_html( \Perxel\AITranslate\Format::cost( $benchmark['cost_per_lang'] ) )
+		),
+	);
+}
 ?>
 <form id="pxat-settings-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 	<input type="hidden" name="action" value="pxat_save_settings" />
@@ -72,20 +119,7 @@ $test_button = '<button type="button" class="button" id="pxat-test">' . esc_html
 					'<a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer">openrouter.ai</a>',
 					'<a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer">openrouter.ai/models</a>'
 				),
-				'rows'         => array(
-					array(
-						'label'   => __( 'API key', 'perxel-ai-translate' ),
-						'icon'    => $key_icon,
-						'sub'     => '<span id="pxat-key-sub">' . $key_sub . '</span>',
-						'content' => '<input type="password" id="pxat-api-key" name="api_key" autocomplete="off" value="' . esc_attr( $settings['api_key'] ) . '" />',
-					),
-					array(
-						'label'   => __( 'Model id', 'perxel-ai-translate' ),
-						'icon'    => $model_icon,
-						'sub'     => '<span id="pxat-model-detail">' . $model_detail . '</span>',
-						'content' => '<input type="text" class="pxui-mono" id="pxat-model-id" name="model_id" value="' . esc_attr( $settings['model_id'] ) . '" placeholder="' . esc_attr( PXAT_DEFAULT_MODEL ) . '" />',
-					),
-				),
+				'rows'         => $openrouter_rows,
 			),
 			array(
 				'title' => __( 'Translation', 'perxel-ai-translate' ),
@@ -122,10 +156,39 @@ $test_button = '<button type="button" class="button" id="pxat-test">' . esc_html
 </form>
 
 <?php
+/* --- Compatibility --------------------------------------------------- */
+
+$compat_rows = array();
+foreach ( $compatibility as $plugin ) {
+	$compat_rows[] = array(
+		'label'   => $plugin['name'],
+		'icon'    => $plugin['active'] ? 'good' : 'muted',
+		'sub'     => esc_html( $plugin['note'] ),
+		'content' => $plugin['active']
+			? esc_html(
+				$plugin['version']
+					/* translators: %s: plugin version number. */
+					? sprintf( __( 'Active %s', 'perxel-ai-translate' ), $plugin['version'] )
+					: __( 'Active', 'perxel-ai-translate' )
+			)
+			: esc_html__( 'Not detected', 'perxel-ai-translate' ),
+	);
+}
+
+echo \Perxel_UI::rows(
+	array(
+		array(
+			'title' => __( 'Compatibility', 'perxel-ai-translate' ),
+			'note'  => esc_html__( 'Tested integrations. Each is listed whether or not it is installed so you can see what we support; a check means it is active on this site.', 'perxel-ai-translate' ),
+			'rows'  => $compat_rows,
+		),
+	)
+);
+
 /* --- Environment ------------------------------------------------------ */
 
 $env    = $environment;
-$env_ok = $env['wpml_active'] && $env['lang_count'] >= 2 && $env['api_key_set'];
+$env_ok = $env['wpml_active'] && $env['lang_count'] >= 2 && $env['api_key_ok'] && $env['model_ok'];
 
 $lines = array(
 	sprintf( 'WPML                 %s', $env['wpml_active'] ? 'active ' . $env['wpml_version'] : 'NOT ACTIVE' ),
@@ -133,8 +196,6 @@ $lines = array(
 	sprintf( 'Default language     %s', $env['default_lang'] ? $env['default_lang'] : '-' ),
 	sprintf( 'API key              %s', $env['api_key_set'] ? ( $env['api_key_ok'] ? 'set, verified' : 'set, not verified' ) : 'NOT SET' ),
 	sprintf( 'Model                %s', $env['model_id'] . ( $env['model_ok'] ? ' (verified)' : ' (not verified)' ) ),
-	sprintf( 'ACF                  %s', $env['acf'] ? 'active' : 'not detected' ),
-	sprintf( 'Rank Math            %s', $env['rankmath'] ? 'active' : 'not detected' ),
 	sprintf( 'PHP                  %s', $env['php_version'] ),
 	sprintf( 'Max execution time   %ds', $env['max_execution'] ),
 );

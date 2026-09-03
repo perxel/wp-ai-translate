@@ -346,11 +346,13 @@ class Admin {
 	public function render_settings() {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- display-only flash flags set by our own redirect.
 		$vars = array(
-			'settings'    => Settings::all(),
-			'model'       => Settings::model(),
-			'environment' => self::environment(),
-			'updated'     => isset( $_GET['updated'] ),
-			'was_reset'   => isset( $_GET['reset'] ),
+			'settings'      => Settings::all(),
+			'model'         => Settings::model(),
+			'environment'   => self::environment(),
+			'compatibility' => self::compatibility(),
+			'benchmark'     => self::homepage_benchmark(),
+			'updated'       => isset( $_GET['updated'] ),
+			'was_reset'     => isset( $_GET['reset'] ),
 		);
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
@@ -615,5 +617,104 @@ class Admin {
 			'acf'           => class_exists( 'ACF' ) || function_exists( 'get_field' ),
 			'rankmath'      => defined( 'RANK_MATH_VERSION' ),
 		);
+	}
+
+	/**
+	 * The plugins this plugin has integration code for. Every entry is shown on
+	 * the Settings screen whether or not it is installed - a check just means it
+	 * is active here. WPML is the hard dependency and lives in the Environment
+	 * block, not this list.
+	 *
+	 * @return array[] Each: [ name, active (bool), version (string), note ].
+	 */
+	public static function compatibility() {
+		$acf_active = class_exists( 'ACF' ) || function_exists( 'get_field' );
+		$rm_active  = defined( 'RANK_MATH_VERSION' );
+
+		return array(
+			array(
+				'name'    => __( 'Advanced Custom Fields', 'perxel-ai-translate' ),
+				'active'  => $acf_active,
+				'version' => defined( 'ACF_VERSION' ) ? ACF_VERSION : '',
+				'note'    => __( 'Text, textarea and WYSIWYG fields are translated; other field types are copied to the translation as-is.', 'perxel-ai-translate' ),
+			),
+			array(
+				'name'    => __( 'Rank Math SEO', 'perxel-ai-translate' ),
+				'active'  => $rm_active,
+				'version' => $rm_active ? RANK_MATH_VERSION : '',
+				'note'    => __( 'SEO title, description, focus keyword and Facebook / X social meta.', 'perxel-ai-translate' ),
+			),
+		);
+	}
+
+	/**
+	 * A fixed cost benchmark for the Settings screen: what it costs to translate
+	 * the site's front page once at the current model's verified rates. Same
+	 * input text for every model, so switching models moves only the price.
+	 *
+	 * Local math only - no API call. Returns null when there is nothing to
+	 * price against (no verified model) or no front-page content to sample.
+	 *
+	 * @return array|null [ words, prompt_tokens, completion_tokens, cost_per_lang ].
+	 */
+	public static function homepage_benchmark() {
+		$model = Settings::model();
+
+		if ( ! Settings::model_verified() || ! Settings::has_api_key() || (float) $model['input'] <= 0 ) {
+			return null;
+		}
+
+		$post = self::front_page_post();
+		if ( ! $post ) {
+			return null;
+		}
+
+		$payload = array(
+			'post_title'   => (string) $post->post_title,
+			'post_content' => (string) $post->post_content,
+		);
+
+		$system_chars = mb_strlen( OpenRouter::build_system_prompt( Settings::get( 'prompt' ), 'en', 'xx' ) );
+		$estimate     = OpenRouter::estimate_job_tokens( $payload, $system_chars );
+
+		$cost = OpenRouter::estimate_cost(
+			$estimate['prompt_tokens'],
+			$estimate['completion_tokens'],
+			$model['input'],
+			$model['output']
+		);
+
+		return array(
+			'words'             => Format::tokens_to_words( $estimate['prompt_tokens'] + $estimate['completion_tokens'] ),
+			'prompt_tokens'     => $estimate['prompt_tokens'],
+			'completion_tokens' => $estimate['completion_tokens'],
+			'cost_per_lang'     => $cost,
+		);
+	}
+
+	/**
+	 * The post behind the site's front page: the static front page if one is
+	 * set, otherwise the most recent published post. Null when neither exists.
+	 *
+	 * @return \WP_Post|null
+	 */
+	protected static function front_page_post() {
+		if ( 'page' === get_option( 'show_on_front' ) ) {
+			$front_id = (int) get_option( 'page_on_front' );
+			$post     = $front_id ? get_post( $front_id ) : null;
+			if ( $post instanceof \WP_Post ) {
+				return $post;
+			}
+		}
+
+		$recent = get_posts(
+			array(
+				'numberposts'      => 1,
+				'post_status'      => 'publish',
+				'suppress_filters' => true,
+			)
+		);
+
+		return $recent ? $recent[0] : null;
 	}
 }
