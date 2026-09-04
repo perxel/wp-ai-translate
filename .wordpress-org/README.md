@@ -1,7 +1,7 @@
 # WordPress.org listing assets
 
 Files in this folder are pushed to the plugin's SVN `assets/` directory by the
-GitHub Actions workflow. They are **not** shipped to users — they only appear on
+GitHub Actions workflow. They are **not** shipped to users - they only appear on
 the wordpress.org plugin page.
 
 Expected files (add before the first release):

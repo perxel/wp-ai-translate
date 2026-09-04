@@ -1,743 +1,597 @@
+/**
+ * Translation-run screen.
+ *
+ * A run is only ever started by the "Translate and apply" button on the Confirm
+ * screen, which lands here with ?pxat_autostart=1. That is the single trigger -
+ * this script consumes the flag (stripping it from the URL) and starts the loop
+ * once. Every later load of this URL - a reload, a bookmark, the toolbar link -
+ * has no flag and is view-only: it shows the run's state and a manual Resume /
+ * Retry, and never spends anything on its own.
+ *
+ * The loop asks the server to translate + write the next post(s) until done. Run
+ * state lives in the database; the server resolves a single `phase` (running |
+ * blocked | complete | idle) and this script is a thin driver for it. It never
+ * reloads the page except once on genuine completion (a terminal state).
+ */
 ( function () {
 	'use strict';
 
-	var i18n = window.wp && window.wp.i18n ? window.wp.i18n : null;
-	function __( text ) {
-		return i18n ? i18n.__( text, 'perxel-ai-translate' ) : text;
-	}
-	function sprintf() {
-		var args = Array.prototype.slice.call( arguments );
-		if ( i18n ) {
-			return i18n.sprintf.apply( i18n, args );
-		}
-		var i = 1;
-		return args[ 0 ].replace( /%[sd]/g, function () {
-			return args[ i++ ];
-		} );
-	}
+	var cfg = window.PXAT_Progress || {};
 
-	var currentTextEl = document.getElementById( 'pxat-current-text' );
-	var currentSpinnerEl = document.getElementById( 'pxat-current-spinner' );
-	var logEl = document.getElementById( 'pxat-log' );
-	var jobsTable = document.getElementById( 'pxat-jobs-table' );
-	var applyAllBtns = [ document.getElementById( 'pxat-apply-all-top' ), document.getElementById( 'pxat-apply-all-bottom' ) ].filter( Boolean );
-	var applyAllSpinners = [ document.getElementById( 'pxat-apply-all-top-spinner' ), document.getElementById( 'pxat-apply-all-bottom-spinner' ) ].filter( Boolean );
-	var startBtn = document.getElementById( 'pxat-start-btn' );
-	var stopBtn = document.getElementById( 'pxat-stop-btn' );
-	var running = false;
-
-	// The processing AJAX request blocks for the full duration of one
-	// OpenRouter call (up to 90s), so a separate, fast poll runs alongside
-	// it purely to show which job is running right now, otherwise the page
-	// looks frozen for the whole time.
-	var pollTimer = null;
-	var tickTimer = null;
-	var activeJob = null;
-	var pendingApplyIds = [];
-
-	// "Auto (batched)" mode runs PXAT_Progress.workerCount parallel
-	// processNext() loops against the same batch (see startWorkers() below);
-	// every other mode stays at exactly 1. activeWorkers is how many of those
-	// loops are still going — the run is only truly over once every worker
-	// independently found nothing left to claim (see workerFinished()).
+	var phase = cfg.phase || 'idle'; // last phase the server reported
+	var running = false; // the pump loop is active
+	var stopping = false; // user pressed Stop; workers wind down after the call in flight
 	var activeWorkers = 0;
+	var stalled = false; // last request failed
+	var sessionExpired = false;
+	var lostContact = 0;
+	var pollTimer = null;
 
-	// Full job records (fields, preview, before, action, ...), seeded from
-	// the server-rendered snapshot and kept current as poll()/processNext()/
-	// applyJob() responses arrive — the Preview dialog reads straight out of
-	// this, no separate AJAX call needed.
-	var jobsById = {};
-	( PXAT_Progress.jobs || [] ).forEach( function ( job ) {
-		jobsById[ job.id ] = job;
-	} );
-
-	var statusLabels = {
-		pending: __( 'Pending' ),
-		processing: __( 'Processing' ),
-		success: __( 'Translated' ),
-		error: __( 'Error' ),
-		skipped: __( 'Skipped' )
-	};
-
-	// Mirrors PXAT_Job_Processor::type_label().
-	var TYPE_LABELS = {
-		title: __( 'Title / Slug' ),
-		content: __( 'Content' ),
-		acf: 'ACF',
-		rankmath: 'Rank Math',
-		taxonomy: 'Taxonomy',
-		thumbnail: __( 'Featured image' )
-	};
-
-	var seenLogCounts = {};
-	document.querySelectorAll( '[data-job-id]' ).forEach( function ( row ) {
-		seenLogCounts[ row.getAttribute( 'data-job-id' ) ] = parseInt( row.getAttribute( 'data-log-count' ) || '0', 10 );
-	} );
-
-	function jobLabel( job ) {
-		return 'Post #' + job.source_post_id;
+	function el( sel, ctx ) {
+		return ( ctx || document ).querySelector( sel );
 	}
 
-	function escapeHtml( str ) {
-		var div = document.createElement( 'div' );
-		div.textContent = str || '';
-		return div.innerHTML;
-	}
+	// wp.i18n.__, or a passthrough until it loads. Pass the text domain at every
+	// call site so `wp i18n make-pot` can find the strings.
+	var __ = ( window.wp && window.wp.i18n )
+		? window.wp.i18n.__
+		: function ( s ) {
+			return s;
+		};
 
-	// Mirrors PXAT_Progress_Page::render_post_cell().
-	function renderPostCell( post ) {
-		if ( ! post ) {
-			return '&mdash;';
+	/* A one-line status next to the Start/Stop buttons so every state change
+	   produces visible feedback. */
+	function setRunMsg( text ) {
+		var box = el( '.pxui-main__actions' );
+		if ( ! box ) {
+			return;
 		}
-
-		var title = post.title ? post.title : sprintf( __( '(#%d, no title)' ), post.id );
-		var html = post.edit_url
-			? '<a href="' + escapeHtml( post.edit_url ) + '" target="_blank" rel="noopener">' + escapeHtml( title ) + '</a>'
-			: escapeHtml( title );
-
-		return html + ' <span class="description">(' + escapeHtml( post.status ) + ')</span>';
-	}
-
-	// Mirrors PXAT_Progress_Page::render_type_results() — keep both in sync.
-	function renderTypeResults( results ) {
-		var items = [];
-		Object.keys( results ).forEach( function ( type ) {
-			var result = results[ type ];
-			var label = escapeHtml( TYPE_LABELS[ type ] || type );
-			if ( ! result.success ) {
-				items.push( '<span class="pxat-inline-error" title="' + escapeHtml( result.message || '' ) + '">' + label + ' ✗</span>' );
-			} else if ( result.message ) {
-				items.push( '<span class="pxat-inline-warning" title="' + escapeHtml( result.message ) + '">' + label + ' ⚠</span>' );
-			} else {
-				items.push( '<span class="pxat-inline-ok">' + label + ' ✓</span>' );
+		var msg = el( '#pxat-run-msg' );
+		if ( ! text ) {
+			if ( msg ) {
+				msg.parentNode.removeChild( msg );
 			}
-		} );
-		return items.join( ' ' );
-	}
-
-	// Mirrors PXAT_Progress_Page::render_action_cell() — keep both in sync.
-	function renderActionCell( job ) {
-		if ( 'error' === job.status ) {
-			return '<button type="button" class="button button-small pxat-retry-btn" data-job-id="' + escapeHtml( job.id ) + '">' + escapeHtml( __( 'Retry' ) ) + '</button>';
-		}
-
-		if ( 'success' !== job.status ) {
-			return '&mdash;';
-		}
-
-		var html = '';
-
-		if ( job.apply_error ) {
-			html += '<span class="pxat-inline-error">' + escapeHtml( job.apply_error ) + '</span> ';
-		}
-
-		if ( job.results && Object.keys( job.results ).length ) {
-			html += '<div class="pxat-type-results">' + renderTypeResults( job.results ) + '</div>';
-		}
-
-		html += '<button type="button" class="button button-small pxat-preview-btn" data-job-id="' + escapeHtml( job.id ) + '">' + escapeHtml( __( 'Preview' ) ) + '</button> ';
-
-		if ( job.applied ) {
-			html += '<span class="pxat-badge pxat-badge--applied">' + escapeHtml( __( 'Applied' ) ) + '</span>';
-		} else {
-			html += '<button type="button" class="button button-primary button-small pxat-apply-btn" data-job-id="' + escapeHtml( job.id ) + '">' + escapeHtml( __( 'Apply' ) ) + '</button>';
-		}
-
-		return html;
-	}
-
-	function previewTitle( job ) {
-		var actionLabel = 'update' === job.action ? __( 'will overwrite the existing translation' ) : __( 'will create a new post' );
-		return jobLabel( job ) + ' — ' + actionLabel;
-	}
-
-	function renderPreviewBody( job ) {
-		if ( ! job || ! Array.isArray( job.fields ) || ! job.fields.length ) {
-			return '<p>' + escapeHtml( __( 'No fields.' ) ) + '</p>';
-		}
-
-		var preview = job.preview || {};
-		var before = job.before || {};
-		var beforeLabel = 'update' === job.action ? __( 'Current' ) : __( 'Original' );
-		var html = '';
-
-		job.fields.forEach( function ( field ) {
-			var after = undefined !== preview[ field.key ] ? preview[ field.key ] : '';
-			html += '<div class="pxat-preview-field">';
-			html += '<h4><code>' + escapeHtml( field.key ) + '</code></h4>';
-			html += '<div class="pxat-preview-before"><strong>' + escapeHtml( beforeLabel ) + '</strong><pre>' + escapeHtml( before[ field.key ] || '' ) + '</pre></div>';
-			html += '<div class="pxat-preview-after"><strong>' + escapeHtml( __( 'New translation' ) ) + '</strong><pre>' + escapeHtml( after ) + '</pre></div>';
-			html += '</div>';
-		} );
-
-		return html;
-	}
-
-	function openPreviewDialog( jobId ) {
-		var job = jobsById[ jobId ];
-		if ( ! job ) {
 			return;
 		}
-
-		var titleEl = document.getElementById( 'pxat-preview-title' );
-		var bodyEl = document.getElementById( 'pxat-preview-body' );
-		if ( titleEl ) {
-			titleEl.textContent = previewTitle( job );
+		if ( ! msg ) {
+			msg = document.createElement( 'span' );
+			msg.id = 'pxat-run-msg';
+			msg.className = 'pxat-run-msg';
+			box.appendChild( msg );
 		}
-		if ( bodyEl ) {
-			bodyEl.innerHTML = renderPreviewBody( job );
-		}
-
-		var dialog = document.getElementById( 'pxat-preview-dialog' );
-		if ( dialog && dialog.showModal ) {
-			dialog.showModal();
-		}
+		msg.textContent = text;
 	}
 
-	function summarizeActions( ids ) {
-		var create = 0;
-		var update = 0;
-
-		ids.forEach( function ( id ) {
-			var job = jobsById[ id ];
-			if ( ! job ) {
-				return;
-			}
-			if ( 'update' === job.action ) {
-				update++;
-			} else {
-				create++;
-			}
-		} );
-
-		var parts = [];
-		if ( create ) {
-			parts.push( sprintf( __( '%d new post(s)' ), create ) );
-		}
-		if ( update ) {
-			parts.push( sprintf( __( '%d previously translated post(s) (overwrite)' ), update ) );
-		}
-
-		return parts.length ? sprintf( __( 'Will apply: %s.' ), parts.join( ', ' ) ) : '';
-	}
-
-	function eligibleJobIds() {
-		return Object.keys( jobsById ).filter( function ( id ) {
-			var job = jobsById[ id ];
-			return job && 'success' === job.status && ! job.applied;
-		} );
-	}
-
-	function openApplyDialog( ids ) {
-		ids = ids.filter( function ( id ) {
-			var job = jobsById[ id ];
-			return job && 'success' === job.status && ! job.applied;
-		} );
-
-		if ( ! ids.length ) {
-			return;
-		}
-
-		pendingApplyIds = ids;
-
-		var summaryEl = document.getElementById( 'pxat-apply-summary' );
-		if ( summaryEl ) {
-			summaryEl.textContent = summarizeActions( ids );
-		}
-
-		var dialog = document.getElementById( 'pxat-apply-dialog' );
-		if ( dialog && dialog.showModal ) {
-			dialog.showModal();
-		}
-	}
-
-	function appendLogEntries( job ) {
-		if ( ! job || ! Array.isArray( job.log ) ) {
-			return;
-		}
-
-		var seen = seenLogCounts[ job.id ] || 0;
-		if ( job.log.length <= seen ) {
-			return;
-		}
-
-		for ( var i = seen; i < job.log.length; i++ ) {
-			var entry = job.log[ i ];
-			var line = '[' + entry.at + '] ' + entry.message;
-			if ( logEl ) {
-				logEl.textContent += line + '\n';
-				logEl.scrollTop = logEl.scrollHeight;
-			}
-		}
-
-		seenLogCounts[ job.id ] = job.log.length;
-	}
-
-	function setCurrent( text, busy ) {
-		if ( currentTextEl ) {
-			currentTextEl.textContent = text || '';
-		}
-		if ( currentSpinnerEl ) {
-			currentSpinnerEl.classList.toggle( 'is-active', !! busy );
-		}
-	}
-
-	function setApplyAllBusy( busy ) {
-		applyAllBtns.forEach( function ( btn ) {
-			btn.disabled = busy;
-		} );
-		applyAllSpinners.forEach( function ( spinner ) {
-			spinner.classList.toggle( 'is-active', busy );
-		} );
-	}
-
-	function setRowBusy( jobId, label ) {
-		var row = document.querySelector( '[data-job-id="' + jobId + '"]' );
-		var actionCell = row ? row.querySelector( '.pxat-action' ) : null;
-		if ( actionCell ) {
-			actionCell.innerHTML = '<span class="spinner is-active"></span> ' + escapeHtml( label || __( 'Applying…' ) );
-		}
-	}
-
-	function setDurationSeconds( seconds ) {
-		if ( 'number' === typeof seconds ) {
-			setText( 'pxat-stat-elapsed', PXATFormat.duration( seconds ) );
-		}
-	}
-
-	function renderCurrent() {
-		if ( ! activeJob ) {
-			setCurrent( '', false );
-			return;
-		}
-		var secs = Math.floor( ( Date.now() - activeJob.since ) / 1000 );
-		// Batch mode: several jobs are "processing" simultaneously — one
-		// shared OpenRouter request covers all of them — so the label names
-		// the group instead of one post.
-		var label = activeJob.ids.length > 1
-			? sprintf( __( '%d posts' ), activeJob.ids.length )
-			: ( jobsById[ activeJob.ids[ 0 ] ] ? jobLabel( jobsById[ activeJob.ids[ 0 ] ] ) : '' );
-		setCurrent( sprintf( __( 'Processing: %1$s (%2$ds)' ), label, secs ), true );
-	}
-
-	function poll() {
+	function post( action, data ) {
 		var body = new URLSearchParams();
-		body.set( 'action', 'pxat_get_status' );
-		body.set( 'nonce', PXAT_Progress.nonce );
-		body.set( 'batch_id', PXAT_Progress.batchId );
-
-		fetch( PXAT_Progress.ajaxUrl, {
+		body.set( 'action', action );
+		body.set( 'nonce', cfg.nonce );
+		body.set( 'run_id', cfg.runId );
+		Object.keys( data || {} ).forEach( function ( k ) {
+			body.set( k, data[ k ] );
+		} );
+		return fetch( cfg.ajaxUrl, {
 			method: 'POST',
 			credentials: 'same-origin',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: body.toString()
-		} )
-			.then( function ( res ) {
-				return res.json();
-			} )
-			.then( function ( res ) {
-				if ( ! res.success ) {
-					return;
-				}
-
-				res.data.jobs.forEach( function ( job ) {
-					updateRow( job );
-					appendLogEntries( job );
-				} );
-				updateCounts( res.data.counts );
-				setDurationSeconds( res.data.durationSeconds );
-
-				var stillActiveIds = res.data.jobs.filter( function ( job ) {
-					return 'processing' === job.status;
-				} ).map( function ( job ) {
-					return job.id;
-				} );
-
-				if ( stillActiveIds.length ) {
-					activeJob = { ids: stillActiveIds, since: activeJob ? activeJob.since : Date.now() };
-				} else {
-					activeJob = null;
-				}
-
-				renderCurrent();
-			} )
-			.catch( function () {} );
+		} ).then( function ( r ) {
+			// A 401/403 is almost always an expired nonce - the tab has been
+			// open past the nonce lifetime.
+			if ( 401 === r.status || 403 === r.status ) {
+				var expiredErr = new Error( 'session expired' );
+				expiredErr.expired = true;
+				throw expiredErr;
+			}
+			if ( ! r.ok ) {
+				throw new Error( 'HTTP ' + r.status );
+			}
+			return r.json();
+		} );
 	}
 
-	function startPolling() {
-		poll();
-		pollTimer = setInterval( poll, 1500 );
-		tickTimer = setInterval( renderCurrent, 1000 );
-	}
-
-	function stopPolling() {
-		clearInterval( pollTimer );
-		clearInterval( tickTimer );
-		pollTimer = null;
-		tickTimer = null;
-		activeJob = null;
-	}
-
-	function updateRow( job ) {
-		jobsById[ job.id ] = job;
-
-		var row = document.querySelector( '[data-job-id="' + job.id + '"]' );
-		if ( ! row ) {
-			return;
-		}
-
-		var sourceCell = row.querySelector( '.pxat-source-post' );
-		if ( sourceCell && job.source_post ) {
-			sourceCell.innerHTML = renderPostCell( job.source_post );
-		}
-
-		var destCell = row.querySelector( '.pxat-dest-post' );
-		if ( destCell && job.dest_post ) {
-			destCell.innerHTML = renderPostCell( job.dest_post );
-		}
-
-		var statusCell = row.querySelector( '.pxat-status' );
-		var statusSpinner = 'processing' === job.status ? '<span class="spinner is-active"></span>' : '';
-		statusCell.innerHTML = '<span class="pxat-badge pxat-badge--' + job.status + '">' + statusSpinner + escapeHtml( statusLabels[ job.status ] || job.status ) + '</span>';
-
-		var msgCell = row.querySelector( '.pxat-message' );
-		msgCell.textContent = job.error_message || '';
-
-		var actionCell = row.querySelector( '.pxat-action' );
-		if ( actionCell ) {
-			actionCell.innerHTML = renderActionCell( job );
-		}
+	function isExpired( err ) {
+		return !! ( err && err.expired );
 	}
 
 	function setText( id, value ) {
-		var el = document.getElementById( id );
-		if ( el ) {
-			el.textContent = value;
+		var node = el( '#' + id );
+		if ( node ) {
+			node.textContent = value;
 		}
 	}
 
-	function setBarWidth( id, pct ) {
-		var el = document.getElementById( id );
-		if ( el ) {
-			el.style.width = pct + '%';
-		}
-	}
+	/* --- Rendering ----------------------------------------------- */
 
-	function updateCounts( counts ) {
-		var translatedPct = counts.total > 0 ? Math.round( ( counts.success / counts.total ) * 100 ) : 0;
-		var appliedPct = counts.total > 0 ? Math.round( ( counts.applied / counts.total ) * 100 ) : 0;
-
-		setText( 'pxat-stat-translated-pct', translatedPct );
-		setText( 'pxat-stat-translated-frac', counts.success + ' / ' + counts.total );
-		setBarWidth( 'pxat-stat-translated-bar', translatedPct );
-
-		setText( 'pxat-stat-applied-pct', appliedPct );
-		setText( 'pxat-stat-applied-frac', counts.applied + ' / ' + counts.total );
-		setBarWidth( 'pxat-stat-applied-bar', appliedPct );
-
-		setText( 'pxat-stat-error', counts.error );
-		setText( 'pxat-stat-skipped', counts.skipped );
-
-		var warningsWrapEl = document.getElementById( 'pxat-stat-warnings-wrap' );
-		if ( warningsWrapEl ) {
-			warningsWrapEl.style.display = counts.warnings > 0 ? '' : 'none';
-		}
-		setText( 'pxat-stat-warnings', sprintf( __( '%d posts with warnings (data did not copy completely — see the Action column)' ), counts.warnings ) );
-
-		var applyErrorsWrapEl = document.getElementById( 'pxat-stat-apply-errors-wrap' );
-		if ( applyErrorsWrapEl ) {
-			applyErrorsWrapEl.style.display = counts.apply_errors > 0 ? '' : 'none';
-		}
-		setText( 'pxat-stat-apply-errors', sprintf( __( '%d posts failed to apply (see the Action column)' ), counts.apply_errors ) );
-
-		var tokens = ( counts.prompt_tokens || 0 ) + ( counts.completion_tokens || 0 );
-		setText( 'pxat-stat-tokens', PXATFormat.unitLabel( tokens, PXAT_Progress.displayUnit ) );
-		setText( 'pxat-stat-cost', PXATFormat.cost( counts.cost_usd || 0 ) );
-	}
-
-	function processNext() {
-		if ( ! running ) {
-			workerStopped();
+	function renderCounts( d ) {
+		if ( ! d || ! d.counts ) {
 			return;
 		}
+		var c = d.counts;
+		var total = Math.max( 1, c.total );
+		var pct = Math.round( ( c.done + c.error + c.skipped ) / total * 100 );
+		var meter = el( '#pxat-progress-bar' );
+		if ( meter ) {
+			var fill = meter.querySelector( '.pxui-meter__fill' );
+			if ( fill ) {
+				fill.style.width = pct + '%';
+			}
+			var meterText = meter.querySelector( '.pxui-meter__text' );
+			if ( meterText ) {
+				meterText.textContent = pct + '%';
+			}
+			meter.setAttribute( 'aria-valuenow', String( pct ) );
+		}
+		setText( 'pxat-stat-done', new Intl.NumberFormat().format( c.done ) );
+		setText( 'pxat-stat-error', new Intl.NumberFormat().format( c.error ) );
+		setText( 'pxat-stat-skipped', new Intl.NumberFormat().format( c.skipped ) );
+		setText( 'pxat-stat-cost', window.PXAT_Format.cost( c.cost_usd ) );
+		setText( 'pxat-stat-tokens', window.PXAT_Format.unitLabel( c.prompt_tokens + c.completion_tokens ) );
+		if ( typeof d.durationSeconds !== 'undefined' ) {
+			setText( 'pxat-stat-time', window.PXAT_Format.duration( d.durationSeconds ) );
+		}
+	}
 
-		var body = new URLSearchParams();
-		body.set( 'action', 'pxat_process_job' );
-		body.set( 'nonce', PXAT_Progress.nonce );
-		body.set( 'batch_id', PXAT_Progress.batchId );
-
-		fetch( PXAT_Progress.ajaxUrl, {
-			method: 'POST',
-			credentials: 'same-origin',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: body.toString()
-		} )
-			.then( function ( res ) {
-				return res.json();
-			} )
-			.then( function ( res ) {
-				if ( ! res.success ) {
-					running = false;
-					stopPolling();
-					showRunningUi( false );
-					setCurrent( __( 'Translation error, see the browser console.' ), false );
-					return;
+	function renderItems( items ) {
+		( items || [] ).forEach( function ( item ) {
+			var row = el( 'tr[data-item-id="' + item.id + '"]' );
+			if ( ! row ) {
+				return;
+			}
+			var map = { source: 'pxat-cell-source', dest: 'pxat-cell-dest', status: 'pxat-cell-status', note: 'pxat-cell-note', action: 'pxat-cell-action' };
+			Object.keys( map ).forEach( function ( key ) {
+				var cell = row.querySelector( '.' + map[ key ] );
+				if ( cell && item.html && typeof item.html[ key ] !== 'undefined' ) {
+					cell.innerHTML = item.html[ key ];
 				}
-
-				if ( res.data.counts ) {
-					updateCounts( res.data.counts );
-				}
-				setDurationSeconds( res.data.durationSeconds );
-
-				if ( res.data.done ) {
-					workerFinished();
-					return;
-				}
-
-				if ( res.data.job ) {
-					updateRow( res.data.job );
-					appendLogEntries( res.data.job );
-				}
-
-				if ( Array.isArray( res.data.jobs ) ) {
-					res.data.jobs.forEach( function ( job ) {
-						updateRow( job );
-						appendLogEntries( job );
-					} );
-				}
-
-				processNext();
-			} )
-			.catch( function () {
-				running = false;
-				stopPolling();
-				showRunningUi( false );
-				setCurrent( __( 'Connection error, try reloading the page.' ), false );
 			} );
+			row.setAttribute( 'data-preview', JSON.stringify( { before: item.before, preview: item.preview, action: item.action } ) );
+		} );
 	}
 
-	function showRunningUi( isRunning ) {
-		if ( startBtn ) {
-			startBtn.style.display = isRunning ? 'none' : '';
-		}
-		if ( stopBtn ) {
-			stopBtn.style.display = isRunning ? '' : 'none';
-			stopBtn.disabled = false;
-		}
-	}
-
-	function hideRunningUi() {
-		if ( startBtn ) {
-			startBtn.style.display = 'none';
-		}
-		if ( stopBtn ) {
-			stopBtn.style.display = 'none';
-		}
-	}
-
-	function workerStopped() {
-		activeWorkers = Math.max( 0, activeWorkers - 1 );
-		if ( activeWorkers > 0 ) {
+	function renderLog( text ) {
+		if ( typeof text !== 'string' ) {
 			return;
 		}
-		stopPolling();
-		showRunningUi( false );
-		setCurrent( __( 'Stopped — click "Start translating" to continue.' ), false );
-	}
-
-	function startWorkers( count ) {
-		running = true;
-		activeWorkers = count;
-		startPolling();
-		for ( var i = 0; i < count; i++ ) {
-			processNext();
+		var pre = el( '#pxat-log' );
+		if ( ! pre || pre.textContent === text ) {
+			return;
+		}
+		var atBottom = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40;
+		pre.textContent = text;
+		if ( atBottom ) {
+			pre.scrollTop = pre.scrollHeight;
 		}
 	}
 
-	function workerFinished() {
+	function render( d ) {
+		if ( ! d ) {
+			return;
+		}
+		renderCounts( d );
+		renderItems( d.items );
+		renderLog( d.log );
+		if ( typeof d.phase === 'string' ) {
+			phase = d.phase;
+			if ( ! running ) {
+				paintIdleUi();
+			}
+		}
+	}
+
+	/* --- Buttons ------------------------------------------------- */
+
+	function show( node, visible ) {
+		if ( node ) {
+			node.hidden = ! visible;
+		}
+	}
+
+	function paintRunningUi() {
+		var start = el( '#pxat-start' );
+		var stop = el( '#pxat-stop' );
+		show( start, false );
+		if ( stop ) {
+			stop.hidden = false;
+			stop.disabled = false;
+			stop.textContent = __( 'Stop', 'perxel-ai-translate' );
+		}
+	}
+
+	/* The loop is not running: show the right affordance for the current phase
+	   and a one-line reason. */
+	function paintIdleUi() {
+		var start = el( '#pxat-start' );
+		var stop = el( '#pxat-stop' );
+		show( stop, false );
+
+		if ( 'complete' === phase ) {
+			show( start, false );
+			return;
+		}
+
+		// This screen only ever shows the idle button after a run has been
+		// created and (attempted to) start, or on a revisit - so the action is
+		// always "resume", never a cold "start".
+		if ( start ) {
+			start.hidden = false;
+			start.textContent = __( 'Resume translating', 'perxel-ai-translate' );
+		}
+
+		if ( sessionExpired ) {
+			setRunMsg( __( 'Your session expired. Reload the page to keep translating.', 'perxel-ai-translate' ) );
+		} else if ( stalled ) {
+			setRunMsg( __( 'The last request failed. Press Resume to try again.', 'perxel-ai-translate' ) );
+		} else if ( 'blocked' === phase ) {
+			setRunMsg( __( 'A post was interrupted. Press Resume to pick it back up.', 'perxel-ai-translate' ) );
+		} else if ( stopping ) {
+			setRunMsg( __( 'Stopped. Press Resume to translate the remaining posts.', 'perxel-ai-translate' ) );
+		} else if ( 'running' === phase ) {
+			setRunMsg( __( 'This run has posts left. Press Resume to continue.', 'perxel-ai-translate' ) );
+		}
+	}
+
+	/* --- The loop ---------------------------------------------------- */
+
+	/* The Resume button. Clears the failure flags, then goes through doResume()
+	   so any stuck row is requeued before the loop picks back up. */
+	function beginOrResume() {
+		stalled = false;
+		sessionExpired = false;
+		if ( 'complete' === phase ) {
+			return;
+		}
+		doResume();
+	}
+
+	function startLoop() {
+		if ( running ) {
+			return;
+		}
+		running = true;
+		stopping = false;
+		stalled = false;
+		sessionExpired = false;
+		setRunMsg( '' );
+		paintRunningUi();
+		startPoll();
+
+		var n = Math.max( 1, cfg.batched ? ( cfg.workerCount || 1 ) : 1 );
+		for ( var i = 0; i < n; i++ ) {
+			activeWorkers++;
+			pump();
+		}
+	}
+
+	function pump() {
+		if ( stopping ) {
+			retire();
+			return;
+		}
+		post( 'pxat_process', {} ).then( function ( res ) {
+			if ( ! res || ! res.success ) {
+				stalled = true;
+				retire();
+				return;
+			}
+			lostContact = 0;
+			stalled = false;
+			render( res.data );
+
+			var didWork = !! ( res.data.items && res.data.items.length );
+
+			// This worker keeps pumping only while it is actually getting work
+			// and the run is still going. Otherwise it retires - the other
+			// workers carry on, and settle() decides (finish / recover / pause)
+			// once they have all wound down. It is never this loop's job to
+			// hammer an idle endpoint.
+			if ( didWork && 'running' === res.data.phase && ! stopping ) {
+				pump();
+				return;
+			}
+			retire();
+		} ).catch( function ( err ) {
+			sessionExpired = isExpired( err );
+			stalled = ! sessionExpired;
+			retire();
+		} );
+	}
+
+	function retire() {
 		activeWorkers = Math.max( 0, activeWorkers - 1 );
 		if ( activeWorkers > 0 ) {
 			return;
 		}
 		running = false;
-		stopPolling();
-		hideRunningUi();
-		setCurrent(
-			PXAT_Progress.autoApply
-				? __( 'Done — everything translated and applied.' )
-				: __( 'Translation finished — preview and apply below.' ),
-			false
-		);
+		settle();
 	}
 
-	function applyJob( jobId ) {
-		setRowBusy( jobId, __( 'Applying…' ) );
-
-		var body = new URLSearchParams();
-		body.set( 'action', 'pxat_apply_job' );
-		body.set( 'nonce', PXAT_Progress.nonce );
-		body.set( 'batch_id', PXAT_Progress.batchId );
-		body.set( 'job_id', jobId );
-
-		return fetch( PXAT_Progress.ajaxUrl, {
-			method: 'POST',
-			credentials: 'same-origin',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: body.toString()
-		} )
-			.then( function ( res ) {
-				return res.json();
-			} )
-			.then( function ( res ) {
-				if ( ! res.success ) {
-					if ( jobsById[ jobId ] ) {
-						updateRow( jobsById[ jobId ] );
-					}
-					return;
-				}
-				if ( res.data.job ) {
-					updateRow( res.data.job );
-				}
-				if ( res.data.counts ) {
-					updateCounts( res.data.counts );
-				}
-				setDurationSeconds( res.data.durationSeconds );
-			} )
-			.catch( function () {
-				if ( jobsById[ jobId ] ) {
-					updateRow( jobsById[ jobId ] );
-				}
-			} );
-	}
-
-	function retryJob( jobId ) {
-		setRowBusy( jobId, __( 'Retrying…' ) );
-
-		var body = new URLSearchParams();
-		body.set( 'action', 'pxat_retry_job' );
-		body.set( 'nonce', PXAT_Progress.nonce );
-		body.set( 'batch_id', PXAT_Progress.batchId );
-		body.set( 'job_id', jobId );
-
-		return fetch( PXAT_Progress.ajaxUrl, {
-			method: 'POST',
-			credentials: 'same-origin',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: body.toString()
-		} )
-			.then( function ( res ) {
-				return res.json();
-			} )
-			.then( function ( res ) {
-				if ( ! res.success ) {
-					if ( jobsById[ jobId ] ) {
-						updateRow( jobsById[ jobId ] );
-					}
-					return;
-				}
-				if ( res.data.job ) {
-					updateRow( res.data.job );
-					appendLogEntries( res.data.job );
-				}
-				if ( res.data.counts ) {
-					updateCounts( res.data.counts );
-				}
-				setDurationSeconds( res.data.durationSeconds );
-			} )
-			.catch( function () {
-				if ( jobsById[ jobId ] ) {
-					updateRow( jobsById[ jobId ] );
-				}
-			} );
-	}
-
-	function applyQueue( ids ) {
-		if ( ! ids.length ) {
+	/* Every worker has wound down. Either the run is complete, or it stopped for
+	   a reason (Stop, a failed request, a stuck row, another tab holding the
+	   work) and now waits for a manual Resume. Nothing auto-restarts here. */
+	function settle() {
+		stopPoll();
+		if ( 'complete' === phase ) {
+			finishToDone();
 			return;
 		}
-		setApplyAllBusy( true );
-		runApplyQueue( ids );
+		paintIdleUi();
+		refreshOnce();
 	}
 
-	function runApplyQueue( ids ) {
-		if ( ! ids.length ) {
-			setApplyAllBusy( false );
-			setCurrent( __( 'Done applying.' ), false );
-			return;
-		}
-		var id = ids.shift();
-		setCurrent( sprintf( __( 'Applying: %s' ), jobsById[ id ] ? jobLabel( jobsById[ id ] ) : id ), true );
-		applyJob( id ).then( function () {
-			runApplyQueue( ids );
+	/* The Resume button: ask the server to requeue an interrupted post (safe now
+	   that every worker has wound down), then pick the loop back up. */
+	function doResume() {
+		startPoll();
+		setRunMsg( __( 'Recovering an interrupted post…', 'perxel-ai-translate' ) );
+		post( 'pxat_resume', {} ).then( function ( res ) {
+			if ( ! res || ! res.success ) {
+				paintIdleUi();
+				return;
+			}
+			render( res.data );
+			if ( 'complete' === res.data.phase ) {
+				finishToDone();
+				return;
+			}
+			if ( res.data.claimable > 0 ) {
+				startLoop();
+				return;
+			}
+			// Nothing to pick up yet - a request is still clearing. Leave the
+			// Resume button so the user can try again in a moment.
+			stopPoll();
+			paintIdleUi();
+			setRunMsg( __( 'The interrupted post is still clearing. Press Resume again in a moment.', 'perxel-ai-translate' ) );
+		} ).catch( function ( err ) {
+			sessionExpired = isExpired( err );
+			stalled = ! sessionExpired;
+			paintIdleUi();
 		} );
 	}
 
-	if ( jobsTable ) {
-		jobsTable.addEventListener( 'click', function ( e ) {
-			var previewBtn = e.target.closest( '.pxat-preview-btn' );
-			if ( previewBtn ) {
-				openPreviewDialog( previewBtn.getAttribute( 'data-job-id' ) );
-				return;
+	/* Genuine completion is terminal. Reload once so the server renders the
+	   proper done screen; after that cfg.phase is 'complete' and nothing here
+	   starts again, so it cannot loop. */
+	function finishToDone() {
+		stopPoll();
+		if ( 'complete' !== cfg.phase ) {
+			window.location.reload();
+		}
+	}
+
+	function refreshOnce() {
+		post( 'pxat_status', {} ).then( function ( res ) {
+			if ( res && res.success ) {
+				render( res.data );
+				if ( 'complete' === res.data.phase ) {
+					finishToDone();
+				}
 			}
-			var applyBtn = e.target.closest( '.pxat-apply-btn' );
-			if ( applyBtn ) {
-				openApplyDialog( [ applyBtn.getAttribute( 'data-job-id' ) ] );
-				return;
-			}
-			var retryBtn = e.target.closest( '.pxat-retry-btn' );
-			if ( retryBtn ) {
-				retryJob( retryBtn.getAttribute( 'data-job-id' ) );
+		} ).catch( function ( err ) {
+			if ( isExpired( err ) ) {
+				sessionExpired = true;
+				paintIdleUi();
 			}
 		} );
 	}
 
-	[ 'pxat-apply-all-top', 'pxat-apply-all-bottom' ].forEach( function ( id ) {
-		var btn = document.getElementById( id );
+	function stop() {
+		if ( ! running ) {
+			return;
+		}
+		stopping = true;
+		running = false;
+		var btn = el( '#pxat-stop' );
 		if ( btn ) {
-			btn.addEventListener( 'click', function () {
-				openApplyDialog( eligibleJobIds() );
+			btn.disabled = true;
+			btn.textContent = __( 'Stopping…', 'perxel-ai-translate' );
+		}
+		setRunMsg( __( 'Finishing the current post, then stopping…', 'perxel-ai-translate' ) );
+	}
+
+	/* --- Polling ------------------------------------------------- */
+
+	function startPoll() {
+		if ( pollTimer ) {
+			return;
+		}
+		pollTimer = setInterval( function () {
+			post( 'pxat_status', {} ).then( function ( res ) {
+				if ( ! res || ! res.success ) {
+					return;
+				}
+				if ( lostContact ) {
+					lostContact = 0;
+					setRunMsg( '' );
+				}
+				render( res.data );
+				if ( 'complete' === res.data.phase ) {
+					finishToDone();
+				}
+			} ).catch( function ( err ) {
+				lostContact++;
+				if ( isExpired( err ) ) {
+					sessionExpired = true;
+					stopPoll();
+					if ( ! running ) {
+						paintIdleUi();
+					}
+				} else if ( lostContact >= 3 ) {
+					setRunMsg( __( 'Lost contact with the server - retrying. Check your connection.', 'perxel-ai-translate' ) );
+				}
 			} );
+		}, 3000 );
+	}
+
+	function stopPoll() {
+		if ( pollTimer ) {
+			clearInterval( pollTimer );
+			pollTimer = null;
+		}
+	}
+
+	/* --- Retry + View ------------------------------------------- */
+
+	function onRetry( btn ) {
+		var label = btn.textContent;
+		var row = btn.closest( 'tr[data-item-id]' );
+		var note = row ? row.querySelector( '.pxat-cell-note' ) : null;
+
+		btn.disabled = true;
+		btn.textContent = __( 'Retrying…', 'perxel-ai-translate' );
+		if ( note ) {
+			note.textContent = __( 'Retrying this post…', 'perxel-ai-translate' );
+		}
+
+		function restore( message ) {
+			btn.disabled = false;
+			btn.textContent = label;
+			if ( note && message ) {
+				note.textContent = message;
+			}
+		}
+
+		post( 'pxat_retry', { item_id: btn.getAttribute( 'data-item-id' ) } ).then( function ( res ) {
+			if ( res && res.success ) {
+				render( res.data );
+				if ( 'complete' === res.data.phase ) {
+					finishToDone();
+				}
+				return;
+			}
+			restore( ( res && res.data && res.data.message ) || __( 'The retry did not go through. Try again.', 'perxel-ai-translate' ) );
+		} ).catch( function ( err ) {
+			restore( isExpired( err )
+				? __( 'Your session expired. Reload the page and try again.', 'perxel-ai-translate' )
+				: __( 'The retry request failed. Check your connection and try again.', 'perxel-ai-translate' ) );
+		} );
+	}
+
+	function esc( s ) {
+		var d = document.createElement( 'div' );
+		d.textContent = s == null ? '' : String( s );
+		return d.innerHTML;
+	}
+
+	function openView( row ) {
+		var data;
+		try {
+			data = JSON.parse( row.getAttribute( 'data-preview' ) || '{}' );
+		} catch ( e ) {
+			data = {};
+		}
+		var before = data.before || {};
+		var preview = data.preview || {};
+		var keys = Object.keys( Object.assign( {}, before, preview ) );
+		var html = '';
+		if ( ! keys.length ) {
+			html = '<p>' + esc( ( window.wp && wp.i18n ) ? wp.i18n.__( 'Nothing to preview.', 'perxel-ai-translate' ) : 'Nothing to preview.' ) + '</p>';
+		} else {
+			html = '<table class="widefat striped"><thead><tr><th>Field</th><th>Before</th><th>After</th></tr></thead><tbody>';
+			keys.forEach( function ( k ) {
+				html += '<tr><td><code>' + esc( k ) + '</code></td><td>' + esc( before[ k ] || '' ) + '</td><td>' + esc( preview[ k ] || '' ) + '</td></tr>';
+			} );
+			html += '</tbody></table>';
+		}
+		var body = el( '#pxat-view-body' );
+		var dlg = el( '#pxat-view-dialog' );
+		if ( ! body || ! dlg ) {
+			return;
+		}
+		body.innerHTML = html;
+		if ( dlg.open ) {
+			return;
+		}
+		if ( dlg.showModal ) {
+			try {
+				dlg.showModal();
+			} catch ( e ) {
+				dlg.setAttribute( 'open', '' );
+			}
+		} else {
+			dlg.setAttribute( 'open', '' );
+		}
+	}
+
+	document.addEventListener( 'click', function ( ev ) {
+		var t = ev.target;
+		if ( ! t.closest ) {
+			return;
+		}
+		if ( t.id === 'pxat-start' ) {
+			beginOrResume();
+		} else if ( t.id === 'pxat-stop' ) {
+			stop();
+		} else if ( t.id === 'pxat-view-close' ) {
+			var dlg = el( '#pxat-view-dialog' );
+			if ( dlg.close ) {
+				dlg.close();
+			} else {
+				dlg.removeAttribute( 'open' );
+			}
+		} else if ( t.classList.contains( 'pxat-retry' ) ) {
+			onRetry( t );
+		} else if ( t.classList.contains( 'pxat-view' ) ) {
+			var row = t.closest( 'tr[data-item-id]' );
+			if ( row ) {
+				openView( row );
+			}
 		}
 	} );
 
-	var applyConfirmBtn = document.getElementById( 'pxat-apply-confirm' );
-	if ( applyConfirmBtn ) {
-		applyConfirmBtn.addEventListener( 'click', function () {
-			var dialog = document.getElementById( 'pxat-apply-dialog' );
-			if ( dialog ) {
-				dialog.close();
+	/* Strip pxat_autostart from the address bar so a later reload of this URL is
+	   view-only. */
+	function consumeAutostartFlag() {
+		if ( ! window.history || ! window.history.replaceState ) {
+			return;
+		}
+		var q = window.location.search
+			.replace( /^\?/, '' )
+			.split( '&' )
+			.filter( function ( p ) {
+				return p && 'pxat_autostart' !== p.split( '=' )[ 0 ];
+			} )
+			.join( '&' );
+		try {
+			window.history.replaceState( {}, document.title, window.location.pathname + ( q ? '?' + q : '' ) );
+		} catch ( e ) {}
+	}
+
+	/* On landing: always show the run's current state (a leading status refresh,
+	   so the screen is not stuck on the server snapshot). Start the loop only
+	   when this load carried the one-shot flag from the Confirm screen's
+	   "Translate and apply" - never on a plain reload. */
+	if ( cfg.runId && 'complete' !== cfg.phase ) {
+		post( 'pxat_status', {} ).then( function ( res ) {
+			var d = res && res.success ? res.data : null;
+			if ( d ) {
+				render( d );
 			}
-			var ids = pendingApplyIds.slice();
-			pendingApplyIds = [];
-			applyQueue( ids );
-		} );
-	}
-
-	document.querySelectorAll( '[data-dialog-close]' ).forEach( function ( btn ) {
-		btn.addEventListener( 'click', function () {
-			var dialog = document.getElementById( btn.getAttribute( 'data-dialog-close' ) );
-			if ( dialog ) {
-				dialog.close();
+			if ( cfg.autostart ) {
+				consumeAutostartFlag();
+				beginRun( d ? d.phase : cfg.phase );
+			} else {
+				// View-only: keep the screen current (another session may be
+				// running this run) without touching it.
+				startPoll();
+			}
+		} ).catch( function () {
+			if ( cfg.autostart ) {
+				consumeAutostartFlag();
+				beginRun( cfg.phase );
 			}
 		} );
-	} );
-
-	// The loop is never auto-started — a reload always lands paused, and
-	// only a Start click (first run or after Stop) resumes it against
-	// whatever's still pending in the batch file.
-	if ( startBtn ) {
-		startBtn.addEventListener( 'click', function () {
-			var workerCount = PXAT_Progress.batchMode ? ( PXAT_Progress.workerCount || 1 ) : 1;
-			showRunningUi( true );
-			startWorkers( workerCount );
-		} );
 	}
 
-	if ( stopBtn ) {
-		stopBtn.addEventListener( 'click', function () {
-			running = false;
-			stopBtn.disabled = true;
-			setCurrent( __( 'Stopping… (waiting for the current job to finish)' ), true );
-		} );
+	function beginRun( p ) {
+		if ( ! el( '#pxat-start' ) ) {
+			return;
+		}
+		if ( 'blocked' === p ) {
+			doResume();
+		} else if ( 'complete' !== p ) {
+			startLoop();
+		}
 	}
-} )();
+}() );

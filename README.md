@@ -1,7 +1,7 @@
 # Perxel AI Translate
 
 Bulk-translate posts, pages and custom post types across **WPML** languages with
-an AI model of your choice, through [OpenRouter](https://openrouter.ai/) — without
+an AI model of your choice, through [OpenRouter](https://openrouter.ai/) - without
 spending WPML's own AI translation credits.
 
 > Public WordPress plugin by [Perxel](https://perxel.com/). Published to the
@@ -9,12 +9,22 @@ spending WPML's own AI translation credits.
 
 ## What it does
 
-- Adds a **Perxel AI Translate…** bulk action to every WPML-translatable post type,
-  plus a *Translate this page* toolbar item on the post editor.
-- Confirm screen with destination language, data selection, run mode, and a
-  cost / token estimate before anything runs.
-- Progress screen with a live, resumable translation loop, a preview/apply review
-  step, per-post retry, and a permanent run history.
+- A **Tools → AI Translate** admin screen: a Dashboard (setup, totals), Run,
+  History, ID lookup and Settings.
+- Posts are picked with a **Perxel AI Translate…** bulk action on every
+  WPML-translatable post type, or the *Translate this page* toolbar item while
+  editing one post. Both land on the same confirm screen for exactly those
+  posts - there is no persistent, accumulating list.
+- The confirm screen takes a destination language, data selection and a
+  cost / word-count estimate before anything runs. Costs show in USD, or in VND
+  on sites whose WPML default language is Vietnamese. Its **Translate and
+  apply** button is the only thing that starts a run.
+- A live Run screen. Reloading or revisiting it shows the run read-only with a
+  manual **Resume**; it never restarts translation on its own. Each post is
+  translated and written straight into WordPress as a WPML translation - review
+  it in the normal editor.
+- The AI model is a setting: enter any OpenRouter model id, press *Test model*
+  to verify it and fetch its pricing.
 - Translates: title & slug, excerpt & content (HTML and page-builder shortcodes
   preserved), ACF text/textarea/WYSIWYG fields (including nested), Rank Math SEO
   fields, taxonomy terms (remapped to their WPML translations), and the featured
@@ -25,6 +35,14 @@ spending WPML's own AI translation credits.
 - WordPress 5.8+, PHP 7.4+
 - WPML with at least two active languages
 - An OpenRouter API key (you pay OpenRouter directly for usage)
+
+## Tested with
+
+- WordPress 7.1
+- WPML 4.9.7
+- Secure Custom Fields 6.9.5 (and Advanced Custom Fields)
+- Rank Math SEO 1.0.277.2 / Rank Math SEO PRO 3.0.82
+- WPBakery Page Builder 9.0.1
 
 ## Development
 
@@ -52,21 +70,12 @@ wp i18n make-pot . languages/perxel-ai-translate.pot
 ### Extending
 
 ```php
-// Add or replace the AI models offered to users.
-add_filter( 'pxat_openrouter_models', function ( $models ) {
-    $models[] = array(
-        'id'                => 'anthropic/claude-3.5-haiku',
-        'label'             => 'Claude 3.5 Haiku',
-        'input'             => 0.80,
-        'output'            => 4.00,
-        'max_output_tokens' => 8192,
-    );
-    return $models;
-} );
+// Cap how many parallel browser workers a batched run uses (default 2).
+add_filter( 'pxat_batch_worker_count', fn () => 3 );
 ```
 
-You can also define `PXAT_OPENROUTER_MODELS` in `wp-config.php` or an mu-plugin
-to replace the built-in list entirely.
+The AI model, its pricing and its limits are stored settings - set them on
+**Tools → AI Translate → Settings**, not in code.
 
 ## Releasing
 
@@ -82,9 +91,9 @@ things:
 | `zip` | Builds `perxel-ai-translate.zip` with `bin/build-zip.sh` and **attaches it to the release**. Works immediately. |
 | `deploy` / `assets` | Pushes the version to the WordPress.org SVN repo and updates the `.org` readme and listing assets. Only works **after** the plugin's first submission has been approved, and needs the repo secrets `SVN_USERNAME` / `SVN_PASSWORD`. |
 
-The zip is a build artifact — it is **not** committed to the repo (`dist/` is
+The zip is a build artifact - it is **not** committed to the repo (`dist/` is
 git-ignored). The stable download URL for the latest build is
-`https://github.com/phucbm/perxel-ai-translate/releases/latest/download/perxel-ai-translate.zip`.
+`https://github.com/perxel/wp-ai-translate/releases/latest/download/perxel-ai-translate.zip`.
 
 Listing assets (icon, banner, screenshots) live in `.wordpress-org/` and are
 pushed to SVN on the same `release.yml` run.

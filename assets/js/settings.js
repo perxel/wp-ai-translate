@@ -1,72 +1,204 @@
+/**
+ * Settings screen: one "Test" button (on the OpenRouter group title) checks the
+ * API key, then the model, and updates each row's status dot + sub line.
+ */
 ( function () {
 	'use strict';
 
-	var i18n = window.wp && window.wp.i18n ? window.wp.i18n : null;
-	function __( text ) {
-		return i18n ? i18n.__( text, 'perxel-ai-translate' ) : text;
+	var cfg = window.PXAT_Settings || {};
+	var __ = ( window.wp && wp.i18n ) ? wp.i18n.__ : function ( s ) {
+		return s;
+	};
+
+	function $( id ) {
+		return document.getElementById( id );
 	}
 
-	var btn = document.getElementById( 'pxat-test-api-key' );
-	var resultEl = document.getElementById( 'pxat-test-api-key-result' );
-	var input = document.getElementById( 'pxat_api_key' );
+	var keyInput = $( 'pxat-api-key' );
+	var modelInput = $( 'pxat-model-id' );
+	var testBtn = $( 'pxat-test' );
 
-	if ( btn && resultEl && input ) {
-		btn.addEventListener( 'click', function () {
-			var apiKey = input.value.trim();
+	if ( ! keyInput || ! modelInput || ! testBtn ) {
+		return;
+	}
 
-			resultEl.textContent = __( 'Checking…' );
-			resultEl.className = 'pxat-test-result';
+	var hidden = {
+		keyVerified: $( 'pxat-api-key-verified' ),
+		modelVerified: $( 'pxat-model-verified' ),
+		label: $( 'pxat-model-label' ),
+		input: $( 'pxat-model-input' ),
+		output: $( 'pxat-model-output' ),
+		context: $( 'pxat-model-context' ),
+		maxOutput: $( 'pxat-model-max-output' )
+	};
 
-			var body = new URLSearchParams();
-			body.set( 'action', 'pxat_test_api_key' );
-			body.set( 'nonce', PXAT_Settings.nonce );
-			body.set( 'api_key', apiKey );
+	function setDot( input, state ) {
+		var row = input.closest( '.pxui-row' );
+		if ( ! row ) {
+			return;
+		}
+		var icon = row.querySelector( '.pxui-row__icon' );
+		if ( icon ) {
+			icon.className = 'pxui-row__icon pxui-row__icon--' + state;
+		}
+	}
 
-			fetch( PXAT_Settings.ajaxUrl, {
-				method: 'POST',
-				credentials: 'same-origin',
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-				body: body.toString()
-			} )
-				.then( function ( res ) {
-					return res.json();
-				} )
-				.then( function ( res ) {
-					if ( res.success ) {
-						var msg = res.data.message;
-						if ( res.data.limit !== null && typeof res.data.limit !== 'undefined' ) {
-							msg += ' (' + __( 'used' ) + ': $' + res.data.usage + ' / ' + __( 'limit' ) + ': $' + res.data.limit + ')';
-						}
-						resultEl.textContent = msg;
-						resultEl.className = 'pxat-test-result pxat-test-result--ok';
-					} else {
-						resultEl.textContent = ( res.data && res.data.message ) ? res.data.message : __( 'Invalid key.' );
-						resultEl.className = 'pxat-test-result pxat-test-result--fail';
-					}
-				} )
-				.catch( function ( err ) {
-					resultEl.textContent = __( 'Request failed: ' ) + err.message;
-					resultEl.className = 'pxat-test-result pxat-test-result--fail';
-				} );
+	function setSub( id, text ) {
+		var node = $( id );
+		if ( node ) {
+			node.textContent = text;
+		}
+	}
+
+	function ajax( action, data ) {
+		var body = new URLSearchParams();
+		body.set( 'action', action );
+		body.set( 'nonce', cfg.nonce );
+		Object.keys( data ).forEach( function ( k ) {
+			body.set( k, data[ k ] );
+		} );
+		return fetch( cfg.ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: body.toString()
+		} ).then( function ( r ) {
+			// A 401/403 is an expired nonce (tab open past its lifetime).
+			if ( 401 === r.status || 403 === r.status ) {
+				var expiredErr = new Error( 'session expired' );
+				expiredErr.expired = true;
+				throw expiredErr;
+			}
+			if ( ! r.ok ) {
+				throw new Error( 'HTTP ' + r.status );
+			}
+			return r.json();
 		} );
 	}
 
-	var copyBtn = document.getElementById( 'pxat-copy-system-prompt' );
-	var copySource = document.getElementById( 'pxat_system_prompt_preview' );
-	var copyResultEl = document.getElementById( 'pxat-copy-system-prompt-result' );
+	function failMsg( err ) {
+		return ( err && err.expired )
+			? __( 'Your session expired. Reload the page.', 'perxel-ai-translate' )
+			: __( 'Request failed. Check your connection and try again.', 'perxel-ai-translate' );
+	}
 
-	if ( copyBtn && copySource && copyResultEl ) {
-		copyBtn.addEventListener( 'click', function () {
-			navigator.clipboard.writeText( copySource.textContent ).then(
-				function () {
-					copyResultEl.textContent = __( 'Copied.' );
-					copyResultEl.className = 'pxat-test-result pxat-test-result--ok';
-				},
-				function () {
-					copyResultEl.textContent = __( 'Could not copy automatically, please select and copy manually.' );
-					copyResultEl.className = 'pxat-test-result pxat-test-result--fail';
+	function testKey() {
+		setDot( keyInput, 'muted' );
+		setSub( 'pxat-key-sub', __( 'Checking…', 'perxel-ai-translate' ) );
+		return ajax( 'pxat_test_api_key', { api_key: keyInput.value } ).then( function ( res ) {
+			if ( res && res.success ) {
+				setDot( keyInput, ( res.data && res.data.tone ) || 'good' );
+				setSub( 'pxat-key-sub', ( res.data && res.data.message ) || __( 'Verified', 'perxel-ai-translate' ) );
+				if ( hidden.keyVerified ) {
+					hidden.keyVerified.value = '1';
 				}
-			);
+				return true;
+			}
+			setDot( keyInput, 'bad' );
+			setSub( 'pxat-key-sub', ( res && res.data && res.data.message ) || __( 'Could not validate the key.', 'perxel-ai-translate' ) );
+			if ( hidden.keyVerified ) {
+				hidden.keyVerified.value = '';
+			}
+			return false;
+		} ).catch( function ( err ) {
+			setDot( keyInput, 'bad' );
+			setSub( 'pxat-key-sub', failMsg( err ) );
+			if ( hidden.keyVerified ) {
+				hidden.keyVerified.value = '';
+			}
+			return false;
 		} );
 	}
-} )();
+
+	function testModel() {
+		setDot( modelInput, 'muted' );
+		setSub( 'pxat-model-detail', __( 'Checking…', 'perxel-ai-translate' ) );
+		return ajax( 'pxat_test_model', { model_id: modelInput.value } ).then( function ( res ) {
+			if ( res && res.success ) {
+				var d = res.data;
+				setDot( modelInput, 'good' );
+				setSub( 'pxat-model-detail', d.summary || '' );
+				if ( hidden.modelVerified ) { hidden.modelVerified.value = '1'; }
+				if ( hidden.label ) { hidden.label.value = d.label || ''; }
+				if ( hidden.input ) { hidden.input.value = d.input || 0; }
+				if ( hidden.output ) { hidden.output.value = d.output || 0; }
+				if ( hidden.context ) { hidden.context.value = d.context || 0; }
+				if ( hidden.maxOutput ) { hidden.maxOutput.value = d.max_output || 0; }
+				return true;
+			}
+			setDot( modelInput, 'bad' );
+			setSub( 'pxat-model-detail', ( res && res.data && res.data.message ) || __( 'Model not found.', 'perxel-ai-translate' ) );
+			if ( hidden.modelVerified ) { hidden.modelVerified.value = ''; }
+			return false;
+		} ).catch( function ( err ) {
+			setDot( modelInput, 'bad' );
+			setSub( 'pxat-model-detail', failMsg( err ) );
+			if ( hidden.modelVerified ) { hidden.modelVerified.value = ''; }
+			return false;
+		} );
+	}
+
+	var originalLabel = testBtn.textContent;
+
+	function runChecks( which ) {
+		testBtn.disabled = true;
+		testBtn.textContent = __( 'Testing…', 'perxel-ai-translate' );
+
+		function done() {
+			testBtn.disabled = false;
+			testBtn.textContent = originalLabel;
+		}
+
+		// testKey / testModel each own their own failure reporting and never
+		// reject, so the chain just needs to re-enable the button at the end.
+		var chain = Promise.resolve();
+		if ( which.key ) {
+			chain = chain.then( testKey );
+		}
+		if ( which.model ) {
+			chain = chain.then( testModel );
+		}
+		chain.then( done, done );
+	}
+
+	testBtn.addEventListener( 'click', function () {
+		runChecks( { key: true, model: true } );
+	} );
+
+	// On load, verify anything set but not yet verified - so the status dots
+	// reflect reality, not just the last time someone pressed Test. An already
+	// verified value is trusted until it is edited or the key changes on save.
+	var pending = {
+		key: keyInput.value.trim() !== '' && ! ( hidden.keyVerified && hidden.keyVerified.value ),
+		model: modelInput.value.trim() !== '' && ! ( hidden.modelVerified && hidden.modelVerified.value )
+	};
+	if ( pending.key || pending.model ) {
+		runChecks( pending );
+	}
+
+	// Editing a field makes its verified state stale.
+	keyInput.addEventListener( 'input', function () {
+		if ( hidden.keyVerified ) {
+			hidden.keyVerified.value = '';
+		}
+		setDot( keyInput, 'muted' );
+		setSub( 'pxat-key-sub', __( 'not checked', 'perxel-ai-translate' ) );
+	} );
+
+	function setHidden( node, value ) {
+		if ( node ) {
+			node.value = value;
+		}
+	}
+
+	modelInput.addEventListener( 'input', function () {
+		setHidden( hidden.modelVerified, '' );
+		setHidden( hidden.label, '' );
+		setHidden( hidden.input, '0' );
+		setHidden( hidden.output, '0' );
+		setHidden( hidden.context, '0' );
+		setHidden( hidden.maxOutput, '0' );
+		setDot( modelInput, 'muted' );
+		setSub( 'pxat-model-detail', __( 'not checked', 'perxel-ai-translate' ) );
+	} );
+}() );
