@@ -8,7 +8,7 @@ Stable tag: 0.0.22
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Bulk-translate posts, pages and custom post types across WPML languages with an AI model of your choice, through OpenRouter.
+🌐 Bulk-translate posts, pages and custom post types across WPML languages with an AI model of your choice, through OpenRouter.
 
 == Description ==
 

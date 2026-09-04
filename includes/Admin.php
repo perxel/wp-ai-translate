@@ -30,6 +30,8 @@ class Admin {
 		add_action( 'admin_menu', array( $this, 'menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'assets' ) );
 
+		add_filter( 'plugin_action_links_' . plugin_basename( PXAT_FILE ), array( $this, 'action_links' ) );
+
 		add_action( 'admin_post_pxat_save_settings', array( $this, 'handle_save_settings' ) );
 		add_action( 'admin_post_pxat_reset_settings', array( $this, 'handle_reset_settings' ) );
 		add_action( 'admin_post_pxat_create_run', array( Confirm::class, 'handle_submit' ) );
@@ -87,6 +89,21 @@ class Admin {
 		if ( class_exists( 'Perxel_UI_Layout' ) ) {
 			\Perxel_UI_Layout::set_page_titles( $titles, PXAT_NAME );
 		}
+	}
+
+	/**
+	 * Add a "Settings" link to the plugin's row on the Plugins screen.
+	 *
+	 * @param string[] $links Existing action links.
+	 * @return string[]
+	 */
+	public function action_links( $links ) {
+		$links[] = sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( admin_url( 'admin.php?page=' . self::PAGE_SETTINGS ) ),
+			esc_html__( 'Settings', 'perxel-ai-translate' )
+		);
+		return $links;
 	}
 
 	/**
