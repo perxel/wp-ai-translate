@@ -10,6 +10,7 @@
 /.claude
 /.idea
 /.wordpress-org
+/assets-src
 /node_modules
 /tests
 
