@@ -97,16 +97,20 @@ class PostSync {
 	}
 
 	/**
-	 * 'thumbnail' data type: copies the featured image from source to dest.
+	 * 'thumbnail' data type: sets the destination post's featured image. Points
+	 * at the destination language's own copy of the image when WPML media
+	 * translation provides one, otherwise the same file as the source.
 	 *
-	 * @param int  $source_post_id Source post ID.
-	 * @param int  $dest_post_id   Destination post ID.
-	 * @param bool $strict         Whether a partial result fails the type.
+	 * @param int    $source_post_id Source post ID.
+	 * @param int    $dest_post_id   Destination post ID.
+	 * @param string $dest_lang      Destination WPML language code.
+	 * @param bool   $strict         Whether a partial result fails the type.
 	 * @return array{success:bool, message:?string}
 	 */
-	public static function sync_thumbnail( $source_post_id, $dest_post_id, $strict ) {
-		$thumbnail_id = get_post_thumbnail_id( $source_post_id );
+	public static function sync_thumbnail( $source_post_id, $dest_post_id, $dest_lang, $strict ) {
+		$thumbnail_id = (int) get_post_thumbnail_id( $source_post_id );
 
+		// Source has no featured image - nothing to do.
 		if ( ! $thumbnail_id ) {
 			return array(
 				'success' => true,
@@ -114,7 +118,22 @@ class PostSync {
 			);
 		}
 
-		if ( set_post_thumbnail( $dest_post_id, $thumbnail_id ) ) {
+		$translated   = Wpml::get_object_id( $thumbnail_id, 'attachment', $dest_lang, true );
+		$thumbnail_id = $translated ? (int) $translated : $thumbnail_id;
+
+		// Already correct. set_post_thumbnail() is just update_post_meta(), which
+		// returns false when the value is unchanged, so its return value can't
+		// tell "no-op" from "failed" - check the stored id directly instead.
+		if ( (int) get_post_thumbnail_id( $dest_post_id ) === $thumbnail_id ) {
+			return array(
+				'success' => true,
+				'message' => null,
+			);
+		}
+
+		set_post_thumbnail( $dest_post_id, $thumbnail_id );
+
+		if ( (int) get_post_thumbnail_id( $dest_post_id ) === $thumbnail_id ) {
 			return array(
 				'success' => true,
 				'message' => null,

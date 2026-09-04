@@ -699,7 +699,7 @@ class Translator {
 				return PostSync::sync_taxonomies( $item['source_post_id'], $dest_post_id, $item['post_type'], $run['dest_lang'], $strict );
 
 			case 'thumbnail':
-				return PostSync::sync_thumbnail( $item['source_post_id'], $dest_post_id, $strict );
+				return PostSync::sync_thumbnail( $item['source_post_id'], $dest_post_id, $run['dest_lang'], $strict );
 		}
 
 		return array(
