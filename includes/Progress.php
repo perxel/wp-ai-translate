@@ -251,11 +251,19 @@ class Progress {
 	 * @return string
 	 */
 	public static function log_text( $run_id ) {
-		$text = '';
+		$out  = array();
+		$last = null;
 		foreach ( Runs::log_lines( $run_id ) as $line ) {
-			$text .= '[' . $line['logged_at'] . '] ' . $line['message'] . "\n";
+			$rendered = '[' . $line['logged_at'] . '] ' . $line['message'];
+			// Collapse a line identical to the one just before it (parallel
+			// batch workers can emit the same breadcrumb at the same second).
+			if ( $rendered === $last ) {
+				continue;
+			}
+			$out[] = $rendered;
+			$last  = $rendered;
 		}
-		return $text;
+		return $out ? implode( "\n", $out ) . "\n" : '';
 	}
 
 	/*

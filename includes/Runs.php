@@ -691,12 +691,6 @@ class Runs {
 		);
 	}
 
-	public static function log_bulk( $run_id, array $item_ids, $message ) {
-		foreach ( $item_ids as $item_id ) {
-			self::log( $run_id, $item_id, $message );
-		}
-	}
-
 	/**
 	 * @param int $run_id Run id.
 	 * @return array Rows: logged_at, message.

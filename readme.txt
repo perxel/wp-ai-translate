@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.19
+Stable tag: 0.0.20
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,6 +99,9 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.20 =
+* Activity log: batch-wide lines ("Batch of 3 posts…", "request sent to OpenRouter") appeared once per post in the group. They are now written once, and any accidental back-to-back duplicate line is collapsed on display.
 
 = 0.0.19 =
 * Run screen: the button is now always labelled **Resume translating** (it was mislabelled "Start translating" whenever no post had fully finished yet, so it disagreed with the "Press Resume" message next to it).

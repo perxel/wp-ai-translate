@@ -508,7 +508,7 @@ class Translator {
 		}
 
 		if ( $already ) {
-			Runs::log_bulk( $run['id'], wp_list_pluck( $already, 'id' ), 'Already translated by an earlier request; writing the stored result' );
+			Runs::log( $run['id'], 0, sprintf( 'Already translated by an earlier request (#%s); writing the stored result', implode( ', #', wp_list_pluck( $already, 'id' ) ) ) );
 		}
 
 		if ( empty( $fresh ) ) {
@@ -529,7 +529,7 @@ class Translator {
 			$halves  = array_chunk( $fresh, (int) ceil( count( $fresh ) / 2 ) );
 			$changes = array();
 			foreach ( $halves as $half ) {
-				Runs::log_bulk( $run['id'], wp_list_pluck( $half, 'id' ), sprintf( 'Retrying a smaller group of %d after a batch failure', count( $half ) ) );
+				Runs::log( $run['id'], 0, sprintf( 'Retrying a smaller group of %d (#%s) after a batch failure', count( $half ), implode( ', #', wp_list_pluck( $half, 'id' ) ) ) );
 				$changes += self::run_batch_call( $run, $half );
 			}
 		}
@@ -559,9 +559,9 @@ class Translator {
 		}
 
 		$type_names = implode( ', ', array_map( array( __CLASS__, 'type_label' ), self::llm_types( self::resolve_types( $run ) ) ) );
-		Runs::log_bulk(
+		Runs::log(
 			$run['id'],
-			$ids,
+			0,
 			sprintf(
 				'Batch of %d posts (#%s): %s - %d text fields, %s to %s',
 				count( $items ),
@@ -578,13 +578,13 @@ class Translator {
 			$run['source_lang'],
 			$run['dest_lang'],
 			$run['model'],
-			static function ( $message ) use ( $run, $ids ) {
-				Runs::log_bulk( $run['id'], $ids, $message );
+			static function ( $message ) use ( $run ) {
+				Runs::log( $run['id'], 0, $message );
 			}
 		);
 
 		if ( is_wp_error( $result ) ) {
-			Runs::log_bulk( $run['id'], $ids, 'model error: ' . $result->get_error_message() );
+			Runs::log( $run['id'], 0, 'batch model error: ' . $result->get_error_message() );
 			$changes = array();
 			foreach ( $ids as $id ) {
 				$changes[ $id ] = array(
