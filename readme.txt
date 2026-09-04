@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.18
+Stable tag: 0.0.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,6 +99,9 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.19 =
+* Run screen: the button is now always labelled **Resume translating** (it was mislabelled "Start translating" whenever no post had fully finished yet, so it disagreed with the "Press Resume" message next to it).
 
 = 0.0.18 =
 * Fixed an **HTTP 400 "Reasoning is mandatory for this endpoint and cannot be disabled"** error introduced in 0.0.16. Requests now ask for minimal reasoning ("low") rather than none, which every model accepts; if a model rejects even that, the request is retried once without the setting instead of failing.

@@ -210,11 +210,12 @@
 			return;
 		}
 
+		// This screen only ever shows the idle button after a run has been
+		// created and (attempted to) start, or on a revisit - so the action is
+		// always "resume", never a cold "start".
 		if ( start ) {
 			start.hidden = false;
-			start.textContent = hasProgress()
-				? __( 'Resume translating', 'perxel-ai-translate' )
-				: __( 'Start translating', 'perxel-ai-translate' );
+			start.textContent = __( 'Resume translating', 'perxel-ai-translate' );
 		}
 
 		if ( sessionExpired ) {
@@ -228,11 +229,6 @@
 		} else if ( 'running' === phase ) {
 			setRunMsg( __( 'This run has posts left. Press Resume to continue.', 'perxel-ai-translate' ) );
 		}
-	}
-
-	function hasProgress() {
-		var done = el( '#pxat-stat-done' );
-		return !! ( done && parseInt( done.textContent, 10 ) > 0 );
 	}
 
 	/* --- The loop ---------------------------------------------------- */

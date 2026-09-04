@@ -59,14 +59,12 @@ class Progress {
 
 		$actions = '';
 		if ( ! $is_done ) {
-			// Default state is the manual control. progress.js starts the loop
-			// only when the page carried ?pxat_autostart, then swaps to "Stop";
-			// render "Stop" up front in that case to avoid a button flash.
-			$start_label = 'running' === $phase && $counts['done'] + $counts['error'] + $counts['skipped'] > 0
-				? __( 'Resume translating', 'perxel-ai-translate' )
-				: __( 'Start translating', 'perxel-ai-translate' );
-			$actions     = '<button type="button" class="button button-primary" id="pxat-start"' . ( $autostart ? ' hidden' : '' ) . '>' . esc_html( $start_label ) . '</button> ';
-			$actions    .= '<button type="button" class="button" id="pxat-stop"' . ( $autostart ? '' : ' hidden' ) . '>' . esc_html__( 'Stop', 'perxel-ai-translate' ) . '</button>';
+			// A run is created + started only from the Confirm screen, which
+			// lands here with ?pxat_autostart. This screen's own button is
+			// always "Resume". With the flag, progress.js starts the loop at
+			// once, so render "Stop" up front to avoid a button flash.
+			$actions  = '<button type="button" class="button button-primary" id="pxat-start"' . ( $autostart ? ' hidden' : '' ) . '>' . esc_html__( 'Resume translating', 'perxel-ai-translate' ) . '</button> ';
+			$actions .= '<button type="button" class="button" id="pxat-stop"' . ( $autostart ? '' : ' hidden' ) . '>' . esc_html__( 'Stop', 'perxel-ai-translate' ) . '</button>';
 		} else {
 			$actions = '<a class="button" href="' . esc_url(
 				wp_nonce_url(
