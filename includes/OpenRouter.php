@@ -131,6 +131,10 @@ class OpenRouter {
 			'model'           => $model_id,
 			'response_format' => array( 'type' => 'json_object' ),
 			'messages'        => $messages,
+			// Translation is a single-pass task - no thinking budget - and we
+			// want whichever provider serves this model fastest.
+			'reasoning'       => array( 'enabled' => false ),
+			'provider'        => array( 'sort' => 'throughput' ),
 		);
 
 		$attempt = 0;

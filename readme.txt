@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.15
+Stable tag: 0.0.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,6 +99,10 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.16 =
+* **Faster, cheaper model calls.** Every translation request now tells OpenRouter to route to the fastest provider for the chosen model and to skip "thinking" tokens - translation is a single-pass task and does not need them. On reasoning-capable models (for example Gemini 2.5 Flash) this cuts both the wait and the cost noticeably, with no quality change for normal content.
+* A one-post run no longer uses the batched request format (a heavier prompt with no benefit at a single post) - it takes the plain path. Multi-post runs are unaffected.
 
 = 0.0.15 =
 * **A run is started in exactly one place now:** the **Translate and apply** button on the Translation screen. Reloading, bookmarking or returning to a run's progress URL - or following it from the toolbar - shows that run read-only, with a manual **Resume** button, and never restarts translating (or spending) on its own.

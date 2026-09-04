@@ -544,20 +544,25 @@ class Confirm {
 			);
 		}
 
-		$has_pending = (bool) array_filter(
-			$items,
-			static function ( $i ) {
-				return 'pending' === $i['status'];
-			}
+		$pending_count = count(
+			array_filter(
+				$items,
+				static function ( $i ) {
+					return 'pending' === $i['status'];
+				}
+			)
 		);
 
-		if ( ! $has_pending ) {
+		if ( 0 === $pending_count ) {
 			return new \WP_Error(
 				'pxat_nothing_to_do',
 				__( 'Nothing to process. None of the selected posts match the chosen data (already fully translated, no destination post to sync into, or no remaining fields).', 'perxel-ai-translate' )
 			);
 		}
 
+		// Batching only pays off across several posts: it uses a heavier
+		// JSON-envelope prompt and splits one usage figure across the group. A
+		// one-post run always takes the plain path.
 		$run_id = Runs::create(
 			array(
 				'model'        => $model['id'],
@@ -569,7 +574,7 @@ class Confirm {
 				'dest_lang'    => $dest_lang,
 				'data_mode'    => $data_mode,
 				'custom_types' => $custom_types,
-				'batched'      => $batched,
+				'batched'      => $batched && $pending_count > 1,
 			)
 		);
 		Runs::add_items( $run_id, $items );
