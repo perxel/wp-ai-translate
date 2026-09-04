@@ -423,43 +423,20 @@ class Confirm {
 			wp_die( esc_html( $run->get_error_message() ) );
 		}
 
+		// pxat_autostart is the one-shot "go" flag progress.js looks for; it is
+		// the only thing that starts a run's loop. A plain reload of the
+		// Progress URL never carries it.
 		wp_safe_redirect(
 			add_query_arg(
 				array(
-					'page'   => Admin::PAGE_PROGRESS,
-					'run_id' => $run,
+					'page'           => Admin::PAGE_PROGRESS,
+					'run_id'         => $run,
+					'pxat_autostart' => '1',
 				),
 				admin_url( 'admin.php' )
 			)
 		);
 		exit;
-	}
-
-	/**
-	 * Default run config for a one-click translate (admin bar / bulk action):
-	 * everything, into the site's one other language. Returns null when the
-	 * target is ambiguous (three or more active languages) so the caller can
-	 * fall back to the Confirm screen.
-	 *
-	 * @param array $languages WPML active languages.
-	 * @param bool  $batched   Whether to batch (single-post runs pass false).
-	 * @return array|null
-	 */
-	public static function default_config( array $languages, $batched ) {
-		$source_lang = Wpml::get_default_language();
-		$other_langs = array_values( array_diff( array_keys( $languages ), array( $source_lang ) ) );
-
-		if ( 1 !== count( $other_langs ) ) {
-			return null;
-		}
-
-		return array(
-			'source_lang'  => $source_lang,
-			'dest_lang'    => $other_langs[0],
-			'data_mode'    => 'full',
-			'custom_types' => array(),
-			'batched'      => (bool) $batched,
-		);
 	}
 
 	/**

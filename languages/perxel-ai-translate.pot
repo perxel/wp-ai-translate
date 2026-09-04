@@ -2,7 +2,7 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Perxel AI Translate 0.0.14\n"
+"Project-Id-Version: Perxel AI Translate 0.0.15\n"
 "Report-Msgid-Bugs-To: https://github.com/perxel/wp-ai-translate/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1172,18 +1172,22 @@ msgstr ""
 msgid "Testing…"
 msgstr ""
 
-#: includes/AdminBar.php:57
-msgid "Translation running - view"
-msgstr ""
-
 #: includes/Confirm.php:494
 msgid "Pick a target language for this translation."
 msgstr ""
 
-#: assets/js/progress.js:213
+#: assets/js/progress.js
 msgid "A post was interrupted. Press Resume to pick it back up."
 msgstr ""
 
-#: assets/js/progress.js:305
+#: assets/js/progress.js
+msgid "This run has posts left. Press Resume to continue."
+msgstr ""
+
+#: assets/js/progress.js
+msgid "The interrupted post is still clearing. Press Resume again in a moment."
+msgstr ""
+
+#: assets/js/progress.js
 msgid "Recovering an interrupted post…"
 msgstr ""

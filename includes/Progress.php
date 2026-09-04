@@ -54,12 +54,19 @@ class Progress {
 		$is_done   = 'complete' === $phase;
 		$languages = Wpml::get_active_languages();
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only nav param, mirrors localize().
+		$autostart = isset( $_GET['pxat_autostart'] );
+
 		$actions = '';
 		if ( ! $is_done ) {
-			// The run auto-starts on load (progress.js); the loop shows "Stop"
-			// and only reveals "Start translating" again if it pauses or fails.
-			$actions  = '<button type="button" class="button button-primary" id="pxat-start" hidden>' . esc_html__( 'Start translating', 'perxel-ai-translate' ) . '</button> ';
-			$actions .= '<button type="button" class="button" id="pxat-stop">' . esc_html__( 'Stop', 'perxel-ai-translate' ) . '</button>';
+			// Default state is the manual control. progress.js starts the loop
+			// only when the page carried ?pxat_autostart, then swaps to "Stop";
+			// render "Stop" up front in that case to avoid a button flash.
+			$start_label = 'running' === $phase && $counts['done'] + $counts['error'] + $counts['skipped'] > 0
+				? __( 'Resume translating', 'perxel-ai-translate' )
+				: __( 'Start translating', 'perxel-ai-translate' );
+			$actions     = '<button type="button" class="button button-primary" id="pxat-start"' . ( $autostart ? ' hidden' : '' ) . '>' . esc_html( $start_label ) . '</button> ';
+			$actions    .= '<button type="button" class="button" id="pxat-stop"' . ( $autostart ? '' : ' hidden' ) . '>' . esc_html__( 'Stop', 'perxel-ai-translate' ) . '</button>';
 		} else {
 			$actions = '<a class="button" href="' . esc_url(
 				wp_nonce_url(
@@ -95,9 +102,15 @@ class Progress {
 	}
 
 	public static function localize() {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only nav param.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only nav params.
 		$run_id = isset( $_GET['run_id'] ) ? absint( wp_unslash( $_GET['run_id'] ) ) : 0;
 		$run    = $run_id ? Runs::get( $run_id ) : null;
+
+		// The one-shot "go" flag: only the Confirm screen's "Translate and apply"
+		// redirect carries it. A plain reload of this URL does not, so the loop
+		// starts once and never on a refresh / bookmark / toolbar link.
+		$autostart = isset( $_GET['pxat_autostart'] );
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		wp_localize_script(
 			'pxat-progress',
@@ -107,6 +120,7 @@ class Progress {
 				'nonce'       => wp_create_nonce( self::NONCE ),
 				'runId'       => $run_id,
 				'phase'       => $run ? Runs::state( $run_id )['phase'] : 'idle',
+				'autostart'   => $run && $autostart,
 				'batched'     => $run ? (bool) $run['batched'] : false,
 				'workerCount' => $run ? Translator::worker_count( $run ) : 1,
 				'rerunUrl'    => $run ? wp_nonce_url(

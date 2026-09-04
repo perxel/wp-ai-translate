@@ -665,26 +665,6 @@ class Runs {
 		return $id ? (int) $id : null;
 	}
 
-	/**
-	 * The most recent unfinished run that contains this source post, if any -
-	 * so the admin bar can offer "Resume" instead of starting a duplicate.
-	 *
-	 * @param int $source_post_id Source post id.
-	 * @return int|null
-	 */
-	public static function active_run_id_for_source( $source_post_id ) {
-		global $wpdb;
-
-		$id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->prepare(
-				'SELECT run_id FROM ' . Db::items() . " WHERE source_post_id = %d AND status IN ('pending','translating') ORDER BY run_id DESC LIMIT 1",
-				(int) $source_post_id
-			)
-		);
-
-		return $id ? (int) $id : null;
-	}
-
 	/*
 	---------------------------------------------------------------------
 	 * Log

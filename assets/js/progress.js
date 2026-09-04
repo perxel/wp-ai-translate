@@ -1,23 +1,27 @@
 /**
- * Translation-run screen: a browser-driven loop that asks the server to
- * translate + write the next post(s) until the run is done. Run state lives in
- * the database; the server resolves a single `phase` (running | blocked |
- * complete | idle) and this script is a thin driver for it - it never decides on
- * its own whether the run is finished, and it never reloads the page except once
- * on genuine completion (a terminal state, so it cannot loop).
+ * Translation-run screen.
+ *
+ * A run is only ever started by the "Translate and apply" button on the Confirm
+ * screen, which lands here with ?pxat_autostart=1. That is the single trigger -
+ * this script consumes the flag (stripping it from the URL) and starts the loop
+ * once. Every later load of this URL - a reload, a bookmark, the toolbar link -
+ * has no flag and is view-only: it shows the run's state and a manual Resume /
+ * Retry, and never spends anything on its own.
+ *
+ * The loop asks the server to translate + write the next post(s) until done. Run
+ * state lives in the database; the server resolves a single `phase` (running |
+ * blocked | complete | idle) and this script is a thin driver for it. It never
+ * reloads the page except once on genuine completion (a terminal state).
  */
 ( function () {
 	'use strict';
 
 	var cfg = window.PXAT_Progress || {};
 
-	var MAX_AUTO_RESUME = 2;
-
 	var phase = cfg.phase || 'idle'; // last phase the server reported
 	var running = false; // the pump loop is active
 	var stopping = false; // user pressed Stop; workers wind down after the call in flight
 	var activeWorkers = 0;
-	var autoResumes = 0;
 	var stalled = false; // last request failed
 	var sessionExpired = false;
 	var lostContact = 0;
@@ -221,6 +225,8 @@
 			setRunMsg( __( 'A post was interrupted. Press Resume to pick it back up.', 'perxel-ai-translate' ) );
 		} else if ( stopping ) {
 			setRunMsg( __( 'Stopped. Press Resume to translate the remaining posts.', 'perxel-ai-translate' ) );
+		} else if ( 'running' === phase ) {
+			setRunMsg( __( 'This run has posts left. Press Resume to continue.', 'perxel-ai-translate' ) );
 		}
 	}
 
@@ -231,11 +237,9 @@
 
 	/* --- The loop ---------------------------------------------------- */
 
-	/* The Start / Resume button. Always clears the recovery budget and the
-	   failure flags, then goes through doResume() so a stuck row is requeued
-	   before the loop picks back up (for a clean run it just starts). */
+	/* The Resume button. Clears the failure flags, then goes through doResume()
+	   so any stuck row is requeued before the loop picks back up. */
 	function beginOrResume() {
-		autoResumes = 0;
 		stalled = false;
 		sessionExpired = false;
 		if ( 'complete' === phase ) {
@@ -279,9 +283,6 @@
 			render( res.data );
 
 			var didWork = !! ( res.data.items && res.data.items.length );
-			if ( didWork ) {
-				autoResumes = 0; // progress resets the recovery budget
-			}
 
 			// This worker keeps pumping only while it is actually getting work
 			// and the run is still going. Otherwise it retires - the other
@@ -309,34 +310,21 @@
 		settle();
 	}
 
-	/* Every worker has wound down. Branch on the last reported phase. */
+	/* Every worker has wound down. Either the run is complete, or it stopped for
+	   a reason (Stop, a failed request, a stuck row, another tab holding the
+	   work) and now waits for a manual Resume. Nothing auto-restarts here. */
 	function settle() {
+		stopPoll();
 		if ( 'complete' === phase ) {
 			finishToDone();
 			return;
 		}
-
-		// The run still has work but this browser's workers stopped getting any
-		// - either an interrupted request left a row stuck, or another tab holds
-		// it. Try to recover it a bounded number of times, then hand over to a
-		// manual Resume.
-		var unfinished = ( 'blocked' === phase || 'running' === phase );
-		if ( unfinished && ! stopping && ! sessionExpired && ! stalled && autoResumes < MAX_AUTO_RESUME ) {
-			autoResumes++;
-			doResume();
-			return;
-		}
-
-		// Paused: stopped by the user, a failed request, recovery budget spent,
-		// an expired session, or an empty run.
-		stopPoll();
 		paintIdleUi();
 		refreshOnce();
 	}
 
-	/* Ask the server to requeue an interrupted post (safe now that every worker
-	   has wound down), then pick the loop back up. If nothing was old enough to
-	   requeue yet, wait briefly and try again within the budget. */
+	/* The Resume button: ask the server to requeue an interrupted post (safe now
+	   that every worker has wound down), then pick the loop back up. */
 	function doResume() {
 		startPoll();
 		setRunMsg( __( 'Recovering an interrupted post…', 'perxel-ai-translate' ) );
@@ -354,14 +342,11 @@
 				startLoop();
 				return;
 			}
-			// Nothing requeued (the stuck row is not old enough yet). Give it a
-			// moment, then let settle() decide again.
-			if ( autoResumes < MAX_AUTO_RESUME ) {
-				setTimeout( settle, 4000 );
-			} else {
-				stopPoll();
-				paintIdleUi();
-			}
+			// Nothing to pick up yet - a request is still clearing. Leave the
+			// Resume button so the user can try again in a moment.
+			stopPoll();
+			paintIdleUi();
+			setRunMsg( __( 'The interrupted post is still clearing. Press Resume again in a moment.', 'perxel-ai-translate' ) );
 		} ).catch( function ( err ) {
 			sessionExpired = isExpired( err );
 			stalled = ! sessionExpired;
@@ -559,32 +544,58 @@
 		}
 	} );
 
-	/* Auto-begin on landing. The run's state lives in the DB, so a reopened
-	   unfinished run resumes the same way a fresh one starts. A leading status
-	   refresh means the screen reflects reality at once instead of sitting on
-	   the server-rendered snapshot until the first poll. */
+	/* Strip pxat_autostart from the address bar so a later reload of this URL is
+	   view-only. */
+	function consumeAutostartFlag() {
+		if ( ! window.history || ! window.history.replaceState ) {
+			return;
+		}
+		var q = window.location.search
+			.replace( /^\?/, '' )
+			.split( '&' )
+			.filter( function ( p ) {
+				return p && 'pxat_autostart' !== p.split( '=' )[ 0 ];
+			} )
+			.join( '&' );
+		try {
+			window.history.replaceState( {}, document.title, window.location.pathname + ( q ? '?' + q : '' ) );
+		} catch ( e ) {}
+	}
+
+	/* On landing: always show the run's current state (a leading status refresh,
+	   so the screen is not stuck on the server snapshot). Start the loop only
+	   when this load carried the one-shot flag from the Confirm screen's
+	   "Translate and apply" - never on a plain reload. */
 	if ( cfg.runId && 'complete' !== cfg.phase ) {
 		post( 'pxat_status', {} ).then( function ( res ) {
-			if ( res && res.success ) {
-				render( res.data );
-				maybeAutoStart( res.data.phase );
+			var d = res && res.success ? res.data : null;
+			if ( d ) {
+				render( d );
+			}
+			if ( cfg.autostart ) {
+				consumeAutostartFlag();
+				beginRun( d ? d.phase : cfg.phase );
 			} else {
-				maybeAutoStart( cfg.phase );
+				// View-only: keep the screen current (another session may be
+				// running this run) without touching it.
+				startPoll();
 			}
 		} ).catch( function () {
-			maybeAutoStart( cfg.phase );
+			if ( cfg.autostart ) {
+				consumeAutostartFlag();
+				beginRun( cfg.phase );
+			}
 		} );
 	}
 
-	function maybeAutoStart( p ) {
+	function beginRun( p ) {
 		if ( ! el( '#pxat-start' ) ) {
 			return;
 		}
-		if ( 'running' === p ) {
-			startLoop();
-		} else if ( 'blocked' === p ) {
-			autoResumes = 0;
+		if ( 'blocked' === p ) {
 			doResume();
+		} else if ( 'complete' !== p ) {
+			startLoop();
 		}
 	}
 }() );
