@@ -94,10 +94,10 @@ Deleting the plugin removes its settings and those tables. Translations already 
 
 == Screenshots ==
 
-1. Dashboard - setup state and all-time totals.
-2. Confirm screen - selected posts, language, data selection and cost estimate.
-3. Run screen - live translation progress.
-4. History of every run.
+1. Dashboard - how to start a translation, all-time run and word totals, and recent runs.
+2. Translation screen - destination language, model and rates, what to translate, and a per-post plan with a cost and word-count estimate before anything runs.
+3. Settings - your OpenRouter key and model, batching and glossary options, and which companion plugins (ACF, Rank Math, WPBakery) are detected.
+4. History - every run with its languages, model, post count, warnings or errors, word volume and cost.
 
 == Changelog ==
 
