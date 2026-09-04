@@ -1171,3 +1171,19 @@ msgstr ""
 #: assets/js/settings.js:145
 msgid "Testing…"
 msgstr ""
+
+#: includes/AdminBar.php:57
+msgid "Translation running - view"
+msgstr ""
+
+#: includes/Confirm.php:494
+msgid "Pick a target language for this translation."
+msgstr ""
+
+#: assets/js/progress.js:213
+msgid "A post was interrupted. Press Resume to pick it back up."
+msgstr ""
+
+#: assets/js/progress.js:305
+msgid "Recovering an interrupted post…"
+msgstr ""

@@ -48,8 +48,10 @@ class Progress {
 			return;
 		}
 
-		$counts    = Runs::counts( $run_id );
-		$is_done   = $counts['total'] > 0 && 0 === $counts['pending'] && 0 === $counts['translating'];
+		$state     = Runs::state( $run_id );
+		$counts    = $state['counts'];
+		$phase     = $state['phase'];
+		$is_done   = 'complete' === $phase;
 		$languages = Wpml::get_active_languages();
 
 		$actions = '';
@@ -81,6 +83,7 @@ class Progress {
 				'run'         => $run,
 				'counts'      => $counts,
 				'is_done'     => $is_done,
+				'phase'       => $phase,
 				'items'       => array_map( array( __CLASS__, 'with_snapshots' ), Runs::items( $run_id ) ),
 				'log_text'    => self::log_text( $run_id ),
 				'languages'   => $languages,
@@ -103,8 +106,19 @@ class Progress {
 				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
 				'nonce'       => wp_create_nonce( self::NONCE ),
 				'runId'       => $run_id,
+				'phase'       => $run ? Runs::state( $run_id )['phase'] : 'idle',
 				'batched'     => $run ? (bool) $run['batched'] : false,
 				'workerCount' => $run ? Translator::worker_count( $run ) : 1,
+				'rerunUrl'    => $run ? wp_nonce_url(
+					add_query_arg(
+						array(
+							'action' => 'pxat_rerun',
+							'run_id' => $run_id,
+						),
+						admin_url( 'admin-post.php' )
+					),
+					'pxat_rerun_' . $run_id
+				) : '',
 				'currency'    => Format::currency(),
 				'usdToVnd'    => Format::USD_TO_VND,
 			)
@@ -254,8 +268,13 @@ class Progress {
 	}
 
 	protected static function payload( $run_id, $items = null ) {
+		$state = Runs::state( $run_id );
+
 		$out = array(
-			'counts'          => Runs::counts( $run_id ),
+			'phase'           => $state['phase'],
+			'claimable'       => $state['claimable'],
+			'inFlight'        => $state['in_flight'],
+			'counts'          => $state['counts'],
 			'durationSeconds' => Runs::duration_seconds( $run_id ),
 			'log'             => self::log_text( $run_id ),
 		);
@@ -267,6 +286,14 @@ class Progress {
 
 	public static function ajax_process() {
 		self::guard();
+
+		// The model call runs inside this request; give it room and let it
+		// finish writing even if the browser hangs up mid-flight.
+		if ( function_exists( 'set_time_limit' ) ) {
+			set_time_limit( 180 );
+		}
+		ignore_user_abort( true );
+
 		$run    = self::run_from_request();
 		$run_id = $run['id'];
 		$worker = wp_generate_uuid4();
@@ -282,8 +309,12 @@ class Progress {
 		}
 
 		if ( empty( $claimed ) ) {
+			// Nothing to claim. The payload's phase says why - 'complete' when
+			// the run is genuinely done, 'blocked' when only orphaned rows are
+			// left (the browser will Resume), 'running' when another worker or
+			// tab still holds the remaining rows.
 			Runs::maybe_finish( $run_id );
-			wp_send_json_success( array_merge( array( 'done' => true ), self::payload( $run_id ) ) );
+			wp_send_json_success( self::payload( $run_id ) );
 		}
 
 		$t0      = microtime( true );
@@ -294,7 +325,22 @@ class Progress {
 
 		Runs::maybe_finish( $run_id );
 
-		wp_send_json_success( array_merge( array( 'done' => false ), self::payload( $run_id, $updated ) ) );
+		wp_send_json_success( self::payload( $run_id, $updated ) );
+	}
+
+	/**
+	 * Explicit Resume: requeue this run's interrupted (orphaned) rows now,
+	 * without waiting out the stale window, then hand back a fresh snapshot so
+	 * the browser can pick the loop straight back up.
+	 */
+	public static function ajax_resume() {
+		self::guard();
+		$run      = self::run_from_request();
+		$requeued = Runs::reclaim_stale( $run['id'], Runs::RESUME_GRACE_SECONDS );
+		if ( $requeued > 0 ) {
+			Runs::log( $run['id'], 0, sprintf( 'Resume: requeued %d interrupted post(s).', $requeued ) );
+		}
+		wp_send_json_success( self::payload( $run['id'], Runs::items( $run['id'] ) ) );
 	}
 
 	public static function ajax_retry() {

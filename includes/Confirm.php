@@ -397,16 +397,6 @@ class Confirm {
 			wp_die( esc_html__( 'No posts selected to translate.', 'perxel-ai-translate' ) );
 		}
 
-		$key_budget = OpenRouter::key_budget();
-		if ( $key_budget && $key_budget['remaining'] <= 0 ) {
-			wp_die( esc_html__( 'The API key has reached its OpenRouter spending limit. Top up your account, then try again.', 'perxel-ai-translate' ) );
-		}
-
-		$source_lang = Wpml::get_default_language();
-		$dest_lang   = isset( $_POST['dest_lang'] ) ? sanitize_text_field( wp_unslash( $_POST['dest_lang'] ) ) : '';
-		$batched     = Settings::batched();
-		$model       = Settings::model();
-
 		$data_mode = isset( $_POST['data_mode'] ) ? sanitize_text_field( wp_unslash( $_POST['data_mode'] ) ) : 'full';
 		if ( ! in_array( $data_mode, array( 'full', 'custom' ), true ) ) {
 			$data_mode = 'full';
@@ -417,9 +407,95 @@ class Confirm {
 			$custom_types = array_values( array_intersect( array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['custom_types'] ) ), Fields::DATA_TYPES ) );
 		}
 
+		$run = self::create_run(
+			$post_ids,
+			$post_type,
+			array(
+				'source_lang'  => Wpml::get_default_language(),
+				'dest_lang'    => isset( $_POST['dest_lang'] ) ? sanitize_text_field( wp_unslash( $_POST['dest_lang'] ) ) : '',
+				'data_mode'    => $data_mode,
+				'custom_types' => $custom_types,
+				'batched'      => Settings::batched(),
+			)
+		);
+
+		if ( is_wp_error( $run ) ) {
+			wp_die( esc_html( $run->get_error_message() ) );
+		}
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'   => Admin::PAGE_PROGRESS,
+					'run_id' => $run,
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Default run config for a one-click translate (admin bar / bulk action):
+	 * everything, into the site's one other language. Returns null when the
+	 * target is ambiguous (three or more active languages) so the caller can
+	 * fall back to the Confirm screen.
+	 *
+	 * @param array $languages WPML active languages.
+	 * @param bool  $batched   Whether to batch (single-post runs pass false).
+	 * @return array|null
+	 */
+	public static function default_config( array $languages, $batched ) {
+		$source_lang = Wpml::get_default_language();
+		$other_langs = array_values( array_diff( array_keys( $languages ), array( $source_lang ) ) );
+
+		if ( 1 !== count( $other_langs ) ) {
+			return null;
+		}
+
+		return array(
+			'source_lang'  => $source_lang,
+			'dest_lang'    => $other_langs[0],
+			'data_mode'    => 'full',
+			'custom_types' => array(),
+			'batched'      => (bool) $batched,
+		);
+	}
+
+	/**
+	 * Build a run + its items from a selection and a resolved config. Shared by
+	 * the Confirm form and the one-click entry points.
+	 *
+	 * @param int[]  $post_ids  Selected post ids.
+	 * @param string $post_type Post type slug.
+	 * @param array  $config    source_lang, dest_lang, data_mode, custom_types, batched.
+	 * @return int|\WP_Error New run id, or an error describing why nothing was created.
+	 */
+	public static function create_run( array $post_ids, $post_type, array $config ) {
+		if ( empty( $post_ids ) || ! in_array( $post_type, PostTypes::get_translatable_post_types(), true ) ) {
+			return new \WP_Error( 'pxat_no_selection', __( 'No posts selected to translate.', 'perxel-ai-translate' ) );
+		}
+
+		$key_budget = OpenRouter::key_budget();
+		if ( $key_budget && $key_budget['remaining'] <= 0 ) {
+			return new \WP_Error( 'pxat_no_credit', __( 'The API key has reached its OpenRouter spending limit. Top up your account, then try again.', 'perxel-ai-translate' ) );
+		}
+
+		$source_lang  = (string) $config['source_lang'];
+		$dest_lang    = (string) $config['dest_lang'];
+		$data_mode    = 'custom' === ( $config['data_mode'] ?? 'full' ) ? 'custom' : 'full';
+		$custom_types = array_values( array_intersect( (array) ( $config['custom_types'] ?? array() ), Fields::DATA_TYPES ) );
+		$batched      = ! empty( $config['batched'] );
+		$model        = Settings::model();
+
+		$languages = Wpml::get_active_languages();
+		if ( '' === $dest_lang || ! isset( $languages[ $dest_lang ] ) || $dest_lang === $source_lang ) {
+			return new \WP_Error( 'pxat_bad_target', __( 'Pick a target language for this translation.', 'perxel-ai-translate' ) );
+		}
+
 		$selected_types = 'full' === $data_mode ? Fields::DATA_TYPES : $custom_types;
 		if ( empty( $selected_types ) ) {
-			wp_die( esc_html__( 'No data selected to process.', 'perxel-ai-translate' ) );
+			return new \WP_Error( 'pxat_no_data', __( 'No data selected to process.', 'perxel-ai-translate' ) );
 		}
 
 		$resolution = self::resolve_source_ids( $post_ids, $post_type, $source_lang );
@@ -499,7 +575,10 @@ class Confirm {
 		);
 
 		if ( ! $has_pending ) {
-			wp_die( esc_html__( 'Nothing to process. None of the selected posts match the chosen data (already fully translated, no destination post to sync into, or no remaining fields).', 'perxel-ai-translate' ) );
+			return new \WP_Error(
+				'pxat_nothing_to_do',
+				__( 'Nothing to process. None of the selected posts match the chosen data (already fully translated, no destination post to sync into, or no remaining fields).', 'perxel-ai-translate' )
+			);
 		}
 
 		$run_id = Runs::create(
@@ -518,15 +597,6 @@ class Confirm {
 		);
 		Runs::add_items( $run_id, $items );
 
-		wp_safe_redirect(
-			add_query_arg(
-				array(
-					'page'   => Admin::PAGE_PROGRESS,
-					'run_id' => $run_id,
-				),
-				admin_url( 'admin.php' )
-			)
-		);
-		exit;
+		return (int) $run_id;
 	}
 }

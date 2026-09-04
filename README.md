@@ -9,11 +9,13 @@ spending WPML's own AI translation credits.
 
 ## What it does
 
-- A top-level **AI Translate** admin menu: a Dashboard (setup, totals), Run,
+- A **Tools → AI Translate** admin screen: a Dashboard (setup, totals), Run,
   History, ID lookup and Settings.
 - Posts are picked with a **Perxel AI Translate…** bulk action on every
   WPML-translatable post type, or the *Translate this page* toolbar item while
-  editing one post. Either lands on a confirm screen for exactly those posts -
+  editing one post. On a two-language site the toolbar item starts the run
+  immediately (everything, into the other language); the bulk action and
+  three-plus-language sites land on a confirm screen for exactly those posts -
   there is no persistent, accumulating list.
 - The confirm screen takes a destination language, data selection and a
   cost / word-count estimate before anything runs. Costs show in USD, or in VND

@@ -8,8 +8,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * "Translate this page" admin-bar node, shown while editing a single post of a
- * translatable type. Lands on the Confirm screen with this post's id in the URL,
- * same as the bulk action.
+ * translatable type. On a two-language site it creates the run and jumps
+ * straight to Progress (everything, into the one other language, one request per
+ * post); with three or more languages the target is ambiguous, so it lands on
+ * the Confirm screen instead - same as the bulk action. While a run that
+ * contains this post is still going, the node links back to that run.
  */
 class AdminBar {
 
@@ -44,6 +47,20 @@ class AdminBar {
 			return;
 		}
 
+		$icon = '<span class="ab-icon dashicons dashicons-translation" aria-hidden="true" style="font-family:dashicons;top:2px;"></span>';
+
+		$active_run = Runs::active_run_id_for_source( $post_id );
+		if ( $active_run ) {
+			$wp_admin_bar->add_node(
+				array(
+					'id'    => 'pxat-translate',
+					'title' => $icon . '<span class="ab-label">' . esc_html__( 'Translation running - view', 'perxel-ai-translate' ) . '</span>',
+					'href'  => admin_url( 'admin.php?page=' . Admin::PAGE_PROGRESS . '&run_id=' . $active_run ),
+				)
+			);
+			return;
+		}
+
 		$url = wp_nonce_url(
 			add_query_arg(
 				array(
@@ -58,7 +75,7 @@ class AdminBar {
 		$wp_admin_bar->add_node(
 			array(
 				'id'    => 'pxat-translate',
-				'title' => __( 'Translate this page', 'perxel-ai-translate' ),
+				'title' => $icon . '<span class="ab-label">' . esc_html__( 'Translate this page', 'perxel-ai-translate' ) . '</span>',
 				'href'  => $url,
 			)
 		);
@@ -79,6 +96,26 @@ class AdminBar {
 			wp_die( esc_html__( 'Invalid post, or its type cannot be translated.', 'perxel-ai-translate' ) );
 		}
 
+		// One click: on a two-language site, skip Confirm and start the run now.
+		$config = Confirm::default_config( Wpml::get_active_languages(), false );
+		if ( $config ) {
+			$run = Confirm::create_run( array( $post_id ), $post->post_type, $config );
+			if ( ! is_wp_error( $run ) ) {
+				wp_safe_redirect(
+					add_query_arg(
+						array(
+							'page'   => Admin::PAGE_PROGRESS,
+							'run_id' => $run,
+						),
+						admin_url( 'admin.php' )
+					)
+				);
+				exit;
+			}
+		}
+
+		// Ambiguous target, or nothing to translate - let the Confirm screen
+		// spell out the choice / the reason.
 		wp_safe_redirect(
 			add_query_arg(
 				array(

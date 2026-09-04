@@ -22,7 +22,7 @@ class Settings {
 			'api_key_limit'     => 0.0,  // USD credit ceiling on the key; 0 = none / unknown.
 			'api_key_remaining' => 0.0, // USD left against that ceiling.
 			'prompt'            => '',
-			'batched'           => false,
+			'batched'           => true,
 			'model_id'          => PXAT_DEFAULT_MODEL,
 			'model_verified'    => false,
 			'model_label'       => '',

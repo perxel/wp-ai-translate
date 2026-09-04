@@ -42,6 +42,7 @@ class Admin {
 		add_action( 'wp_ajax_pxat_process', array( Progress::class, 'ajax_process' ) );
 		add_action( 'wp_ajax_pxat_retry', array( Progress::class, 'ajax_retry' ) );
 		add_action( 'wp_ajax_pxat_status', array( Progress::class, 'ajax_status' ) );
+		add_action( 'wp_ajax_pxat_resume', array( Progress::class, 'ajax_resume' ) );
 	}
 
 	/*
@@ -50,26 +51,19 @@ class Admin {
 	 * ------------------------------------------------------------------- */
 
 	public function menu() {
-		add_menu_page(
+		// One entry under Tools; the other screens are reached from the kit's
+		// in-page nav, so they are registered off the menu but still render.
+		add_management_page(
 			PXAT_NAME,
 			__( 'AI Translate', 'perxel-ai-translate' ),
 			'manage_options',
 			self::PAGE_DASHBOARD,
-			array( $this, 'render_dashboard' ),
-			'dashicons-translation',
-			76
+			array( $this, 'render_dashboard' )
 		);
 
-		$submenus = array(
-			self::PAGE_DASHBOARD => array( __( 'Dashboard', 'perxel-ai-translate' ), array( $this, 'render_dashboard' ), __( 'Dashboard', 'perxel-ai-translate' ) ),
-			self::PAGE_HISTORY   => array( __( 'History', 'perxel-ai-translate' ), array( $this, 'render_history' ), __( 'History', 'perxel-ai-translate' ) ),
-			self::PAGE_ID_LOOKUP => array( __( 'ID lookup', 'perxel-ai-translate' ), array( $this, 'render_id_lookup' ), __( 'ID lookup', 'perxel-ai-translate' ) ),
-			self::PAGE_SETTINGS  => array( __( 'Settings', 'perxel-ai-translate' ), array( $this, 'render_settings' ), __( 'Settings', 'perxel-ai-translate' ) ),
-		);
-
-		foreach ( $submenus as $slug => $entry ) {
-			add_submenu_page( self::MENU, $entry[2] . ' - ' . PXAT_NAME, $entry[0], 'manage_options', $slug, $entry[1] );
-		}
+		add_submenu_page( null, __( 'History', 'perxel-ai-translate' ) . ' - ' . PXAT_NAME, '', 'manage_options', self::PAGE_HISTORY, array( $this, 'render_history' ) );
+		add_submenu_page( null, __( 'ID lookup', 'perxel-ai-translate' ) . ' - ' . PXAT_NAME, '', 'manage_options', self::PAGE_ID_LOOKUP, array( $this, 'render_id_lookup' ) );
+		add_submenu_page( null, __( 'Settings', 'perxel-ai-translate' ) . ' - ' . PXAT_NAME, '', 'manage_options', self::PAGE_SETTINGS, array( $this, 'render_settings' ) );
 
 		// Confirm + run screens - off the menu, reached mid-task via redirect
 		// from the bulk action / admin bar / re-run, but still render on visit.

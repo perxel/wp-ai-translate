@@ -7,6 +7,7 @@
  * @var array  $run
  * @var array  $counts
  * @var bool   $is_done
+ * @var string $phase       Run phase from Runs::state(): running|blocked|complete|idle.
  * @var array  $items       Items with ['html'] cell strings + post snapshots.
  * @var string $log_text    Activity log as one "[time] message" block.
  * @var array  $languages

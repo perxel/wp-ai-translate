@@ -1,35 +1,42 @@
 /**
  * Translation-run screen: a browser-driven loop that asks the server to
- * translate + write the next post(s), until the run is done. State lives in the
- * database, so closing the tab just pauses; reopening resumes.
+ * translate + write the next post(s) until the run is done. Run state lives in
+ * the database; the server resolves a single `phase` (running | blocked |
+ * complete | idle) and this script is a thin driver for it - it never decides on
+ * its own whether the run is finished, and it never reloads the page except once
+ * on genuine completion (a terminal state, so it cannot loop).
  */
 ( function () {
 	'use strict';
 
 	var cfg = window.PXAT_Progress || {};
-	var running = false;
-	var finished = false;
-	var stalled = false;
-	var sessionExpired = false;
-	var pollFails = 0;
+
+	var MAX_AUTO_RESUME = 2;
+
+	var phase = cfg.phase || 'idle'; // last phase the server reported
+	var running = false; // the pump loop is active
+	var stopping = false; // user pressed Stop; workers wind down after the call in flight
 	var activeWorkers = 0;
+	var autoResumes = 0;
+	var stalled = false; // last request failed
+	var sessionExpired = false;
+	var lostContact = 0;
 	var pollTimer = null;
 
 	function el( sel, ctx ) {
 		return ( ctx || document ).querySelector( sel );
 	}
 
-	// wp.i18n.__, or a passthrough until it loads. Named `__` (not `t`) because
-	// `toggleButtons()` and the click handler each keep a local `var t`. Pass the
-	// text domain at every call site so `wp i18n make-pot` can find the strings.
+	// wp.i18n.__, or a passthrough until it loads. Pass the text domain at every
+	// call site so `wp i18n make-pot` can find the strings.
 	var __ = ( window.wp && window.wp.i18n )
 		? window.wp.i18n.__
 		: function ( s ) {
 			return s;
 		};
 
-	/* A one-line status next to the Start/Stop buttons so a click always
-	   produces visible feedback (stopping, stopped, failed). */
+	/* A one-line status next to the Start/Stop buttons so every state change
+	   produces visible feedback. */
 	function setRunMsg( text ) {
 		var box = el( '.pxui-main__actions' );
 		if ( ! box ) {
@@ -65,9 +72,8 @@
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: body.toString()
 		} ).then( function ( r ) {
-			// A 401/403 here is almost always an expired nonce - the tab has
-			// been open past the nonce lifetime. Flag it so callers can tell
-			// the user to reload rather than "try again".
+			// A 401/403 is almost always an expired nonce - the tab has been
+			// open past the nonce lifetime.
 			if ( 401 === r.status || 403 === r.status ) {
 				var expiredErr = new Error( 'session expired' );
 				expiredErr.expired = true;
@@ -90,6 +96,8 @@
 			node.textContent = value;
 		}
 	}
+
+	/* --- Rendering ----------------------------------------------- */
 
 	function renderCounts( d ) {
 		if ( ! d || ! d.counts ) {
@@ -145,8 +153,6 @@
 		if ( ! pre || pre.textContent === text ) {
 			return;
 		}
-		// Keep the view pinned to the newest line unless the user has
-		// scrolled up to read something.
 		var atBottom = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40;
 		pre.textContent = text;
 		if ( atBottom ) {
@@ -155,184 +161,296 @@
 	}
 
 	function render( d ) {
+		if ( ! d ) {
+			return;
+		}
 		renderCounts( d );
 		renderItems( d.items );
 		renderLog( d.log );
-	}
-
-	/* The run has no work left: the server-rendered heading ("Finished with
-	   errors" / the auto-start) is now stale, so reload into the done screen. */
-	function reloadIfComplete( d ) {
-		var c = d && d.counts;
-		if ( c && c.total > 0 && ! c.pending && ! c.translating ) {
-			window.location.reload();
-			return true;
+		if ( typeof d.phase === 'string' ) {
+			phase = d.phase;
+			if ( ! running ) {
+				paintIdleUi();
+			}
 		}
-		return false;
 	}
 
-	/* --- The loop -------------------------------------------------- */
+	/* --- Buttons ------------------------------------------------- */
 
-	function retire( reload ) {
-		activeWorkers--;
-		if ( activeWorkers > 0 ) {
+	function show( node, visible ) {
+		if ( node ) {
+			node.hidden = ! visible;
+		}
+	}
+
+	function paintRunningUi() {
+		var start = el( '#pxat-start' );
+		var stop = el( '#pxat-stop' );
+		show( start, false );
+		if ( stop ) {
+			stop.hidden = false;
+			stop.disabled = false;
+			stop.textContent = __( 'Stop', 'perxel-ai-translate' );
+		}
+	}
+
+	/* The loop is not running: show the right affordance for the current phase
+	   and a one-line reason. */
+	function paintIdleUi() {
+		var start = el( '#pxat-start' );
+		var stop = el( '#pxat-stop' );
+		show( stop, false );
+
+		if ( 'complete' === phase ) {
+			show( start, false );
 			return;
 		}
-		if ( reload ) {
-			window.location.reload();
-			return;
-		}
-		onIdle();
-	}
 
-	/* Every worker has wound down without finishing the run: it is paused.
-	   Restore the buttons and say so. */
-	function onIdle() {
-		if ( pollTimer ) {
-			clearInterval( pollTimer );
-			pollTimer = null;
+		if ( start ) {
+			start.hidden = false;
+			start.textContent = hasProgress()
+				? __( 'Resume translating', 'perxel-ai-translate' )
+				: __( 'Start translating', 'perxel-ai-translate' );
 		}
-		var stopBtn = el( '#pxat-stop' );
-		if ( stopBtn ) {
-			stopBtn.disabled = false;
-			stopBtn.textContent = __( 'Stop', 'perxel-ai-translate' );
-		}
-		var startBtn = el( '#pxat-start' );
-		if ( startBtn ) {
-			startBtn.textContent = __( 'Resume translating', 'perxel-ai-translate' );
-		}
-		toggleButtons( false );
 
-		var failed = stalled;
-		var expired = sessionExpired;
-		stalled = false;
-		sessionExpired = false;
-		if ( expired ) {
+		if ( sessionExpired ) {
 			setRunMsg( __( 'Your session expired. Reload the page to keep translating.', 'perxel-ai-translate' ) );
-		} else if ( failed ) {
+		} else if ( stalled ) {
 			setRunMsg( __( 'The last request failed. Press Resume to try again.', 'perxel-ai-translate' ) );
-		} else {
+		} else if ( 'blocked' === phase ) {
+			setRunMsg( __( 'A post was interrupted. Press Resume to pick it back up.', 'perxel-ai-translate' ) );
+		} else if ( stopping ) {
 			setRunMsg( __( 'Stopped. Press Resume to translate the remaining posts.', 'perxel-ai-translate' ) );
 		}
-
-		// One last refresh so the figures match the final written post - and if
-		// the run turns out to have no work left, reload into the done screen.
-		post( 'pxat_status', {} ).then( function ( res ) {
-			if ( res && res.success ) {
-				render( res.data );
-				reloadIfComplete( res.data );
-			}
-		} ).catch( function ( err ) {
-			if ( isExpired( err ) ) {
-				setRunMsg( __( 'Your session expired. Reload the page to keep translating.', 'perxel-ai-translate' ) );
-			}
-		} );
 	}
 
-	function worker() {
-		if ( ! running ) {
-			retire( finished );
+	function hasProgress() {
+		var done = el( '#pxat-stat-done' );
+		return !! ( done && parseInt( done.textContent, 10 ) > 0 );
+	}
+
+	/* --- The loop ---------------------------------------------------- */
+
+	/* The Start / Resume button. Always clears the recovery budget and the
+	   failure flags, then goes through doResume() so a stuck row is requeued
+	   before the loop picks back up (for a clean run it just starts). */
+	function beginOrResume() {
+		autoResumes = 0;
+		stalled = false;
+		sessionExpired = false;
+		if ( 'complete' === phase ) {
 			return;
 		}
-		post( 'pxat_process', {} ).then( function ( res ) {
-			if ( ! res || ! res.success ) {
-				running = false;
-				stalled = true;
-				retire( false );
-				return;
-			}
-			pollFails = 0;
-			render( res.data );
-			if ( res.data.done ) {
-				running = false;
-				finished = true;
-				retire( true );
-				return;
-			}
-			worker();
-		} ).catch( function ( err ) {
-			running = false;
-			stalled = true;
-			sessionExpired = isExpired( err );
-			retire( false );
-		} );
+		doResume();
 	}
 
-	function start() {
+	function startLoop() {
 		if ( running ) {
 			return;
 		}
 		running = true;
-		finished = false;
+		stopping = false;
 		stalled = false;
 		sessionExpired = false;
-		pollFails = 0;
 		setRunMsg( '' );
-		toggleButtons( true );
-		var n = Math.max( 1, cfg.batched ? cfg.workerCount : 1 );
+		paintRunningUi();
+		startPoll();
+
+		var n = Math.max( 1, cfg.batched ? ( cfg.workerCount || 1 ) : 1 );
 		for ( var i = 0; i < n; i++ ) {
 			activeWorkers++;
-			worker();
+			pump();
 		}
+	}
+
+	function pump() {
+		if ( stopping ) {
+			retire();
+			return;
+		}
+		post( 'pxat_process', {} ).then( function ( res ) {
+			if ( ! res || ! res.success ) {
+				stalled = true;
+				retire();
+				return;
+			}
+			lostContact = 0;
+			stalled = false;
+			render( res.data );
+
+			var didWork = !! ( res.data.items && res.data.items.length );
+			if ( didWork ) {
+				autoResumes = 0; // progress resets the recovery budget
+			}
+
+			// This worker keeps pumping only while it is actually getting work
+			// and the run is still going. Otherwise it retires - the other
+			// workers carry on, and settle() decides (finish / recover / pause)
+			// once they have all wound down. It is never this loop's job to
+			// hammer an idle endpoint.
+			if ( didWork && 'running' === res.data.phase && ! stopping ) {
+				pump();
+				return;
+			}
+			retire();
+		} ).catch( function ( err ) {
+			sessionExpired = isExpired( err );
+			stalled = ! sessionExpired;
+			retire();
+		} );
+	}
+
+	function retire() {
+		activeWorkers = Math.max( 0, activeWorkers - 1 );
+		if ( activeWorkers > 0 ) {
+			return;
+		}
+		running = false;
+		settle();
+	}
+
+	/* Every worker has wound down. Branch on the last reported phase. */
+	function settle() {
+		if ( 'complete' === phase ) {
+			finishToDone();
+			return;
+		}
+
+		// The run still has work but this browser's workers stopped getting any
+		// - either an interrupted request left a row stuck, or another tab holds
+		// it. Try to recover it a bounded number of times, then hand over to a
+		// manual Resume.
+		var unfinished = ( 'blocked' === phase || 'running' === phase );
+		if ( unfinished && ! stopping && ! sessionExpired && ! stalled && autoResumes < MAX_AUTO_RESUME ) {
+			autoResumes++;
+			doResume();
+			return;
+		}
+
+		// Paused: stopped by the user, a failed request, recovery budget spent,
+		// an expired session, or an empty run.
+		stopPoll();
+		paintIdleUi();
+		refreshOnce();
+	}
+
+	/* Ask the server to requeue an interrupted post (safe now that every worker
+	   has wound down), then pick the loop back up. If nothing was old enough to
+	   requeue yet, wait briefly and try again within the budget. */
+	function doResume() {
 		startPoll();
+		setRunMsg( __( 'Recovering an interrupted post…', 'perxel-ai-translate' ) );
+		post( 'pxat_resume', {} ).then( function ( res ) {
+			if ( ! res || ! res.success ) {
+				paintIdleUi();
+				return;
+			}
+			render( res.data );
+			if ( 'complete' === res.data.phase ) {
+				finishToDone();
+				return;
+			}
+			if ( res.data.claimable > 0 ) {
+				startLoop();
+				return;
+			}
+			// Nothing requeued (the stuck row is not old enough yet). Give it a
+			// moment, then let settle() decide again.
+			if ( autoResumes < MAX_AUTO_RESUME ) {
+				setTimeout( settle, 4000 );
+			} else {
+				stopPoll();
+				paintIdleUi();
+			}
+		} ).catch( function ( err ) {
+			sessionExpired = isExpired( err );
+			stalled = ! sessionExpired;
+			paintIdleUi();
+		} );
+	}
+
+	/* Genuine completion is terminal. Reload once so the server renders the
+	   proper done screen; after that cfg.phase is 'complete' and nothing here
+	   starts again, so it cannot loop. */
+	function finishToDone() {
+		stopPoll();
+		if ( 'complete' !== cfg.phase ) {
+			window.location.reload();
+		}
+	}
+
+	function refreshOnce() {
+		post( 'pxat_status', {} ).then( function ( res ) {
+			if ( res && res.success ) {
+				render( res.data );
+				if ( 'complete' === res.data.phase ) {
+					finishToDone();
+				}
+			}
+		} ).catch( function ( err ) {
+			if ( isExpired( err ) ) {
+				sessionExpired = true;
+				paintIdleUi();
+			}
+		} );
 	}
 
 	function stop() {
 		if ( ! running ) {
 			return;
 		}
+		stopping = true;
 		running = false;
 		var btn = el( '#pxat-stop' );
 		if ( btn ) {
 			btn.disabled = true;
 			btn.textContent = __( 'Stopping…', 'perxel-ai-translate' );
 		}
-		// A translate request is likely in flight; it has to finish before the
-		// worker checks `running` and winds down (then onIdle() takes over).
 		setRunMsg( __( 'Finishing the current post, then stopping…', 'perxel-ai-translate' ) );
 	}
 
-	function toggleButtons( isRunning ) {
-		var s = el( '#pxat-start' );
-		var t = el( '#pxat-stop' );
-		if ( s ) {
-			s.hidden = isRunning;
-		}
-		if ( t ) {
-			t.hidden = ! isRunning;
-		}
-	}
+	/* --- Polling ------------------------------------------------- */
 
 	function startPoll() {
 		if ( pollTimer ) {
 			return;
 		}
 		pollTimer = setInterval( function () {
-			if ( ! running ) {
-				clearInterval( pollTimer );
-				pollTimer = null;
-				return;
-			}
 			post( 'pxat_status', {} ).then( function ( res ) {
-				if ( res && res.success ) {
-					if ( pollFails ) {
-						pollFails = 0;
-						setRunMsg( '' );
-					}
-					render( res.data );
+				if ( ! res || ! res.success ) {
+					return;
+				}
+				if ( lostContact ) {
+					lostContact = 0;
+					setRunMsg( '' );
+				}
+				render( res.data );
+				if ( 'complete' === res.data.phase ) {
+					finishToDone();
 				}
 			} ).catch( function ( err ) {
-				pollFails++;
+				lostContact++;
 				if ( isExpired( err ) ) {
-					setRunMsg( __( 'Your session expired. Reload the page to keep translating.', 'perxel-ai-translate' ) );
-				} else if ( pollFails >= 3 ) {
+					sessionExpired = true;
+					stopPoll();
+					if ( ! running ) {
+						paintIdleUi();
+					}
+				} else if ( lostContact >= 3 ) {
 					setRunMsg( __( 'Lost contact with the server - retrying. Check your connection.', 'perxel-ai-translate' ) );
 				}
 			} );
 		}, 3000 );
 	}
 
-	/* --- Retry + View -------------------------------------------- */
+	function stopPoll() {
+		if ( pollTimer ) {
+			clearInterval( pollTimer );
+			pollTimer = null;
+		}
+	}
+
+	/* --- Retry + View ------------------------------------------- */
 
 	function onRetry( btn ) {
 		var label = btn.textContent;
@@ -346,7 +464,6 @@
 		}
 
 		function restore( message ) {
-			// The row was not re-rendered, so put the button and note back.
 			btn.disabled = false;
 			btn.textContent = label;
 			if ( note && message ) {
@@ -356,14 +473,9 @@
 
 		post( 'pxat_retry', { item_id: btn.getAttribute( 'data-item-id' ) } ).then( function ( res ) {
 			if ( res && res.success ) {
-				// render() replaces this row's cells - a fresh (enabled) Retry
-				// button appears if it failed again, or none if it is done now.
 				render( res.data );
-				// If that cleared the last error, the "Finished with errors"
-				// heading is now wrong - reload into the "Complete" screen.
-				var c = res.data && res.data.counts;
-				if ( c && ! c.error && ! c.pending && ! c.translating ) {
-					window.location.reload();
+				if ( 'complete' === res.data.phase ) {
+					finishToDone();
 				}
 				return;
 			}
@@ -427,7 +539,7 @@
 			return;
 		}
 		if ( t.id === 'pxat-start' ) {
-			start();
+			beginOrResume();
 		} else if ( t.id === 'pxat-stop' ) {
 			stop();
 		} else if ( t.id === 'pxat-view-close' ) {
@@ -447,10 +559,32 @@
 		}
 	} );
 
-	/* Auto-begin on landing: the cart's "Start" is the only click. The run
-	   state lives in the DB, so a reopened unfinished run resumes the same way.
-	   #pxat-start is only rendered while the run still has work to do. */
-	if ( cfg.runId && el( '#pxat-start' ) ) {
-		start();
+	/* Auto-begin on landing. The run's state lives in the DB, so a reopened
+	   unfinished run resumes the same way a fresh one starts. A leading status
+	   refresh means the screen reflects reality at once instead of sitting on
+	   the server-rendered snapshot until the first poll. */
+	if ( cfg.runId && 'complete' !== cfg.phase ) {
+		post( 'pxat_status', {} ).then( function ( res ) {
+			if ( res && res.success ) {
+				render( res.data );
+				maybeAutoStart( res.data.phase );
+			} else {
+				maybeAutoStart( cfg.phase );
+			}
+		} ).catch( function () {
+			maybeAutoStart( cfg.phase );
+		} );
+	}
+
+	function maybeAutoStart( p ) {
+		if ( ! el( '#pxat-start' ) ) {
+			return;
+		}
+		if ( 'running' === p ) {
+			startLoop();
+		} else if ( 'blocked' === p ) {
+			autoResumes = 0;
+			doResume();
+		}
 	}
 }() );

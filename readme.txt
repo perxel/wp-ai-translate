@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.13
+Stable tag: 0.0.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -32,7 +32,7 @@ It is aimed at sites that already run **WPML** and want to translate a lot of co
 3. Press **Start**. Each post is translated and written straight into WordPress as a WPML translation; review the result in the normal editor. Close the tab any time - the run resumes where it left off.
 4. Every run is kept under **AI Translate → History** until you delete it.
 
-Turn on **Faster batched requests** in Settings to send several short posts per model request.
+**Faster batched requests** (on by default in Settings) sends several short posts per model request; turn it off to translate one post per request.
 
 **Requirements**
 
@@ -99,6 +99,15 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.14 =
+* **One-click translate.** On a site with two active languages, **Translate this page** in the toolbar now starts the run straight away - everything, into the other language - instead of stopping at the Translation screen first. Sites with three or more languages still choose the target there. The toolbar item also shows a translation icon and links to the run while one that includes the current page is still going.
+* **Faster batched requests** is now on by default. New installs send several short posts per model request out of the box; existing sites keep whatever they last saved, and it can still be turned off in Settings.
+* The run screen no longer gets stuck reloading on a "pending" post. The browser loop now follows one run state resolved on the server, so a run left half-finished by an interrupted request is picked back up automatically, or with a single **Resume** click.
+* The run screen reflects reality the moment it loads instead of sitting on a stale snapshot until the first poll.
+* An interrupted model request no longer charges twice or half-writes a post: a translation that was already produced is reused when its write is retried.
+* Batched runs: when a whole batch request fails it is split and retried in smaller groups, so one bad post - or an over-large group - no longer fails the rest.
+* **AI Translate** moved from its own top-level admin menu to **Tools → AI Translate**.
 
 = 0.0.13 =
 * Run screen: **Start translating** no longer stays visible while a run is in progress (a WordPress button style was overriding the hidden state).

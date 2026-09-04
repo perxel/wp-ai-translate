@@ -126,6 +126,15 @@ class Translator {
 			);
 		}
 
+		// An earlier request translated this post but died before (or during)
+		// the write - the stored preview is still good, so skip the model and
+		// go straight to writing it. Keeps a retried / reclaimed row from being
+		// charged twice.
+		if ( ! empty( $item['preview'] ) ) {
+			Runs::log( $run['id'], $item['id'], $label . ': already translated by an earlier request, writing the stored result' );
+			return $item;
+		}
+
 		$payload = self::build_payload( $item );
 
 		Runs::log(
@@ -439,14 +448,66 @@ class Translator {
 	}
 
 	/**
-	 * One OpenRouter batch call for $items. On a request-level failure every
-	 * item in the group is marked 'error' with the same message.
+	 * Translate a claimed group. Items an earlier request already translated are
+	 * kept as-is (their stored preview stands); the rest go to the model. A
+	 * whole-group failure is split once and retried in halves so one bad post -
+	 * or an over-large group - does not sink the batch.
 	 *
 	 * @param array $run   Run row.
 	 * @param array $items Items with non-empty fields.
 	 * @return array Updated items (status 'translating' on success, 'error' on failure).
 	 */
 	protected static function translate_batch_step( array $run, array $items ) {
+		$fresh   = array();
+		$already = array();
+		foreach ( $items as $item ) {
+			if ( ! empty( $item['preview'] ) ) {
+				$already[] = $item;
+			} else {
+				$fresh[] = $item;
+			}
+		}
+
+		if ( $already ) {
+			Runs::log_bulk( $run['id'], wp_list_pluck( $already, 'id' ), 'Already translated by an earlier request; writing the stored result' );
+		}
+
+		if ( empty( $fresh ) ) {
+			return $already;
+		}
+
+		$changes = self::run_batch_call( $run, $fresh );
+		$errored = array_filter(
+			$changes,
+			static function ( $c ) {
+				return isset( $c['status'] ) && 'error' === $c['status'];
+			}
+		);
+
+		// Every item errored with no partial results back: a request-level
+		// failure, not a per-post one. Split once and retry each half.
+		if ( count( $errored ) === count( $fresh ) && count( $fresh ) > 1 ) {
+			$halves  = array_chunk( $fresh, (int) ceil( count( $fresh ) / 2 ) );
+			$changes = array();
+			foreach ( $halves as $half ) {
+				Runs::log_bulk( $run['id'], wp_list_pluck( $half, 'id' ), sprintf( 'Retrying a smaller group of %d after a batch failure', count( $half ) ) );
+				$changes += self::run_batch_call( $run, $half );
+			}
+		}
+
+		return array_merge( Runs::update_items( $changes ), $already );
+	}
+
+	/**
+	 * One OpenRouter batch call for $items, returning a raw changes map
+	 * (item id => update array); the caller persists. On a request-level failure
+	 * every item in the group gets a 'error' change with the same message.
+	 *
+	 * @param array $run   Run row.
+	 * @param array $items Items with non-empty fields and no stored preview.
+	 * @return array<int,array> item id => changes.
+	 */
+	protected static function run_batch_call( array $run, array $items ) {
 		$ids = wp_list_pluck( $items, 'id' );
 
 		Runs::log_bulk( $run['id'], $ids, sprintf( 'Sending a batch of %d posts to the model', count( $items ) ) );
@@ -477,7 +538,7 @@ class Translator {
 					'error_message' => $result->get_error_message(),
 				);
 			}
-			return Runs::update_items( $changes );
+			return $changes;
 		}
 
 		$results = $result['results'];
@@ -533,7 +594,7 @@ class Translator {
 			);
 		}
 
-		return Runs::update_items( $changes );
+		return $changes;
 	}
 
 	/*

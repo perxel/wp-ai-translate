@@ -27,6 +27,11 @@ class Runs {
 	const STALE_SECONDS         = 90;
 	const STALE_SECONDS_BATCHED = 300;
 
+	// Grace an explicit Resume gives an in-flight row before it requeues it: long
+	// enough not to steal a row a parallel worker only just claimed, short enough
+	// that a genuinely stuck run recovers on the first click.
+	const RESUME_GRACE_SECONDS = 30;
+
 	/*
 	---------------------------------------------------------------------
 	 * Runs
@@ -380,12 +385,16 @@ class Runs {
 	/**
 	 * Requeue items left 'translating' by a request that never finished.
 	 *
-	 * @param int $run_id Run id.
+	 * @param int      $run_id        Run id.
+	 * @param int|null $grace_seconds Age a row must have before it is requeued;
+	 *                                null uses the per-run stale window.
+	 * @return int Rows requeued.
 	 */
-	public static function reclaim_stale( $run_id ) {
+	public static function reclaim_stale( $run_id, $grace_seconds = null ) {
 		global $wpdb;
 
-		$threshold = gmdate( 'Y-m-d H:i:s', current_time( 'timestamp' ) - self::stale_seconds( $run_id ) ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- site-local stored datetimes.
+		$grace     = null === $grace_seconds ? self::stale_seconds( $run_id ) : max( 0, (int) $grace_seconds );
+		$threshold = gmdate( 'Y-m-d H:i:s', current_time( 'timestamp' ) - $grace ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- site-local stored datetimes.
 
 		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
@@ -396,6 +405,70 @@ class Runs {
 				$run_id,
 				$threshold
 			)
+		);
+
+		return (int) $wpdb->rows_affected;
+	}
+
+	/**
+	 * How many 'translating' rows have been sitting long enough to count as
+	 * orphaned - a request claimed them and died. These are recoverable.
+	 *
+	 * @param int $run_id Run id.
+	 * @return int
+	 */
+	public static function count_orphaned( $run_id ) {
+		global $wpdb;
+
+		$threshold = gmdate( 'Y-m-d H:i:s', current_time( 'timestamp' ) - self::stale_seconds( $run_id ) ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- site-local stored datetimes.
+
+		return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				'SELECT COUNT(*) FROM ' . Db::items() . " WHERE run_id = %d AND status = 'translating' AND ( claimed_at IS NULL OR claimed_at < %s )",
+				$run_id,
+				$threshold
+			)
+		);
+	}
+
+	/**
+	 * The single source of truth for "where is this run and what should happen
+	 * next". Every screen and endpoint reads the phase from here rather than
+	 * re-deriving it from raw counts.
+	 *
+	 * The phase:
+	 *  - complete: total > 0 and nothing pending or translating.
+	 *  - blocked:  nothing claimable, but in-flight rows are all orphaned
+	 *              (a dead request) - needs a reclaim to move again.
+	 *  - running:  work is claimable or genuinely in flight.
+	 *  - idle:     no items at all (a freshly created, empty run).
+	 *
+	 * @param int $run_id Run id.
+	 * @return array phase, claimable, in_flight, orphaned, counts.
+	 */
+	public static function state( $run_id ) {
+		$counts      = self::counts( $run_id );
+		$total       = $counts['total'];
+		$pending     = $counts['pending'];
+		$translating = $counts['translating'];
+		$orphaned    = $translating > 0 ? self::count_orphaned( $run_id ) : 0;
+
+		if ( 0 === $total ) {
+			$phase = 'idle';
+		} elseif ( 0 === $pending && 0 === $translating ) {
+			$phase = 'complete';
+		} elseif ( 0 === $pending && $translating > 0 && $translating === $orphaned ) {
+			$phase = 'blocked';
+		} else {
+			$phase = 'running';
+		}
+
+		return array(
+			'phase'     => $phase,
+			'claimable' => $pending,
+			'in_flight' => $translating,
+			'orphaned'  => $orphaned,
+			'counts'    => $counts,
 		);
 	}
 
@@ -587,6 +660,26 @@ class Runs {
 				WHERE i.run_id = r.id AND i.status IN ('pending','translating')
 			 )
 			 ORDER BY r.id DESC LIMIT 1"
+		);
+
+		return $id ? (int) $id : null;
+	}
+
+	/**
+	 * The most recent unfinished run that contains this source post, if any -
+	 * so the admin bar can offer "Resume" instead of starting a duplicate.
+	 *
+	 * @param int $source_post_id Source post id.
+	 * @return int|null
+	 */
+	public static function active_run_id_for_source( $source_post_id ) {
+		global $wpdb;
+
+		$id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				'SELECT run_id FROM ' . Db::items() . " WHERE source_post_id = %d AND status IN ('pending','translating') ORDER BY run_id DESC LIMIT 1",
+				(int) $source_post_id
+			)
 		);
 
 		return $id ? (int) $id : null;
