@@ -142,6 +142,7 @@ class OpenRouter {
 		while ( true ) {
 			$log( 0 === $attempt ? 'request sent to OpenRouter' : sprintf( 'retry %d to OpenRouter', $attempt ) );
 
+			$started  = microtime( true );
 			$response = wp_remote_post(
 				self::API_URL,
 				array(
@@ -183,14 +184,14 @@ class OpenRouter {
 				);
 			}
 
-			$log( 'response received (HTTP ' . $code . '), parsing' );
+			$elapsed = microtime( true ) - $started;
 
 			$raw     = wp_remote_retrieve_body( $response );
 			$json    = json_decode( $raw, true );
 			$content = isset( $json['choices'][0]['message']['content'] ) ? $json['choices'][0]['message']['content'] : null;
 
 			if ( null === $content ) {
-				$log( 'unexpected response shape from OpenRouter' );
+				$log( sprintf( 'unexpected response shape from OpenRouter (after %.1fs)', $elapsed ) );
 				return new WP_Error(
 					'pxat_bad_response',
 					__( 'Unexpected response from OpenRouter: ', 'perxel-ai-translate' ) . substr( $raw, 0, 500 )
@@ -206,15 +207,38 @@ class OpenRouter {
 				);
 			}
 
-			$usage = isset( $json['usage'] ) && is_array( $json['usage'] ) ? $json['usage'] : array();
+			$usage    = isset( $json['usage'] ) && is_array( $json['usage'] ) ? $json['usage'] : array();
+			$prompt   = isset( $usage['prompt_tokens'] ) ? (int) $usage['prompt_tokens'] : 0;
+			$complete = isset( $usage['completion_tokens'] ) ? (int) $usage['completion_tokens'] : 0;
+
+			$provider = isset( $json['provider'] ) && is_string( $json['provider'] ) ? $json['provider'] : '';
+			$resolved = isset( $json['model'] ) && is_string( $json['model'] ) ? $json['model'] : $model_id;
+			$finish   = isset( $json['choices'][0]['finish_reason'] ) ? (string) $json['choices'][0]['finish_reason'] : '';
+
+			$log(
+				sprintf(
+					'responded in %.1fs%s - %s prompt + %s completion tokens, %s',
+					$elapsed,
+					'' !== $provider ? ' via ' . $provider : '',
+					number_format( $prompt ),
+					number_format( $complete ),
+					'length' === $finish
+						? 'response was cut off at the model output limit - some fields may be missing'
+						: 'finished normally'
+				)
+			);
 
 			return array(
-				'data'  => $parsed,
-				'usage' => array(
-					'prompt_tokens'     => isset( $usage['prompt_tokens'] ) ? (int) $usage['prompt_tokens'] : 0,
-					'completion_tokens' => isset( $usage['completion_tokens'] ) ? (int) $usage['completion_tokens'] : 0,
-					'total_tokens'      => isset( $usage['total_tokens'] ) ? (int) $usage['total_tokens'] : 0,
+				'data'          => $parsed,
+				'usage'         => array(
+					'prompt_tokens'     => $prompt,
+					'completion_tokens' => $complete,
+					'total_tokens'      => isset( $usage['total_tokens'] ) ? (int) $usage['total_tokens'] : $prompt + $complete,
 				),
+				'provider'      => $provider,
+				'model'         => $resolved,
+				'finish_reason' => $finish,
+				'elapsed'       => $elapsed,
 			);
 		}
 	}

@@ -563,6 +563,8 @@ class Confirm {
 		// Batching only pays off across several posts: it uses a heavier
 		// JSON-envelope prompt and splits one usage figure across the group. A
 		// one-post run always takes the plain path.
+		$use_batch = $batched && $pending_count > 1;
+
 		$run_id = Runs::create(
 			array(
 				'model'        => $model['id'],
@@ -574,10 +576,31 @@ class Confirm {
 				'dest_lang'    => $dest_lang,
 				'data_mode'    => $data_mode,
 				'custom_types' => $custom_types,
-				'batched'      => $batched && $pending_count > 1,
+				'batched'      => $use_batch,
 			)
 		);
 		Runs::add_items( $run_id, $items );
+
+		$scope = 'custom' === $data_mode
+			? implode( ', ', array_map( array( Translator::class, 'type_label' ), $custom_types ) )
+			: 'everything';
+
+		Runs::log(
+			$run_id,
+			0,
+			sprintf(
+				'Run #%d created - %s (%s) - %s to %s - %s - %d post%s%s - reasoning off, fastest-provider routing',
+				$run_id,
+				'' !== $model['label'] ? $model['label'] : $model['id'],
+				$model['id'],
+				$source_lang,
+				$dest_lang,
+				$scope,
+				$pending_count,
+				1 === $pending_count ? '' : 's',
+				$use_batch ? sprintf( ' - batched, up to %d in parallel', Translator::worker_count( array( 'batched' => true ) ) ) : ''
+			)
+		);
 
 		return (int) $run_id;
 	}

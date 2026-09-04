@@ -52,6 +52,38 @@ class Translator {
 	}
 
 	/**
+	 * "Post title (#id)" for the activity log - far easier to scan than a bare
+	 * id. Title trimmed so one line stays readable.
+	 *
+	 * @param int $post_id Post id.
+	 * @return string
+	 */
+	protected static function post_label( $post_id ) {
+		$post  = get_post( (int) $post_id );
+		$title = $post && '' !== trim( (string) $post->post_title ) ? trim( $post->post_title ) : '(no title)';
+		if ( mb_strlen( $title ) > 50 ) {
+			$title = rtrim( mb_substr( $title, 0, 50 ) ) . '…';
+		}
+		return sprintf( '%s (#%d)', $title, (int) $post_id );
+	}
+
+	/**
+	 * Cost for a log line: always the exact USD, plus the dong equivalent on a
+	 * Vietnamese-default site (OpenRouter bills in USD, but that is what the
+	 * user thinks in).
+	 *
+	 * @param float $usd Cost in USD.
+	 * @return string
+	 */
+	protected static function cost_label( $usd ) {
+		$out = Format::money_usd( $usd );
+		if ( 'VND' === Format::currency() ) {
+			$out .= ' (' . Format::cost( $usd ) . ')';
+		}
+		return $out;
+	}
+
+	/**
 	 * Subset of $types that need an OpenRouter call - everything except the
 	 * structural-only 'taxonomy' and 'thumbnail'.
 	 *
@@ -99,7 +131,7 @@ class Translator {
 	 * @return array Updated item.
 	 */
 	protected static function translate_step( array $run, array $item ) {
-		$label      = 'Post #' . $item['source_post_id'];
+		$label      = self::post_label( $item['source_post_id'] );
 		$text_types = self::llm_types( self::resolve_types( $run ) );
 
 		if ( empty( $text_types ) ) {
@@ -137,10 +169,11 @@ class Translator {
 
 		$payload = self::build_payload( $item );
 
+		$type_names = implode( ', ', array_map( array( __CLASS__, 'type_label' ), $text_types ) );
 		Runs::log(
 			$run['id'],
 			$item['id'],
-			sprintf( '%s: sending %d field(s) to the model (%s to %s)', $label, count( $payload ), $run['source_lang'], $run['dest_lang'] )
+			sprintf( '%s: translating %s - %d text field(s), %s to %s', $label, $type_names, count( $payload ), $run['source_lang'], $run['dest_lang'] )
 		);
 
 		$result = OpenRouter::translate(
@@ -172,7 +205,7 @@ class Translator {
 		Runs::log(
 			$run['id'],
 			$item['id'],
-			sprintf( '%s: translated (%s, %s)', $label, Format::unit_label( $usage['total_tokens'] ), Format::cost( $cost ) )
+			sprintf( '%s: translated - %s', $label, self::cost_label( $cost ) )
 		);
 
 		return Runs::update_item(
@@ -195,7 +228,7 @@ class Translator {
 			}
 		}
 		if ( $missing ) {
-			Runs::log( $run['id'], $item['id'], 'Post #' . $item['source_post_id'] . ': missing keys in the response: ' . implode( ', ', $missing ) );
+			Runs::log( $run['id'], $item['id'], self::post_label( $item['source_post_id'] ) . ': fields missing from the model reply - ' . implode( ', ', $missing ) );
 		}
 	}
 
@@ -210,7 +243,7 @@ class Translator {
 	protected static function write_step( array $run, array $item ) {
 		return Runs::with_write_lock(
 			static function () use ( $run, $item ) {
-				$label        = 'Post #' . $item['source_post_id'];
+				$label        = self::post_label( $item['source_post_id'] );
 				$types        = self::resolve_types( $run );
 				$strict       = 'custom' === $run['data_mode'];
 				$allow_create = 'full' === $run['data_mode'];
@@ -250,15 +283,20 @@ class Translator {
 				$translations = (array) $item['preview'];
 				$results      = array();
 
-				foreach ( $types as $type ) {
-					$result           = self::apply_type( $type, $run, $item, $dest_post_id, $translations, $strict );
-					$results[ $type ] = $result;
+				Runs::log(
+					$run['id'],
+					$item['id'],
+					sprintf(
+						'%s: writing into %s post #%d (%s)',
+						$label,
+						$run['dest_lang'],
+						$dest_post_id,
+						'update' === $item['action'] ? 'existing translation' : 'created'
+					)
+				);
 
-					if ( ! $result['success'] ) {
-						Runs::log( $run['id'], $item['id'], sprintf( '%s: %s failed - %s', $label, self::type_label( $type ), $result['message'] ) );
-					} elseif ( $result['message'] ) {
-						Runs::log( $run['id'], $item['id'], sprintf( '%s: %s - %s', $label, self::type_label( $type ), $result['message'] ) );
-					}
+				foreach ( $types as $type ) {
+					$results[ $type ] = self::apply_type( $type, $run, $item, $dest_post_id, $translations, $strict );
 				}
 
 				$hard_fail = (bool) array_filter(
@@ -275,19 +313,20 @@ class Translator {
 				);
 
 				$failed_types = array();
+				$summary      = array();
 				foreach ( $results as $type => $r ) {
+					$tl = self::type_label( $type );
 					if ( ! $r['success'] ) {
-						$failed_types[] = self::type_label( $type );
+						$failed_types[] = $tl;
+						$summary[]      = $tl . ' failed' . ( '' !== (string) $r['message'] ? ' (' . $r['message'] . ')' : '' );
+					} elseif ( '' !== (string) $r['message'] ) {
+						$summary[] = $tl . ' (' . $r['message'] . ')';
+					} else {
+						$summary[] = $tl . ' ok';
 					}
 				}
 
-				Runs::log(
-					$run['id'],
-					$item['id'],
-					$hard_fail
-						? sprintf( '%s: written to post #%d with errors (%s)', $label, $dest_post_id, implode( ', ', $failed_types ) )
-						: sprintf( '%s: written to post #%d', $label, $dest_post_id )
-				);
+				Runs::log( $run['id'], $item['id'], $label . ': ' . implode( ' · ', $summary ) );
 
 				$updated = Runs::update_item(
 					$item['id'],
@@ -412,7 +451,7 @@ class Translator {
 		}
 
 		foreach ( $skipped as $item ) {
-			Runs::log( $run['id'], $item['id'], 'Post #' . $item['source_post_id'] . ': nothing to translate, skipping' );
+			Runs::log( $run['id'], $item['id'], self::post_label( $item['source_post_id'] ) . ': nothing to translate, skipping' );
 			Runs::update_item(
 				$item['id'],
 				array(
@@ -510,14 +549,29 @@ class Translator {
 	protected static function run_batch_call( array $run, array $items ) {
 		$ids = wp_list_pluck( $items, 'id' );
 
-		Runs::log_bulk( $run['id'], $ids, sprintf( 'Sending a batch of %d posts to the model', count( $items ) ) );
-
 		$payload      = array();
 		$job_payloads = array();
+		$field_count  = 0;
 		foreach ( $items as $item ) {
 			$job_payloads[ $item['id'] ]     = self::build_payload( $item );
 			$payload[ (string) $item['id'] ] = $job_payloads[ $item['id'] ];
+			$field_count                    += count( $job_payloads[ $item['id'] ] );
 		}
+
+		$type_names = implode( ', ', array_map( array( __CLASS__, 'type_label' ), self::llm_types( self::resolve_types( $run ) ) ) );
+		Runs::log_bulk(
+			$run['id'],
+			$ids,
+			sprintf(
+				'Batch of %d posts (#%s): %s - %d text fields, %s to %s',
+				count( $items ),
+				implode( ', #', $ids ),
+				$type_names,
+				$field_count,
+				$run['source_lang'],
+				$run['dest_lang']
+			)
+		);
 
 		$result = OpenRouter::translate_batch(
 			$payload,
@@ -561,7 +615,7 @@ class Translator {
 
 		foreach ( $items as $item ) {
 			$id    = $item['id'];
-			$label = 'Post #' . $item['source_post_id'];
+			$label = self::post_label( $item['source_post_id'] );
 			$key   = (string) $id;
 
 			if ( ! array_key_exists( $key, $results ) || ! is_array( $results[ $key ] ) ) {
@@ -583,7 +637,7 @@ class Translator {
 			);
 			$cost      = OpenRouter::estimate_cost( $job_usage['prompt_tokens'], $job_usage['completion_tokens'], $run['input_rate'], $run['output_rate'] );
 
-			Runs::log( $run['id'], $id, sprintf( '%s: translated (batched, %s)', $label, Format::cost( $cost ) ) );
+			Runs::log( $run['id'], $id, sprintf( '%s: translated - batch share %s', $label, self::cost_label( $cost ) ) );
 
 			$changes[ $id ] = array(
 				'error_message'     => null,
@@ -782,7 +836,7 @@ class Translator {
 				return;
 			}
 			if ( 'error' === $sibling['status'] ) {
-				Runs::log( $run['id'], $item['id'], 'Post #' . $item['source_post_id'] . ': an item errored, leaving destination post #' . $dest_post_id . ' status untouched for review' );
+				Runs::log( $run['id'], $item['id'], self::post_label( $item['source_post_id'] ) . ': another item for post #' . $dest_post_id . ' errored - leaving its status untouched for review' );
 				return;
 			}
 		}
@@ -800,6 +854,6 @@ class Translator {
 				'post_status' => $source_status,
 			)
 		);
-		Runs::log( $run['id'], $item['id'], sprintf( 'Post #%d: set destination post #%d status to match the source (%s)', $item['source_post_id'], $dest_post_id, $source_status ) );
+		Runs::log( $run['id'], $item['id'], sprintf( '%s: matched destination post #%d status to source (%s)', self::post_label( $item['source_post_id'] ), $dest_post_id, $source_status ) );
 	}
 }
