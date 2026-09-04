@@ -31,5 +31,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Check what actually ships, not the repo: the build strips vendor dev
+      # tooling, composer.json, .github, etc. (see .distignore). Checking the
+      # raw checkout makes Plugin Check flag those as "application files".
+      - name: Build the shippable plugin
+        run: bin/build-zip.sh
+
+      - name: Unpack the build
+        run: unzip -q dist/perxel-ai-translate.zip -d build
+
       - name: Run Plugin Check
         uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: ./build/perxel-ai-translate
+          # The repo is github.com/perxel/wp-ai-translate but the WordPress.org
+          # slug (and text domain) is perxel-ai-translate. Without this, every
+          # __() call reads as a text-domain mismatch.
+          slug: perxel-ai-translate
+          # The custom-queue classes (Db, Runs) build $wpdb->prepare() strings by
+          # concatenating a table name that is always a class constant, never
+          # user input; every value is bound through a placeholder. The base
+          # sniff can't see past the concatenation. Mirrors phpcs.xml.dist.
+          # suppress_filters => true is a deliberate WPML-bypass, not a perf bug.
+          ignore-codes: |
+            WordPress.DB.PreparedSQL.NotPrepared
+            WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters
