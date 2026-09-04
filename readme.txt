@@ -2,7 +2,7 @@
 Contributors: phucbm
 Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
-Tested up to: 6.8
+Tested up to: 7.1
 Requires PHP: 7.4
 Stable tag: 0.0.22
 License: GPLv2 or later
@@ -30,7 +30,7 @@ It is aimed at sites that already run **WPML** and want to translate a lot of co
 1. Open any post list, tick some rows and choose **Perxel AI Translate…** from the bulk actions (or use *Translate this page* in the toolbar while editing one post).
 2. You land on a confirm screen for exactly those posts: pick the destination language and which data to process. You get a cost and word-count estimate before anything runs.
 3. Press **Translate and apply**. Each post is translated and written straight into WordPress as a WPML translation; review the result in the normal editor. Close the tab any time - reopen the run and press **Resume** to carry on where it left off.
-4. Every run is kept under **AI Translate → History** until you delete it.
+4. Every run is kept under **Tools → AI Translate → History** until you delete it.
 
 **Faster batched requests** (on by default in Settings) sends several short posts per model request; turn it off to translate one post per request.
 
@@ -41,6 +41,7 @@ It is aimed at sites that already run **WPML** and want to translate a lot of co
 
 **Tested with**
 
+* WordPress 7.1
 * WPML 4.9.7
 * Secure Custom Fields 6.9.5 (and Advanced Custom Fields)
 * Rank Math SEO 1.0.277.2 and Rank Math SEO PRO 3.0.82
@@ -66,7 +67,7 @@ Data is sent only when you explicitly start a translation or test the key. Your 
 
 1. Upload the plugin to `/wp-content/plugins/perxel-ai-translate`, or install it from the Plugins screen.
 2. Activate it. WPML must already be active with at least two languages.
-3. Go to **AI Translate → Settings** and enter your OpenRouter API key.
+3. Go to **Tools → AI Translate → Settings** and enter your OpenRouter API key.
 4. Open a post list, tick some rows, choose **Perxel AI Translate…** from the bulk actions, then start the run from the confirm screen.
 
 == Frequently Asked Questions ==
@@ -81,7 +82,7 @@ No. The plugin depends on WPML for language configuration and translation linkin
 
 = Which AI models can I use? =
 
-Any model id listed on openrouter.ai/models. Set it on **AI Translate → Settings**, then press *Test model* to confirm it and pull its pricing. The default is an economical Gemini Flash model until you change it.
+Any model id listed on openrouter.ai/models. Set it on **Tools → AI Translate → Settings**, then press *Test model* to confirm it and pull its pricing. The default is an economical Gemini Flash model until you change it.
 
 = Where does the plugin store its runs? =
 
@@ -126,13 +127,14 @@ Deleting the plugin removes its settings and those tables. Translations already 
 
 = 0.0.15 =
 * **A run is started in exactly one place now:** the **Translate and apply** button on the Translation screen. Reloading, bookmarking or returning to a run's progress URL - or following it from the toolbar - shows that run read-only, with a manual **Resume** button, and never restarts translating (or spending) on its own.
-* Fixed the run screen reloading over and over on a "pending" post. The browser loop follows one run state resolved on the server, so it can no longer disagree with itself about whether the run is done.
 * The **Translate this page** toolbar item now opens the Translation screen for that post - the same screen the bulk action uses - and carries a translation icon.
-* The run screen reflects reality the moment it loads instead of sitting on a stale snapshot until the first poll.
-* An interrupted model request no longer charges twice or half-writes a post: a translation that was already produced is reused when its write is retried.
-* Batched runs: when a whole batch request fails it is split and retried in smaller groups, so one bad post - or an over-large group - no longer fails the rest.
 * **Faster batched requests** is now on by default. New installs send several short posts per model request out of the box; existing sites keep whatever they last saved, and it can still be turned off in Settings.
 * **AI Translate** moved from its own top-level admin menu to **Tools → AI Translate**.
+
+= 0.0.14 =
+* Run screen rebuilt on a single run state resolved on the server, which the page, the AJAX handler and the browser loop all read - so it can no longer reload over and over on a "pending" post, and it reflects the run the moment it loads instead of waiting for the first poll.
+* An interrupted model request no longer charges twice or half-writes a post: a translation that was already produced is reused when its write is retried.
+* Batched runs: when a whole batch request fails it is split and retried in smaller groups, so one bad post - or an over-large group - no longer fails the rest.
 
 = 0.0.13 =
 * Run screen: **Start translating** no longer stays visible while a run is in progress (a WordPress button style was overriding the hidden state).

@@ -38,6 +38,7 @@ spending WPML's own AI translation credits.
 
 ## Tested with
 
+- WordPress 7.1
 - WPML 4.9.7
 - Secure Custom Fields 6.9.5 (and Advanced Custom Fields)
 - Rank Math SEO 1.0.277.2 / Rank Math SEO PRO 3.0.82
@@ -74,7 +75,7 @@ add_filter( 'pxat_batch_worker_count', fn () => 3 );
 ```
 
 The AI model, its pricing and its limits are stored settings - set them on
-**AI Translate → Settings**, not in code.
+**Tools → AI Translate → Settings**, not in code.
 
 ## Releasing
 
