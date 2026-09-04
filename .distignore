@@ -7,6 +7,7 @@
 /dist
 /bin
 /.github
+/.claude
 /.idea
 /.wordpress-org
 /node_modules
