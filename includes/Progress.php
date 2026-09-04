@@ -64,7 +64,19 @@ class Progress {
 			// always "Resume". With the flag, progress.js starts the loop at
 			// once, so render "Stop" up front to avoid a button flash.
 			$actions  = '<button type="button" class="button button-primary" id="pxat-start"' . ( $autostart ? ' hidden' : '' ) . '>' . esc_html__( 'Resume translating', 'perxel-ai-translate' ) . '</button> ';
-			$actions .= '<button type="button" class="button" id="pxat-stop"' . ( $autostart ? '' : ' hidden' ) . '>' . esc_html__( 'Stop', 'perxel-ai-translate' ) . '</button>';
+			$actions .= '<button type="button" class="button" id="pxat-stop"' . ( $autostart ? '' : ' hidden' ) . '>' . esc_html__( 'Stop', 'perxel-ai-translate' ) . '</button> ';
+			$actions .= '<a class="button button-link-delete" href="' . esc_url(
+				wp_nonce_url(
+					add_query_arg(
+						array(
+							'action' => 'pxat_cancel_run',
+							'run_id' => $run_id,
+						),
+						admin_url( 'admin-post.php' )
+					),
+					'pxat_cancel_run_' . $run_id
+				)
+			) . '" data-pxui-confirm="' . esc_attr__( 'Cancel this run? The posts still waiting will be skipped.', 'perxel-ai-translate' ) . '">' . esc_html__( 'Cancel run', 'perxel-ai-translate' ) . '</a>';
 		} else {
 			$actions = '<a class="button" href="' . esc_url(
 				wp_nonce_url(

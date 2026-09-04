@@ -75,9 +75,24 @@ class RunsListTable extends \WP_List_Table {
 		);
 
 		$actions = array(
-			'open'   => '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Open', 'perxel-ai-translate' ) . '</a>',
-			'delete' => '<a href="' . esc_url( $delete_url ) . '" data-pxui-confirm="' . esc_attr__( 'Delete this run? This cannot be undone.', 'perxel-ai-translate' ) . '">' . esc_html__( 'Delete', 'perxel-ai-translate' ) . '</a>',
+			'open' => '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Open', 'perxel-ai-translate' ) . '</a>',
 		);
+
+		if ( ! empty( $item['cancellable'] ) ) {
+			$cancel_url        = wp_nonce_url(
+				add_query_arg(
+					array(
+						'action' => 'pxat_cancel_run',
+						'run_id' => $item['id'],
+					),
+					admin_url( 'admin-post.php' )
+				),
+				'pxat_cancel_run_' . $item['id']
+			);
+			$actions['cancel'] = '<a href="' . esc_url( $cancel_url ) . '" data-pxui-confirm="' . esc_attr__( 'Cancel this run? The posts still waiting will be skipped.', 'perxel-ai-translate' ) . '">' . esc_html__( 'Cancel', 'perxel-ai-translate' ) . '</a>';
+		}
+
+		$actions['delete'] = '<a href="' . esc_url( $delete_url ) . '" data-pxui-confirm="' . esc_attr__( 'Delete this run? This cannot be undone.', 'perxel-ai-translate' ) . '">' . esc_html__( 'Delete', 'perxel-ai-translate' ) . '</a>';
 
 		return '<a href="' . esc_url( $url ) . '"><strong>#' . (int) $item['id'] . '</strong></a>' . $this->row_actions( $actions );
 	}
@@ -128,18 +143,19 @@ class RunsListTable extends \WP_List_Table {
 			}
 
 			$items[] = array(
-				'id'       => $run['id'],
-				'started'  => Format::time_ago( $run['created_at'] ),
-				'run_time' => Format::duration( $run['active_seconds'] ),
-				'langs'    => esc_html( Wpml::language_label( $languages, $run['source_lang'] ) . ' → ' . Wpml::language_label( $languages, $run['dest_lang'] ) ),
-				'model'    => esc_html( '' !== $run['model_label'] ? $run['model_label'] : $run['model'] ),
-				'posts'    => number_format_i18n( $counts['total'] ),
-				'done'     => number_format_i18n( $counts['done'] ) . ' / ' . number_format_i18n( $counts['total'] ),
-				'issues'   => $issues ? implode( ' ', $issues ) : '&mdash;',
-				'mode'     => esc_html( $scope ),
-				'tokens'   => esc_html( Format::unit_label( $counts['prompt_tokens'] + $counts['completion_tokens'] ) ),
-				'cost'     => esc_html( Format::cost( $counts['cost_usd'] ) ),
-				'by'       => esc_html( $run['created_by_name'] ),
+				'id'          => $run['id'],
+				'cancellable' => $counts['pending'] + $counts['translating'] > 0,
+				'started'     => Format::time_ago( $run['created_at'] ),
+				'run_time'    => Format::duration( $run['active_seconds'] ),
+				'langs'       => esc_html( Wpml::language_label( $languages, $run['source_lang'] ) . ' → ' . Wpml::language_label( $languages, $run['dest_lang'] ) ),
+				'model'       => esc_html( '' !== $run['model_label'] ? $run['model_label'] : $run['model'] ),
+				'posts'       => number_format_i18n( $counts['total'] ),
+				'done'        => number_format_i18n( $counts['done'] ) . ' / ' . number_format_i18n( $counts['total'] ),
+				'issues'      => $issues ? implode( ' ', $issues ) : '&mdash;',
+				'mode'        => esc_html( $scope ),
+				'tokens'      => esc_html( Format::unit_label( $counts['prompt_tokens'] + $counts['completion_tokens'] ) ),
+				'cost'        => esc_html( Format::cost( $counts['cost_usd'] ) ),
+				'by'          => esc_html( $run['created_by_name'] ),
 			);
 		}
 

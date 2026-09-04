@@ -436,14 +436,10 @@ class Admin {
 			Runs::set_status( $run_id, 'stopped' );
 		}
 
+		// Cancelling ends the run; History is where ended runs live (the run
+		// screen would read the all-skipped run as "Complete").
 		wp_safe_redirect(
-			add_query_arg(
-				array(
-					'page'   => self::PAGE_PROGRESS,
-					'run_id' => $run_id,
-				),
-				admin_url( 'admin.php' )
-			)
+			add_query_arg( array( 'page' => self::PAGE_HISTORY ), admin_url( 'admin.php' ) )
 		);
 		exit;
 	}

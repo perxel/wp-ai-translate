@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.21
+Stable tag: 0.0.22
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,6 +99,10 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.22 =
+* **Cancel a run.** The run screen now has a **Cancel run** button, and History a **Cancel** row action, for any run that still has posts waiting. Cancelling marks the remaining posts as skipped and stops the run; translations already written stay in place.
+* The default model for new installs is now `google/gemini-3.8-flash`.
 
 = 0.0.21 =
 * **Featured image no longer reports a false "Could not set the featured image".** When the destination post already had the right image (a common case - WPML often duplicates it onto the translation), WordPress's own "nothing changed" response was being read as a failure. The step now checks the stored image directly.
