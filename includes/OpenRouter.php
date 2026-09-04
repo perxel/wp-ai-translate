@@ -131,9 +131,10 @@ class OpenRouter {
 			'model'           => $model_id,
 			'response_format' => array( 'type' => 'json_object' ),
 			'messages'        => $messages,
-			// Translation is a single-pass task - no thinking budget - and we
-			// want whichever provider serves this model fastest.
-			'reasoning'       => array( 'enabled' => false ),
+			// Translation is a single-pass task, so keep any thinking budget to a
+			// minimum ('low' rather than 'disabled' - some models reject a hard
+			// disable), and route to whichever provider serves the model fastest.
+			'reasoning'       => array( 'effort' => 'low' ),
 			'provider'        => array( 'sort' => 'throughput' ),
 		);
 
@@ -172,6 +173,16 @@ class OpenRouter {
 
 			if ( $code < 200 || $code >= 300 ) {
 				$raw = wp_remote_retrieve_body( $response );
+
+				// A few models reject any `reasoning` control at all. Drop it and
+				// retry once rather than failing the whole translation.
+				if ( 400 === $code && isset( $body['reasoning'] ) && false !== stripos( $raw, 'reasoning' ) && $attempt < self::MAX_RETRIES ) {
+					unset( $body['reasoning'] );
+					++$attempt;
+					$log( 'model rejected the reasoning setting, retrying without it' );
+					continue;
+				}
+
 				$log( sprintf( 'OpenRouter returned HTTP %d', $code ) );
 				return new WP_Error(
 					'pxat_api_error',

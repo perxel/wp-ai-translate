@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.0.17
+Stable tag: 0.0.18
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,6 +99,9 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History of every run.
 
 == Changelog ==
+
+= 0.0.18 =
+* Fixed an **HTTP 400 "Reasoning is mandatory for this endpoint and cannot be disabled"** error introduced in 0.0.16. Requests now ask for minimal reasoning ("low") rather than none, which every model accepts; if a model rejects even that, the request is retried once without the setting instead of failing.
 
 = 0.0.17 =
 * **The activity log is far more informative.** It opens with a run header (model name and id, language pair, scope, post count, whether batching is on), names each post by its title instead of a bare id, and every model call now reports how long it took, which provider served it, the prompt / completion token split, and whether the reply finished normally or was cut off at the output limit. The write step reports each data type as ok / failed on one line.
