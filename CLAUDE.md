@@ -114,12 +114,21 @@ showcase as a hidden maintainer-only screen (`PERXEL_UI_SHOWCASE_HOSTED`).
 php -l <changed files>
 vendor/bin/phpcs            # composer run lint - must stay green
 composer run build          # bin/build-zip.sh - installable zip in dist/
+bin/plugin-check.sh         # optional: official Plugin Check, same ignores as CI
 ```
 
 `phpcs.xml.dist` curates the base `WordPress` standard: terse-docblock house
-style, and the custom-table DB sniffs are excluded for `includes/Db.php` /
-`Runs.php` (table names are class constants, values always via `$wpdb->prepare`
-placeholders). CI also runs the official **Plugin Check** action.
+style. Custom-table queries in `Db` / `Runs` / `Admin` bind the table name with
+the `%i` placeholder (hence `Requires at least: 6.2`), so the prepared-SQL sniffs
+pass unaided; only `WordPress.DB.DirectDatabaseQuery` stays excluded there (a live
+queue reads uncached; `Db` issues DDL). The one dynamic `IN ()` list in
+`Runs::claim_ids()` has a scoped `phpcs:disable`.
+
+CI also runs the official **Plugin Check** action. It ignores `phpcs.xml.dist`,
+so its `ignore-codes` (in `lint.yml`, mirrored by `bin/plugin-check.sh`) repeats
+the three documented `PrefixAllGlobals` false positives: the `Perxel\AITranslate`
+vendor namespace, the `wpml_*` hook names (WPML's API), and view-template
+variables.
 
 There are no automated tests and no WP/WPML in the lint environment - `phpcs` and
 `php -l` verify syntax and style only. Behaviour must be smoke-tested on a real

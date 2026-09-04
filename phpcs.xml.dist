@@ -13,7 +13,7 @@
 	<arg name="colors"/>
 	<arg value="sp"/>
 
-	<config name="minimum_supported_wp_version" value="5.8"/>
+	<config name="minimum_supported_wp_version" value="6.2"/>
 	<config name="testVersion" value="7.4-"/>
 
 	<rule ref="WordPress">
@@ -48,10 +48,10 @@
 
 	<!--
 		The run queue lives in three plugin-owned custom tables (see
-		includes/Db.php). Table names are class constants, never user input;
-		every value is bound through $wpdb->prepare() placeholders. The base
-		sniffs can't see past the table-name concatenation, and there is no
-		object cache for a queue that must read fresh on every poll.
+		includes/Db.php). Table names now go through the %i placeholder, so the
+		prepared-SQL sniffs pass on their own. What remains: these classes still
+		query $wpdb directly (a live queue must read fresh, no object cache) and
+		Db.php issues DDL. Those are deliberate, not oversights.
 	-->
 	<rule ref="WordPress.DB.DirectDatabaseQuery">
 		<exclude-pattern>/includes/Db.php</exclude-pattern>
@@ -59,18 +59,6 @@
 		<exclude-pattern>/includes/History.php</exclude-pattern>
 		<exclude-pattern>/includes/Admin.php</exclude-pattern>
 		<exclude-pattern>/uninstall.php</exclude-pattern>
-	</rule>
-	<rule ref="WordPress.DB.PreparedSQL.NotPrepared">
-		<exclude-pattern>/includes/Db.php</exclude-pattern>
-		<exclude-pattern>/includes/Runs.php</exclude-pattern>
-		<exclude-pattern>/includes/Admin.php</exclude-pattern>
-	</rule>
-	<rule ref="WordPress.DB.PreparedSQL.InterpolatedNotPrepared">
-		<exclude-pattern>/includes/Runs.php</exclude-pattern>
-		<exclude-pattern>/uninstall.php</exclude-pattern>
-	</rule>
-	<rule ref="WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber">
-		<exclude-pattern>/includes/Runs.php</exclude-pattern>
 	</rule>
 
 	<!--

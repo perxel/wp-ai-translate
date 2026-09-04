@@ -322,6 +322,7 @@ class Progress {
 		// The model call runs inside this request; give it room and let it
 		// finish writing even if the browser hangs up mid-flight.
 		if ( function_exists( 'set_time_limit' ) ) {
+			// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- guarded, best-effort headroom for the in-request model call; a no-op where the host disables it.
 			set_time_limit( 180 );
 		}
 		ignore_user_abort( true );

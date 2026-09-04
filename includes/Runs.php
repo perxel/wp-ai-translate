@@ -91,6 +91,10 @@ class Runs {
 				'preview' => array(),
 			);
 
+			// Hoisted out of the insert() call: the string 'create' inside a
+			// $wpdb call reads to PHPCS as a CREATE statement (SchemaChange).
+			$action = 'update' === ( $item['action'] ?? 'create' ) ? 'update' : 'create';
+
 			$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				Db::items(),
 				array(
@@ -99,7 +103,7 @@ class Runs {
 					'source_post_id' => (int) ( $item['source_post_id'] ?? 0 ),
 					'dest_post_id'   => (int) ( $item['dest_post_id'] ?? 0 ),
 					'post_type'      => (string) ( $item['post_type'] ?? '' ),
-					'action'         => 'update' === ( $item['action'] ?? 'create' ) ? 'update' : 'create',
+					'action'         => $action,
 					'error_message'  => isset( $item['error_message'] ) ? (string) $item['error_message'] : null,
 					'results'        => wp_json_encode( array() ),
 					'payload'        => wp_json_encode( $payload, JSON_UNESCAPED_UNICODE ),
@@ -134,7 +138,7 @@ class Runs {
 		global $wpdb;
 
 		$row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->prepare( 'SELECT * FROM ' . Db::runs() . ' WHERE id = %d', $run_id ),
+			$wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', Db::runs(), $run_id ),
 			ARRAY_A
 		);
 
@@ -151,7 +155,8 @@ class Runs {
 
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				'SELECT * FROM ' . Db::runs() . ' ORDER BY id DESC LIMIT %d OFFSET %d',
+				'SELECT * FROM %i ORDER BY id DESC LIMIT %d OFFSET %d',
+				Db::runs(),
 				$limit,
 				$offset
 			),
@@ -163,8 +168,8 @@ class Runs {
 
 	public static function count_runs() {
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::runs() );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', Db::runs() ) );
 	}
 
 	public static function set_status( $run_id, $status ) {
@@ -218,7 +223,8 @@ class Runs {
 
 		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				'UPDATE ' . Db::runs() . ' SET active_seconds = active_seconds + %f, updated_at = %s WHERE id = %d',
+				'UPDATE %i SET active_seconds = active_seconds + %f, updated_at = %s WHERE id = %d',
+				Db::runs(),
 				$seconds,
 				current_time( 'mysql' ),
 				$run_id
@@ -273,7 +279,7 @@ class Runs {
 		global $wpdb;
 
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->prepare( 'SELECT * FROM ' . Db::items() . ' WHERE run_id = %d ORDER BY id ASC', $run_id ),
+			$wpdb->prepare( 'SELECT * FROM %i WHERE run_id = %d ORDER BY id ASC', Db::items(), $run_id ),
 			ARRAY_A
 		);
 
@@ -288,7 +294,7 @@ class Runs {
 		global $wpdb;
 
 		$row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->prepare( 'SELECT * FROM ' . Db::items() . ' WHERE id = %d', $item_id ),
+			$wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', Db::items(), $item_id ),
 			ARRAY_A
 		);
 
@@ -307,7 +313,7 @@ class Runs {
 		global $wpdb;
 
 		$row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->prepare( 'SELECT payload FROM ' . Db::items() . ' WHERE id = %d', $item_id ),
+			$wpdb->prepare( 'SELECT payload FROM %i WHERE id = %d', Db::items(), $item_id ),
 			ARRAY_A
 		);
 		if ( ! $row ) {
@@ -398,8 +404,9 @@ class Runs {
 
 		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				'UPDATE ' . Db::items() . " SET status = 'pending', worker = '', claimed_at = NULL, error_message = %s, updated_at = %s
+				"UPDATE %i SET status = 'pending', worker = '', claimed_at = NULL, error_message = %s, updated_at = %s
 				 WHERE run_id = %d AND status = 'translating' AND ( claimed_at IS NULL OR claimed_at < %s )",
+				Db::items(),
 				'Requeued after an interrupted request.',
 				current_time( 'mysql' ),
 				$run_id,
@@ -424,7 +431,8 @@ class Runs {
 
 		return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				'SELECT COUNT(*) FROM ' . Db::items() . " WHERE run_id = %d AND status = 'translating' AND ( claimed_at IS NULL OR claimed_at < %s )",
+				"SELECT COUNT(*) FROM %i WHERE run_id = %d AND status = 'translating' AND ( claimed_at IS NULL OR claimed_at < %s )",
+				Db::items(),
 				$run_id,
 				$threshold
 			)
@@ -486,7 +494,8 @@ class Runs {
 
 		$ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				'SELECT id FROM ' . Db::items() . " WHERE run_id = %d AND status = 'pending' ORDER BY id ASC LIMIT %d",
+				"SELECT id FROM %i WHERE run_id = %d AND status = 'pending' ORDER BY id ASC LIMIT %d",
+				Db::items(),
 				$run_id,
 				$limit
 			)
@@ -514,21 +523,30 @@ class Runs {
 		}
 
 		$now          = current_time( 'mysql' );
-		$placeholders = implode( ',', array_fill( 0, count( $item_ids ), '%d' ) );
+		$placeholders = implode( ', ', array_fill( 0, count( $item_ids ), '%d' ) );
 
-		$params = array_merge( array( $worker, $now, $now, $run_id ), $item_ids );
+		$params = array_merge( array( Db::items(), $worker, $now, $now, $run_id ), $item_ids );
 
-		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		/*
+		 * The id list is variable-length: one %d per id (array_fill), every value
+		 * int-cast above and bound through prepare(). The interpolation and
+		 * placeholder-count sniffs can't follow a dynamic IN() list - this is the
+		 * same pattern WordPress core uses - so they are off for this one call.
+		 */
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
 			$wpdb->prepare(
-				'UPDATE ' . Db::items() . " SET status = 'translating', worker = %s, claimed_at = %s, updated_at = %s
+				"UPDATE %i SET status = 'translating', worker = %s, claimed_at = %s, updated_at = %s
 				 WHERE run_id = %d AND status = 'pending' AND id IN ({$placeholders})",
 				$params
 			)
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				'SELECT * FROM ' . Db::items() . " WHERE run_id = %d AND worker = %s AND status = 'translating' ORDER BY id ASC",
+				"SELECT * FROM %i WHERE run_id = %d AND worker = %s AND status = 'translating' ORDER BY id ASC",
+				Db::items(),
 				$run_id,
 				$worker
 			),
@@ -594,7 +612,8 @@ class Runs {
 			$wpdb->prepare(
 				'SELECT status, COUNT(*) AS c, SUM(cost_usd) AS cost, SUM(prompt_tokens) AS pt,
 				 SUM(completion_tokens) AS ct, SUM(has_warning) AS warn, SUM(has_apply_error) AS err
-				 FROM ' . Db::items() . ' WHERE run_id = %d GROUP BY status',
+				 FROM %i WHERE run_id = %d GROUP BY status',
+				Db::items(),
 				$run_id
 			),
 			ARRAY_A
@@ -624,14 +643,17 @@ class Runs {
 	public static function totals() {
 		global $wpdb;
 
-		$row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			'SELECT
-				SUM(CASE WHEN status = \'done\' THEN 1 ELSE 0 END) AS posts_done,
-				SUM(has_warning) AS warnings,
-				SUM(has_apply_error) AS apply_errors,
-				SUM(cost_usd) AS cost_usd,
-				SUM(prompt_tokens + completion_tokens) AS tokens
-			 FROM ' . Db::items(),
+		$row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"SELECT
+					SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS posts_done,
+					SUM(has_warning) AS warnings,
+					SUM(has_apply_error) AS apply_errors,
+					SUM(cost_usd) AS cost_usd,
+					SUM(prompt_tokens + completion_tokens) AS tokens
+				 FROM %i",
+				Db::items()
+			),
 			ARRAY_A
 		);
 
@@ -653,13 +675,17 @@ class Runs {
 	public static function active_run_id() {
 		global $wpdb;
 
-		$id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			'SELECT r.id FROM ' . Db::runs() . ' r
-			 WHERE EXISTS (
-				SELECT 1 FROM ' . Db::items() . " i
-				WHERE i.run_id = r.id AND i.status IN ('pending','translating')
-			 )
-			 ORDER BY r.id DESC LIMIT 1"
+		$id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"SELECT r.id FROM %i r
+				 WHERE EXISTS (
+					SELECT 1 FROM %i i
+					WHERE i.run_id = r.id AND i.status IN ('pending','translating')
+				 )
+				 ORDER BY r.id DESC LIMIT 1",
+				Db::runs(),
+				Db::items()
+			)
 		);
 
 		return $id ? (int) $id : null;
@@ -700,7 +726,8 @@ class Runs {
 
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				'SELECT logged_at, message FROM ' . Db::logs() . ' WHERE run_id = %d ORDER BY id ASC',
+				'SELECT logged_at, message FROM %i WHERE run_id = %d ORDER BY id ASC',
+				Db::logs(),
 				$run_id
 			),
 			ARRAY_A

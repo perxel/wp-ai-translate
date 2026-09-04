@@ -80,7 +80,7 @@ volume and cost.
 
 ## Requirements
 
-- WordPress 5.8+, PHP 7.4+
+- WordPress 6.2+, PHP 7.4+
 - WPML (Multilingual CMS or higher) with at least two active languages - the
   plugin stays inactive without it
 - An [OpenRouter](https://openrouter.ai/) account and API key

@@ -48,12 +48,16 @@ jobs:
           # slug (and text domain) is perxel-ai-translate. Without this, every
           # __() call reads as a text-domain mismatch.
           slug: perxel-ai-translate
-          # The custom-queue classes (Db, Runs) build $wpdb->prepare() strings by
-          # concatenating a table name that is always a class constant, never
-          # user input; every value is bound through a placeholder. The base
-          # sniff can't see past the concatenation. Mirrors phpcs.xml.dist.
-          # suppress_filters => true is a deliberate WPML-bypass, not a perf bug.
+          # Documented false positives, mirrored from phpcs.xml.dist (Plugin
+          # Check does not read that file, so the list is repeated here):
+          #  - NonPrefixedNamespaceFound: the vendor namespace Perxel\AITranslate.
+          #  - NonPrefixedHooknameFound: wpml_* hook names are WPML's own API.
+          #  - NonPrefixedVariableFound: view-template locals, not real globals.
+          #  - SuppressFilters: suppress_filters => true is a deliberate WPML bypass.
+          # (Custom-table queries use the %i placeholder now, so the prepared-SQL
+          # sniffs are no longer suppressed.)
           ignore-codes: |
-            WordPress.DB.PreparedSQL.NotPrepared
-            WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedNamespaceFound
+            WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+            WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
             WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters

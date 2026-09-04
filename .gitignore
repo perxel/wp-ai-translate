@@ -7,5 +7,6 @@ composer.lock
 package-lock.json
 .DS_Store
 *.log
+/check-php-*.md
 /.idea/
 /dist/

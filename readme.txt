@@ -1,10 +1,10 @@
 === Perxel AI Translate ===
 Contributors: phucbm
 Tags: translation, wpml, multilingual, ai, openrouter
-Requires at least: 5.8
+Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.0.22
+Stable tag: 0.0.23
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -100,6 +100,10 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History - every run with its languages, model, post count, warnings or errors, word volume and cost.
 
 == Changelog ==
+
+= 0.0.23 =
+* Housekeeping only, no behaviour change. Custom-table queries now bind the table name through the `%i` placeholder instead of string concatenation, so they pass WordPress Plugin Check cleanly. This raises the minimum WordPress version to 6.2 (where `%i` was introduced).
+* Removed the manual `load_plugin_textdomain()` call - WordPress.org loads the translations automatically.
 
 = 0.0.22 =
 * **Cancel a run.** The run screen now has a **Cancel run** button, and History a **Cancel** row action, for any run that still has posts waiting. Cancelling marks the remaining posts as skipped and stops the run; translations already written stay in place.

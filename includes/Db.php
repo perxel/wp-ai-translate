@@ -132,8 +132,8 @@ class Db {
 		global $wpdb;
 
 		foreach ( array( self::logs(), self::items(), self::runs() ) as $table ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is a plugin constant, not user input.
-			$wpdb->query( "DROP TABLE IF EXISTS {$table}" );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- dropping our own tables on uninstall.
+			$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $table ) );
 		}
 
 		delete_option( self::VERSION_OPTION );

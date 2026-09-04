@@ -443,8 +443,9 @@ class Admin {
 			global $wpdb;
 			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$wpdb->prepare(
-					'UPDATE ' . Db::items() . " SET status = 'skipped', error_message = %s, updated_at = %s
+					"UPDATE %i SET status = 'skipped', error_message = %s, updated_at = %s
 					 WHERE run_id = %d AND status IN ('pending','translating')",
+					Db::items(),
 					__( 'Run cancelled.', 'perxel-ai-translate' ),
 					current_time( 'mysql' ),
 					$run_id
