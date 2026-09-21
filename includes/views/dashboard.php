@@ -25,7 +25,6 @@ use Perxel_Ai_Translate\Format;
 use Perxel_Ai_Translate\Runs;
 use Perxel_Ai_Translate\Wpml;
 
-// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure; dynamic values escaped inline.
 
 /* --- Setup gate --------------------------------------------------- */
 
@@ -46,13 +45,15 @@ if ( 'needs_setup' === $state ) {
 		'content' => $enough_langs ? esc_html__( 'Done', 'perxel-ai-translate' ) : esc_html__( 'Not ready', 'perxel-ai-translate' ),
 	);
 
-	echo \Perxel_UI::notice( 'info', esc_html__( 'Finish setup to start translating.', 'perxel-ai-translate' ) );
-	echo \Perxel_UI::rows(
-		array(
+	\Perxel_Ai_Translate\Admin::kit( \Perxel_UI::notice( 'info', esc_html__( 'Finish setup to start translating.', 'perxel-ai-translate' ) ) );
+	\Perxel_Ai_Translate\Admin::kit(
+		\Perxel_UI::rows(
 			array(
-				'title' => __( 'Setup', 'perxel-ai-translate' ),
-				'rows'  => $rows,
-			),
+				array(
+					'title' => __( 'Setup', 'perxel-ai-translate' ),
+					'rows'  => $rows,
+				),
+			)
 		)
 	);
 	return;
@@ -71,7 +72,7 @@ if ( $active_run_id ) {
 		)
 	) . '">' . esc_html__( 'Resume', 'perxel-ai-translate' ) . '</a>';
 
-	echo \Perxel_UI::notice( 'warning', esc_html__( 'A translation run is unfinished.', 'perxel-ai-translate' ) . ' ' . $resume );
+	\Perxel_Ai_Translate\Admin::kit( \Perxel_UI::notice( 'warning', esc_html__( 'A translation run is unfinished.', 'perxel-ai-translate' ) . ' ' . $resume ) );
 }
 
 /* --- Start a translation --------------------------------------------- */
@@ -81,10 +82,12 @@ foreach ( $post_types as $slug => $label ) {
 	$pt_links[] = '<a href="' . esc_url( admin_url( 'edit.php?post_type=' . $slug ) ) . '">' . esc_html( $label ) . '</a>';
 }
 
-echo \Perxel_UI::notice(
-	'info',
-	esc_html__( 'To translate: open a post list, tick the rows, and choose "Perxel AI Translate…" from Bulk actions - or use "Translate this page" while editing a single post.', 'perxel-ai-translate' )
-	. ( $pt_links ? ' &nbsp;' . implode( ' · ', $pt_links ) : '' )
+\Perxel_Ai_Translate\Admin::kit(
+	\Perxel_UI::notice(
+		'info',
+		esc_html__( 'To translate: open a post list, tick the rows, and choose "Perxel AI Translate…" from Bulk actions - or use "Translate this page" while editing a single post.', 'perxel-ai-translate' )
+		. ( $pt_links ? ' &nbsp;' . implode( ' · ', $pt_links ) : '' )
+	)
 );
 
 /* --- At a glance ------------------------------------------------------ */
@@ -117,12 +120,14 @@ if ( $totals['warnings'] > 0 || $totals['apply_errors'] > 0 ) {
 	);
 }
 
-echo \Perxel_UI::rows(
-	array(
+\Perxel_Ai_Translate\Admin::kit(
+	\Perxel_UI::rows(
 		array(
-			'title' => __( 'At a glance', 'perxel-ai-translate' ),
-			'rows'  => $glance,
-		),
+			array(
+				'title' => __( 'At a glance', 'perxel-ai-translate' ),
+				'rows'  => $glance,
+			),
+		)
 	)
 );
 
@@ -154,15 +159,15 @@ if ( $recent ) {
 		);
 	}
 
-	echo \Perxel_UI::rows(
-		array(
+	\Perxel_Ai_Translate\Admin::kit(
+		\Perxel_UI::rows(
 			array(
-				'title' => __( 'Recent runs', 'perxel-ai-translate' ),
-				'rows'  => $rows,
-				'note'  => '<a href="' . esc_url( admin_url( 'admin.php?page=' . Admin::PAGE_HISTORY ) ) . '">' . esc_html__( 'All runs', 'perxel-ai-translate' ) . ' &rarr;</a>',
-			),
+				array(
+					'title' => __( 'Recent runs', 'perxel-ai-translate' ),
+					'rows'  => $rows,
+					'note'  => '<a href="' . esc_url( admin_url( 'admin.php?page=' . Admin::PAGE_HISTORY ) ) . '">' . esc_html__( 'All runs', 'perxel-ai-translate' ) . ' &rarr;</a>',
+				),
+			)
 		)
 	);
 }
-
-// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped

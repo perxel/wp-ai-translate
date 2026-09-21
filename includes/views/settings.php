@@ -19,12 +19,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use Perxel_Ai_Translate\OpenRouter;
 
-// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure; dynamic values escaped inline.
 
 if ( $updated ) {
-	echo \Perxel_UI::notice( 'success', esc_html__( 'Settings saved.', 'perxel-ai-translate' ), array( 'dismissible' => true ) );
+	\Perxel_Ai_Translate\Admin::kit( \Perxel_UI::notice( 'success', esc_html__( 'Settings saved.', 'perxel-ai-translate' ), array( 'dismissible' => true ) ) );
 } elseif ( $was_reset ) {
-	echo \Perxel_UI::notice( 'success', esc_html__( 'Settings reset to defaults.', 'perxel-ai-translate' ), array( 'dismissible' => true ) );
+	\Perxel_Ai_Translate\Admin::kit( \Perxel_UI::notice( 'success', esc_html__( 'Settings reset to defaults.', 'perxel-ai-translate' ), array( 'dismissible' => true ) ) );
 }
 
 $system_prompt = OpenRouter::build_system_prompt( $settings['prompt'], '{source_lang}', '{dest_lang}' );
@@ -110,46 +109,48 @@ if ( $benchmark ) {
 	<input type="hidden" name="model_max_output" id="pxat-model-max-output" value="<?php echo esc_attr( $settings['model_max_output'] ); ?>" />
 
 	<?php
-	echo \Perxel_UI::rows(
-		array(
+	\Perxel_Ai_Translate\Admin::kit(
+		\Perxel_UI::rows(
 			array(
-				'title'        => __( 'OpenRouter', 'perxel-ai-translate' ),
-				'title_action' => $test_button,
-				'note'         => sprintf(
-					/* translators: 1: link to openrouter.ai, 2: link to the model list. */
-					esc_html__( 'Get an API key at %1$s and browse model ids at %2$s. You pay OpenRouter directly for usage.', 'perxel-ai-translate' ),
-					'<a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer">openrouter.ai</a>',
-					'<a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer">openrouter.ai/models</a>'
+				array(
+					'title'        => __( 'OpenRouter', 'perxel-ai-translate' ),
+					'title_action' => $test_button,
+					'note'         => sprintf(
+						/* translators: 1: link to openrouter.ai, 2: link to the model list. */
+						esc_html__( 'Get an API key at %1$s and browse model ids at %2$s. You pay OpenRouter directly for usage.', 'perxel-ai-translate' ),
+						'<a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer">openrouter.ai</a>',
+						'<a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer">openrouter.ai/models</a>'
+					),
+					'rows'         => $openrouter_rows,
 				),
-				'rows'         => $openrouter_rows,
-			),
-			array(
-				'title' => __( 'Translation', 'perxel-ai-translate' ),
-				'rows'  => array(
-					array(
-						'label'   => __( 'Faster batched requests', 'perxel-ai-translate' ),
-						'sub'     => esc_html__( 'Send several posts per model request. Faster for many short posts; one bad response affects a group.', 'perxel-ai-translate' ),
-						'content' => \Perxel_UI::toggle(
-							array(
-								'name'    => 'batched',
-								'checked' => (bool) $settings['batched'],
-								'label'   => __( 'Faster batched requests', 'perxel-ai-translate' ),
-							)
+				array(
+					'title' => __( 'Translation', 'perxel-ai-translate' ),
+					'rows'  => array(
+						array(
+							'label'   => __( 'Faster batched requests', 'perxel-ai-translate' ),
+							'sub'     => esc_html__( 'Send several posts per model request. Faster for many short posts; one bad response affects a group.', 'perxel-ai-translate' ),
+							'content' => \Perxel_UI::toggle(
+								array(
+									'name'    => 'batched',
+									'checked' => (bool) $settings['batched'],
+									'label'   => __( 'Faster batched requests', 'perxel-ai-translate' ),
+								)
+							),
+						),
+						array(
+							'summary' => __( 'Extra instructions', 'perxel-ai-translate' ),
+							'sub'     => esc_html__( 'Optional guidance appended to every request: glossary, tone of voice, terminology rules.', 'perxel-ai-translate' ),
+							'open'    => '' !== trim( (string) $settings['prompt'] ),
+							'details' => '<textarea name="prompt" rows="4">' . esc_textarea( $settings['prompt'] ) . '</textarea>',
+						),
+						array(
+							'summary' => __( 'System prompt sent to the model', 'perxel-ai-translate' ),
+							'sub'     => esc_html__( 'Read-only. Copy it to translate manually with any AI chat tool if your key stops working. Replace {source_lang} / {dest_lang} with real codes.', 'perxel-ai-translate' ),
+							'details' => '<textarea class="pxui-mono" rows="8" readonly onclick="this.select()">' . esc_textarea( $system_prompt ) . '</textarea>',
 						),
 					),
-					array(
-						'summary' => __( 'Extra instructions', 'perxel-ai-translate' ),
-						'sub'     => esc_html__( 'Optional guidance appended to every request: glossary, tone of voice, terminology rules.', 'perxel-ai-translate' ),
-						'open'    => '' !== trim( (string) $settings['prompt'] ),
-						'details' => '<textarea name="prompt" rows="4">' . esc_textarea( $settings['prompt'] ) . '</textarea>',
-					),
-					array(
-						'summary' => __( 'System prompt sent to the model', 'perxel-ai-translate' ),
-						'sub'     => esc_html__( 'Read-only. Copy it to translate manually with any AI chat tool if your key stops working. Replace {source_lang} / {dest_lang} with real codes.', 'perxel-ai-translate' ),
-						'details' => '<textarea class="pxui-mono" rows="8" readonly onclick="this.select()">' . esc_textarea( $system_prompt ) . '</textarea>',
-					),
 				),
-			),
+			)
 		)
 	);
 	?>
@@ -178,13 +179,15 @@ foreach ( $compatibility as $plugin ) {
 	);
 }
 
-echo \Perxel_UI::rows(
-	array(
+\Perxel_Ai_Translate\Admin::kit(
+	\Perxel_UI::rows(
 		array(
-			'title' => __( 'Compatibility', 'perxel-ai-translate' ),
-			'note'  => esc_html__( 'The plugin is built and tested against these versions. Each is listed whether or not it is installed; a check means it is active on this site.', 'perxel-ai-translate' ),
-			'rows'  => $compat_rows,
-		),
+			array(
+				'title' => __( 'Compatibility', 'perxel-ai-translate' ),
+				'note'  => esc_html__( 'The plugin is built and tested against these versions. Each is listed whether or not it is installed; a check means it is active on this site.', 'perxel-ai-translate' ),
+				'rows'  => $compat_rows,
+			),
+		)
 	)
 );
 
@@ -208,44 +211,47 @@ $lines = array(
 	sprintf( 'Max execution time   %ds', $env['max_execution'] ),
 );
 
-echo \Perxel_UI::rows(
-	array(
+\Perxel_Ai_Translate\Admin::kit(
+	\Perxel_UI::rows(
 		array(
-			'title' => __( 'Environment', 'perxel-ai-translate' ),
-			'rows'  => array(
-				array(
-					'summary' => $env_ok
-						? __( 'Ready to translate', 'perxel-ai-translate' )
-						: __( 'Setup is incomplete', 'perxel-ai-translate' ),
-					'icon'    => $env_ok ? 'good' : 'warn',
-					'details' => \Perxel_UI::code( implode( "\n", $lines ) ),
+			array(
+				'title' => __( 'Environment', 'perxel-ai-translate' ),
+				'rows'  => array(
+					array(
+						'summary' => $env_ok
+							? __( 'Ready to translate', 'perxel-ai-translate' )
+							: __( 'Setup is incomplete', 'perxel-ai-translate' ),
+						'icon'    => $env_ok ? 'good' : 'warn',
+						'details' => \Perxel_UI::code( implode( "\n", $lines ) ),
+					),
 				),
 			),
-		),
+		)
 	)
 );
 
 /* --- Danger zone ---------------------------------------------------- */
 
-echo \Perxel_UI::rows(
-	array(
+\Perxel_Ai_Translate\Admin::kit(
+	\Perxel_UI::rows(
 		array(
-			'title'  => __( 'Danger zone', 'perxel-ai-translate' ),
-			'danger' => true,
-			'rows'   => array(
-				array(
-					'label'   => __( 'Reset settings to defaults', 'perxel-ai-translate' ),
-					'sub'     => esc_html__( 'Clears the API key, model and extra instructions. Translation runs and their history are kept.', 'perxel-ai-translate' ),
-					'content' => '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
-						. '<input type="hidden" name="action" value="pxat_reset_settings" />'
-						. wp_nonce_field( 'pxat_reset_settings', '_wpnonce', true, false )
-						. '<button type="submit" class="button" data-pxui-confirm="' . esc_attr__( 'Reset all settings to their defaults?', 'perxel-ai-translate' ) . '">'
-						. esc_html__( 'Reset settings', 'perxel-ai-translate' ) . '</button>'
-						. '</form>',
+			array(
+				'title'  => __( 'Danger zone', 'perxel-ai-translate' ),
+				'danger' => true,
+				'rows'   => array(
+					array(
+						'label'   => __( 'Reset settings to defaults', 'perxel-ai-translate' ),
+						'sub'     => esc_html__( 'Clears the API key, model and extra instructions. Translation runs and their history are kept.', 'perxel-ai-translate' ),
+						'content' => '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
+							. '<input type="hidden" name="action" value="pxat_reset_settings" />'
+							. wp_nonce_field( 'pxat_reset_settings', '_wpnonce', true, false )
+							. '<button type="submit" class="button" data-pxui-confirm="' . esc_attr__( 'Reset all settings to their defaults?', 'perxel-ai-translate' ) . '">'
+							. esc_html__( 'Reset settings', 'perxel-ai-translate' ) . '</button>'
+							. '</form>',
+					),
 				),
 			),
-		),
+		)
 	)
 );
 
-// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped

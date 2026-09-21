@@ -22,17 +22,16 @@ class AdminBar {
 	 * @param \WP_Admin_Bar $wp_admin_bar The admin bar instance.
 	 */
 	public function add_node( $wp_admin_bar ) {
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only navigation params.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
-		if ( ! $screen || 'post' !== $screen->base || ! isset( $_GET['post'] ) ) {
+		if ( ! $screen || 'post' !== $screen->base || ! isset( $_GET['post'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 			return;
 		}
 
-		$post_id = absint( wp_unslash( $_GET['post'] ) );
+		$post_id = absint( wp_unslash( $_GET['post'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 		$post    = $post_id ? get_post( $post_id ) : null;
 		if ( ! $post || ! in_array( $post->post_type, PostTypes::get_translatable_post_types(), true ) ) {
 			return;
@@ -56,6 +55,5 @@ class AdminBar {
 				),
 			)
 		);
-		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 	}
 }

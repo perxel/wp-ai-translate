@@ -43,8 +43,7 @@ class Confirm {
 
 		$admin = Plugin::instance()->admin();
 
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only navigation params, each sanitised on use.
-		list( $post_ids, $post_type ) = self::read_selection( $_GET );
+		list( $post_ids, $post_type ) = self::read_selection( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 
 		$languages = Wpml::get_active_languages();
 		if ( count( $languages ) < 2 ) {
@@ -98,7 +97,6 @@ class Confirm {
 				'type_labels'     => self::type_labels(),
 			)
 		);
-		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		$actions = '';
 		if ( $plan['eligible_count'] > 0 ) {
@@ -190,29 +188,27 @@ class Confirm {
 	 * @return array
 	 */
 	protected static function read_config( array $languages ) {
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only navigation params, each sanitised on use.
-		$saved = isset( $_GET['pxat_save_config'] );
+		$saved = isset( $_GET['pxat_save_config'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 
 		// Locked to WPML's own site default: a free-choice source here risks
 		// resolving the "destination" to a real, different post and overwriting it.
 		$source_lang = Wpml::get_default_language();
 		$other_langs = array_values( array_diff( array_keys( $languages ), array( $source_lang ) ) );
 
-		$dest_lang = $saved && isset( $_GET['dest_lang'] ) ? sanitize_text_field( wp_unslash( $_GET['dest_lang'] ) ) : reset( $other_langs );
+		$dest_lang = $saved && isset( $_GET['dest_lang'] ) ? sanitize_text_field( wp_unslash( $_GET['dest_lang'] ) ) : reset( $other_langs ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 		if ( ! isset( $languages[ $dest_lang ] ) || $dest_lang === $source_lang ) {
 			$dest_lang = reset( $other_langs );
 		}
 
-		$data_mode = $saved && isset( $_GET['data_mode'] ) ? sanitize_text_field( wp_unslash( $_GET['data_mode'] ) ) : 'full';
+		$data_mode = $saved && isset( $_GET['data_mode'] ) ? sanitize_text_field( wp_unslash( $_GET['data_mode'] ) ) : 'full'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 		if ( ! in_array( $data_mode, array( 'full', 'custom' ), true ) ) {
 			$data_mode = 'full';
 		}
 
 		$custom_types = array();
-		if ( $saved && isset( $_GET['custom_types'] ) ) {
-			$custom_types = array_values( array_intersect( array_map( 'sanitize_text_field', (array) wp_unslash( $_GET['custom_types'] ) ), Fields::DATA_TYPES ) );
+		if ( $saved && isset( $_GET['custom_types'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
+			$custom_types = array_values( array_intersect( array_map( 'sanitize_text_field', (array) wp_unslash( $_GET['custom_types'] ) ), Fields::DATA_TYPES ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 		}
-		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		return array(
 			'source_lang'  => $source_lang,

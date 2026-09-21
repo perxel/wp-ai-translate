@@ -18,7 +18,6 @@ class IdLookup {
 	 * @return array View variables.
 	 */
 	public static function data() {
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only navigation params, each sanitised on use.
 		$languages = Wpml::get_active_languages();
 
 		if ( count( $languages ) < 2 ) {
@@ -31,14 +30,14 @@ class IdLookup {
 		$source_lang = Wpml::get_default_language();
 		$other_langs = array_values( array_diff( array_keys( $languages ), array( $source_lang ) ) );
 
-		$submitted = isset( $_GET['pxat_lookup'] );
+		$submitted = isset( $_GET['pxat_lookup'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 
-		$dest_lang = $submitted && isset( $_GET['dest_lang'] ) ? sanitize_text_field( wp_unslash( $_GET['dest_lang'] ) ) : reset( $other_langs );
+		$dest_lang = $submitted && isset( $_GET['dest_lang'] ) ? sanitize_text_field( wp_unslash( $_GET['dest_lang'] ) ) : reset( $other_langs ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 		if ( ! isset( $languages[ $dest_lang ] ) || $dest_lang === $source_lang ) {
 			$dest_lang = reset( $other_langs );
 		}
 
-		$ids_raw     = $submitted && isset( $_GET['ids'] ) ? sanitize_textarea_field( wp_unslash( $_GET['ids'] ) ) : '';
+		$ids_raw     = $submitted && isset( $_GET['ids'] ) ? sanitize_textarea_field( wp_unslash( $_GET['ids'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 		$input_count = 0;
 		$output_ids  = array();
 
@@ -61,7 +60,6 @@ class IdLookup {
 				}
 			}
 		}
-		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		return array(
 			'error'       => '',

@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.0.23
+Stable tag: 0.0.24
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -100,6 +100,9 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History - every run with its languages, model, post count, warnings or errors, word volume and cost.
 
 == Changelog ==
+
+= 0.0.24 =
+* Housekeeping only, no behaviour change. Admin output now goes through a single escaping-delegation point instead of file-wide lint suppressions, and read-only request parameters carry per-line notes. Every state-changing action already verified a nonce and capability.
 
 = 0.0.23 =
 * Housekeeping only, no behaviour change. Custom-table queries now bind the table name through the `%i` placeholder instead of string concatenation, so they pass WordPress Plugin Check cleanly. This raises the minimum WordPress version to 6.2 (where `%i` was introduced).

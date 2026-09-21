@@ -12,4 +12,4 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-echo \Perxel_UI::notice( $type, $text ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure; caller-supplied message.
+\Perxel_Ai_Translate\Admin::kit( \Perxel_UI::notice( $type, $text ) );
