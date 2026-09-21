@@ -3,12 +3,24 @@ name: Release
 # When you publish a GitHub Release this workflow:
 #   1. builds the installable plugin zip (bin/build-zip.sh - committed files
 #      minus .distignore) and attaches it to that release;
-#   2. pushes that version to the WordPress.org plugin SVN repo and updates
-#      the .org readme and listing assets.
+#   2. deploys that tag to the WordPress.org plugin SVN repo with the 10up
+#      action: trunk (.distignore applied), tags/<version>, and everything in
+#      .wordpress-org/ -> SVN assets/ (banners, icons, screenshots).
 #
-# Nothing is committed back to the repo. The SVN steps need the repo secrets
-# SVN_USERNAME and SVN_PASSWORD (your WordPress.org account) and only run for
-# real Release events, not workflow_dispatch.
+# Nothing is committed back to the repo. The SVN step needs the secrets
+# SVN_USERNAME and SVN_PASSWORD (set them at the GitHub ORG level, shared with
+# selected repos) and refuses to run unless the tag, the plugin `Version:` header
+# and the readme `Stable tag` all agree.
+#
+# The deploy job is gated on a repo *variable* DEPLOY_TO_WPORG=true (Settings ->
+# Secrets and variables -> Actions -> Variables). Set it only once the first
+# .org review is approved (the SVN repo does not exist before that); until then
+# only the zip job runs, so a Release on a not-yet-published plugin stays green.
+#
+# Test it: Actions -> Release -> Run workflow. "dry_run" (default on) runs the
+# version check and stages the SVN deploy WITHOUT committing, and skips the zip
+# upload. A real deploy only ever happens from a published Release.
+# See CLAUDE.md -> "Releasing".
 
 on:
   release:
@@ -16,8 +28,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to build and attach the zip to"
+        description: "Existing tag to build and deploy (e.g. v1.0.2)"
         required: true
+      dry_run:
+        description: "Dry run: check + stage the SVN deploy, do not commit (and do not touch the release zip)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -25,6 +41,7 @@ permissions:
 jobs:
   zip:
     name: Attach plugin zip to release
+    if: github.event_name == 'release' || !inputs.dry_run
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -55,30 +72,44 @@ jobs:
 
   deploy:
     name: Deploy to WordPress.org
-    if: github.event_name == 'release'
+    # Real deploys come only from a published Release; a manual run is dry-run only.
+    if: (github.event_name == 'release' || inputs.dry_run) && vars.DEPLOY_TO_WPORG == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.event.inputs.tag }}
 
+      - name: Check tag, plugin Version and Stable tag agree
+        id: version
+        env:
+          TAG: ${{ github.event.release.tag_name || github.event.inputs.tag }}
+        run: |
+          TAG="${TAG#v}"
+          VER="$(grep -oE "Version:[[:space:]]*[0-9.]+" perxel-ai-translate.php | grep -oE "[0-9.]+")"
+          STABLE="$(grep -oE "Stable tag:[[:space:]]*[0-9.]+" readme.txt | grep -oE "[0-9.]+$")"
+          echo "tag=$TAG  plugin version=$VER  stable tag=$STABLE"
+          if [ "$TAG" != "$VER" ] || [ "$VER" != "$STABLE" ]; then
+            echo "::error::Tag ($TAG), plugin Version ($VER) and readme Stable tag ($STABLE) must all match."
+            exit 1
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      # Pinned to a commit SHA (v2.3.0): this step receives the wordpress.org
+      # password, so it must not move under us. Bump deliberately:
+      #   gh api repos/10up/action-wordpress-plugin-deploy/releases/latest
+      # then resolve that tag to its commit SHA. It also syncs .wordpress-org/
+      # to SVN assets/, so no separate assets job is needed (two parallel SVN
+      # commits would race).
       - name: WordPress.org plugin deploy
-        uses: 10up/action-wordpress-plugin-deploy@stable
+        uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2
+        with:
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SLUG: perxel-ai-translate
-
-  assets:
-    name: Update readme and assets
-    if: github.event_name == 'release'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Update WordPress.org readme and assets
-        uses: 10up/action-wordpress-plugin-asset-update@stable
-        env:
-          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
-          SLUG: perxel-ai-translate
+          VERSION: ${{ steps.version.outputs.version }}

@@ -27,3 +27,4 @@ phpcs.xml.dist
 phpunit.xml.dist
 package.json
 package-lock.json
+AGENTS.md

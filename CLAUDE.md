@@ -16,6 +16,14 @@ place of the file queue, and the manual preview/apply step removed. The
 translation engine itself (OpenRouter client, field extraction, WPML sync) was
 carried over intact.
 
+It predates, and is kept in line with,
+[`perxel/wp-plugin-starter`](https://github.com/perxel/wp-plugin-starter), which
+is the source of truth for shared process - CI, release/deploy, WordPress.org
+compliance rules, `.distignore`, build scripts, and the "Releasing" and
+"Compliance" sections below. If you improve one of those here, make the same
+change in the starter (or tell the maintainer). Plugin-specific code and listing
+art stay here.
+
 ## Layout
 
 ```
@@ -134,14 +142,58 @@ There are no automated tests and no WP/WPML in the lint environment - `phpcs` an
 `php -l` verify syntax and style only. Behaviour must be smoke-tested on a real
 WPML site.
 
+## WordPress.org / Plugin Check compliance
+
+Rules that are not obvious and cost real time when re-derived per plugin:
+
+| Rule | Why |
+|---|---|
+| Namespace root = slug in `Ucfirst_Snake` (`Perxel_Ai_Translate`). **Known deviation:** this plugin still uses `Perxel\AITranslate`, hence the `NonPrefixedNamespaceFound` ignore in `lint.yml` | `PrefixAllGlobals` accepts it as the prefix; a `Vendor\Package` namespace is flagged (`NonPrefixedNamespaceFound`) and Plugin Check ignores the `phpcs.xml.dist` prefix list |
+| Custom-table names via `%i`, never string-concatenated | `WordPress.DB.PreparedSQL.NotPrepared` is **error-level** and blocks .org (see "Custom tables") |
+| No `load_plugin_textdomain()` | .org auto-loads translations (slug == text domain); calling it on `plugins_loaded` is "too early" on WP 6.7+ |
+| Prefix any variable you **assign** in a view (`$pxat_url`); vars passed in via `extract()` are fine | `NonPrefixedVariableFound` fires on template-scope assignments |
+| `set_time_limit()` etc.: `function_exists()` guard + inline `// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- <reason>` | discouraged-function warning |
+| Calling another plugin's hooks (WPML `wpml_*`, WooCommerce): scope a `phpcs.xml.dist` exclude to the wrapper file **and** add the code to `lint.yml` -> `ignore-codes` | `NonPrefixedHooknameFound`; the two tools don't share config |
+| `'suppress_filters' => true` in a query: same dual-suppression, code `WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters` | deliberate but flagged |
+
+The split that bites: **Plugin Check runs its own ruleset, not `phpcs.xml.dist`.**
+Any suppression for a documented false positive goes in *both* places -
+`phpcs.xml.dist` (for `composer run lint`) and `lint.yml` -> `ignore-codes`
+(mirrored by `bin/plugin-check.sh`).
+
 ## Releasing
 
 1. Bump the version in `perxel-ai-translate.php` (header + `PXAT_VERSION`) and
-   `readme.txt` (`Stable tag`); add a changelog entry. The tag must equal the
-   `Version:` header or `release.yml` fails.
-2. Create a GitHub Release with that tag. `release.yml`'s `zip` job attaches
-   `perxel-ai-translate.zip`; the `deploy` / `assets` jobs push to WordPress.org
-   SVN (need `SVN_USERNAME` / `SVN_PASSWORD`; the SVN repo only exists after the
-   first manual review is approved).
+   `readme.txt` (`Stable tag`); add a changelog entry to `readme.txt`. Merge to `main` first. Tag, plugin `Version:` and `Stable tag`
+   must all be equal or the deploy fails before touching SVN.
+2. Create the tag on `main` and publish a GitHub Release. `release.yml`'s `zip`
+   job attaches `perxel-ai-translate.zip`; the `deploy` job commits trunk +
+   `tags/<version>` + `.wordpress-org/` (-> SVN `assets/`) with the SHA-pinned
+   10up action. It only runs when the repo variable `DEPLOY_TO_WPORG` is `true`.
+3. Verify `https://wordpress.org/plugins/<slug>/` and
+   `https://api.wordpress.org/plugins/info/1.0/<slug>.json` show the new version.
+   Assets can 404 on `ps.w.org` for a while after the first commit (CDN lag).
+
+### First release of a new plugin (the only manual bit is the review)
+
+1. Upload `dist/<slug>.zip` at <https://wordpress.org/plugins/developers/add/>.
+   No SVN repo exists until the review team approves it.
+2. Secrets `SVN_USERNAME` / `SVN_PASSWORD`: set once as **org** secrets and grant
+   this repo access (org -> Settings -> Secrets -> Repository access). Use an
+   SVN-specific password if the wordpress.org profile offers one. Never paste it
+   in chat or commit it.
+3. Once approved: set the repo variable `DEPLOY_TO_WPORG=true`, run **Actions ->
+   Release -> Run workflow** with the tag and `dry_run` on (default) to check the
+   staging without committing, then publish the Release. The very first version
+   deploys the same way as every later one - no manual SVN commit.
+4. If automation ever breaks, plain `svn` works: check out
+   `https://plugins.svn.wordpress.org/<slug>`, copy the `.distignore`-filtered
+   build into `trunk/`, `.wordpress-org/*` into `assets/`, `svn cp trunk
+   tags/<version>`, `svn ci`.
+
+Notes: a large first commit (hundreds of vendored files) sits on "Committing
+transaction..." for minutes - normal. The action strips the `v` from a `vX.Y.Z`
+tag itself; on a manual run it can't, hence the explicit `VERSION`. Do not bump
+versions, tag or publish releases without the maintainer asking.
 
 Build artifacts (`dist/`) are never committed.
