@@ -29,10 +29,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use Perxel\AITranslate\Admin;
-use Perxel\AITranslate\Fields;
-use Perxel\AITranslate\Format;
-use Perxel\AITranslate\Wpml;
+use Perxel_Ai_Translate\Admin;
+use Perxel_Ai_Translate\Fields;
+use Perxel_Ai_Translate\Format;
+use Perxel_Ai_Translate\Wpml;
 
 // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure; dynamic values escaped inline.
 

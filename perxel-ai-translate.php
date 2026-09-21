@@ -46,15 +46,15 @@ define( 'PXAT_DEFAULT_MODEL', 'google/gemini-3.8-flash' );
 define( 'PXAT_DEFAULT_MAX_OUTPUT', 8192 );
 
 /**
- * PSR-4-ish autoloader for Perxel\AITranslate\* -> includes/*.php.
+ * PSR-4-ish autoloader for Perxel_Ai_Translate\* -> includes/*.php.
  */
 spl_autoload_register(
 	static function ( $class_name ) {
-		if ( strpos( $class_name, 'Perxel\\AITranslate\\' ) !== 0 ) {
+		if ( strpos( $class_name, 'Perxel_Ai_Translate\\' ) !== 0 ) {
 			return;
 		}
 
-		$relative = substr( $class_name, strlen( 'Perxel\\AITranslate\\' ) );
+		$relative = substr( $class_name, strlen( 'Perxel_Ai_Translate\\' ) );
 		$path     = PXAT_DIR . '/includes/' . str_replace( '\\', '/', $relative ) . '.php';
 
 		if ( is_readable( $path ) ) {
@@ -75,10 +75,10 @@ define( 'PERXEL_UI_SHOWCASE_HOSTED', true );
 
 if ( is_readable( PXAT_DIR . '/vendor/perxel-ui/loader.php' ) ) {
 	require_once PXAT_DIR . '/vendor/perxel-ui/loader.php';
-	Perxel_UI_Loader::register( '0.21.0', PXAT_DIR . '/vendor/perxel-ui', PXAT_URL . '/vendor/perxel-ui' );
+	Perxel_UI_Loader::register( '0.22.2', PXAT_DIR . '/vendor/perxel-ui', PXAT_URL . '/vendor/perxel-ui' );
 }
 
-register_activation_hook( __FILE__, array( 'Perxel\AITranslate\Plugin', 'activate' ) );
+register_activation_hook( __FILE__, array( 'Perxel_Ai_Translate\Plugin', 'activate' ) );
 
 /**
  * WPML is a regular plugin, so it has not loaded yet on plugins_loaded's early
@@ -98,7 +98,7 @@ function pxat_maybe_init() {
 		return;
 	}
 
-	Perxel\AITranslate\Plugin::instance()->boot();
+	Perxel_Ai_Translate\Plugin::instance()->boot();
 }
 
 /**

@@ -1,6 +1,6 @@
 <?php
 
-namespace Perxel\AITranslate;
+namespace Perxel_Ai_Translate;
 
 use WP_Error;
 

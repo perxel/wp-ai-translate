@@ -1,0 +1,6 @@
+# Documented Plugin Check false positives, one code per line (# comments ok).
+# Read by bin/plugin-check.sh. Mirror every entry in .github/workflows/lint.yml
+# -> ignore-codes (the CI action does not read this file).
+WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters

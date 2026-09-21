@@ -1,6 +1,6 @@
 <?php
 
-namespace Perxel\AITranslate;
+namespace Perxel_Ai_Translate;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -135,7 +135,7 @@ class RunsListTable extends \WP_List_Table {
 				? sprintf(
 					/* translators: %s: comma-separated data type labels. */
 					__( 'Custom (%s)', 'perxel-ai-translate' ),
-					implode( ', ', array_map( array( 'Perxel\AITranslate\Translator', 'type_label' ), $run['custom_types'] ) )
+					implode( ', ', array_map( array( 'Perxel_Ai_Translate\Translator', 'type_label' ), $run['custom_types'] ) )
 				)
 				: __( 'Full', 'perxel-ai-translate' );
 			if ( $run['batched'] ) {

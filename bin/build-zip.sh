@@ -7,13 +7,19 @@
 #   bin/build-zip.sh            # build from HEAD
 #   bin/build-zip.sh --dirty    # build from the working tree (uncommitted changes included)
 #
-# Output: dist/perxel-ai-translate.zip  and  dist/perxel-ai-translate-<version>.zip
+# Output: dist/<slug>.zip  and  dist/<slug>-<version>.zip
+#
+# The slug is the main plugin file's name (the root *.php with a "Plugin Name:"
+# header), so this script is byte-identical in every Perxel plugin.
 
 set -euo pipefail
 
-SLUG="perxel-ai-translate"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+
+MAIN="$(grep -lE '^[[:space:]]*\*?[[:space:]]*Plugin Name:' ./*.php | head -n1 || true)"
+[[ -z "$MAIN" ]] && { echo "No main plugin file (with a Plugin Name: header) in $ROOT" >&2; exit 1; }
+SLUG="$(basename "$MAIN" .php)"
 
 DIRTY=0
 [[ "${1:-}" == "--dirty" ]] && DIRTY=1

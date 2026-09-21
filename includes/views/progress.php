@@ -19,9 +19,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use Perxel\AITranslate\Format;
-use Perxel\AITranslate\Translator;
-use Perxel\AITranslate\Wpml;
+use Perxel_Ai_Translate\Format;
+use Perxel_Ai_Translate\Translator;
+use Perxel_Ai_Translate\Wpml;
 
 // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure; dynamic values escaped inline.
 
@@ -43,7 +43,7 @@ $scope = 'custom' === $run['data_mode']
 	? sprintf(
 		/* translators: %s: comma-separated type labels. */
 		__( 'Custom (%s)', 'perxel-ai-translate' ),
-		implode( ', ', array_map( array( 'Perxel\AITranslate\Translator', 'type_label' ), $run['custom_types'] ) )
+		implode( ', ', array_map( array( 'Perxel_Ai_Translate\Translator', 'type_label' ), $run['custom_types'] ) )
 	)
 	: __( 'Everything', 'perxel-ai-translate' );
 

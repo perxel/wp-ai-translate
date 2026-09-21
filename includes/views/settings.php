@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use Perxel\AITranslate\OpenRouter;
+use Perxel_Ai_Translate\OpenRouter;
 
 // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure; dynamic values escaped inline.
 
@@ -44,13 +44,13 @@ $model_detail = $model['input'] > 0
 	)
 	: esc_html__( 'not checked', 'perxel-ai-translate' );
 
-$key_icon = \Perxel\AITranslate\Settings::api_key_tone();
+$key_icon = \Perxel_Ai_Translate\Settings::api_key_tone();
 if ( $settings['api_key_verified'] && (float) $settings['api_key_limit'] > 0 ) {
 	$key_sub = sprintf(
 		/* translators: 1: USD credit left, 2: USD credit limit, e.g. "$37.66 left of $50.00". */
 		esc_html__( 'Verified · %1$s left of %2$s', 'perxel-ai-translate' ),
-		esc_html( \Perxel\AITranslate\Format::money_usd( (float) $settings['api_key_remaining'] ) ),
-		esc_html( \Perxel\AITranslate\Format::money_usd( (float) $settings['api_key_limit'] ) )
+		esc_html( \Perxel_Ai_Translate\Format::money_usd( (float) $settings['api_key_remaining'] ) ),
+		esc_html( \Perxel_Ai_Translate\Format::money_usd( (float) $settings['api_key_limit'] ) )
 	);
 } else {
 	$key_sub = $settings['api_key_verified'] ? esc_html__( 'Verified', 'perxel-ai-translate' ) : esc_html__( 'not checked', 'perxel-ai-translate' );
@@ -92,7 +92,7 @@ if ( $benchmark ) {
 		'content' => sprintf(
 			/* translators: %s: estimated USD cost, e.g. "~$0.0021". */
 			esc_html__( '%s per language', 'perxel-ai-translate' ),
-			esc_html( \Perxel\AITranslate\Format::cost( $benchmark['cost_per_lang'] ) )
+			esc_html( \Perxel_Ai_Translate\Format::cost( $benchmark['cost_per_lang'] ) )
 		),
 	);
 }

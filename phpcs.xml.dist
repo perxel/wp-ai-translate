@@ -75,7 +75,7 @@
 			<property name="prefixes" type="array">
 				<element value="pxat"/>
 				<element value="PXAT"/>
-				<element value="Perxel\AITranslate"/>
+				<element value="Perxel_Ai_Translate"/>
 				<!-- Shared admin-UI kit (vendor/perxel-ui/), versioned independently. -->
 				<element value="perxel_ui"/>
 				<element value="PERXEL_UI"/>

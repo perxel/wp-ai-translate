@@ -93,6 +93,19 @@
 .pxui-row__content select,
 .pxui-row__content input { box-shadow:none; }
 
+/* A lone action button in a row uses core's `.button-small` (add the class in
+   markup). Keep it from stretching on the flex cross-axis and match the 30px
+   height of the row's text fields so it sits on the same baseline - never
+   restyle bare `.button` here, it must still match `.button` everywhere
+   else. */
+.pxui-row__content .button.button-small {
+    flex:0 0 auto;
+    align-self:center;
+    display:inline-flex;
+    align-items:center;
+    min-height:30px;
+}
+
 /* A <select> as row content reads as the row's value: no chrome at rest,
    border + full-contrast text on hover, brand outline on focus. */
 .pxui-row__content select {
@@ -550,4 +563,136 @@
 
 @media (prefers-reduced-motion:reduce) {
     .pxui-spinner { animation-duration:2s; }
+}
+
+/* ------------------------------------------------------------------ *
+ * Media picker - a hidden <input> holding the attachment ID(s), a
+ * preview list, and Choose / Remove buttons. `Perxel_UI::media()`.
+ * Wired to wp.media by ui.js. Sits happily as `.pxui-row__content`.
+ * ------------------------------------------------------------------ */
+
+.pxui-media {
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:flex-end;
+    gap:var(--pxui-s2);
+}
+
+.pxui-media__list {
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+    gap:var(--pxui-s1);
+}
+
+/* `display:flex` above beats the UA `[hidden]` rule at equal specificity. */
+.pxui-media__list[hidden] { display:none; }
+
+.pxui-media__item {
+    position:relative;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:40px;
+    min-height:40px;
+    max-width:120px;
+    border:1px solid var(--pxui-border);
+    border-radius:var(--pxui-radius);
+    background:var(--pxui-bg);
+    overflow:hidden;
+}
+
+.pxui-media__item img {
+    display:block;
+    max-width:100%;
+    max-height:120px;
+}
+
+.pxui-media__file {
+    padding:var(--pxui-s1) var(--pxui-s2);
+    font-size:12px;
+    color:var(--pxui-fg-muted);
+    word-break:break-all;
+    text-align:left;
+}
+
+.pxui-media__drop {
+    position:absolute;
+    top:2px;
+    right:2px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:18px;
+    height:18px;
+    padding:0;
+    border:0;
+    border-radius:50%;
+    background:rgba(0, 0, 0, .6);
+    color:#fff;
+    font-size:13px;
+    line-height:1;
+    cursor:pointer;
+    opacity:0;
+    transition:opacity .12s ease;
+}
+
+.pxui-media__item:hover .pxui-media__drop,
+.pxui-media__drop:focus-visible { opacity:1; }
+
+.pxui-media__actions {
+    display:inline-flex;
+    align-items:center;
+    gap:var(--pxui-s2);
+}
+
+.pxui-media__clear {
+    padding:0;
+    border:0;
+    background:none;
+    color:var(--pxui-bad);
+    font-size:12px;
+    cursor:pointer;
+}
+
+.pxui-media__clear:hover { text-decoration:underline; }
+
+@media (prefers-reduced-motion:reduce) {
+    .pxui-media__drop { transition:none; }
+}
+
+/* ------------------------------------------------------------------ *
+ * Colour picker - a native <input type="color"> swatch beside a hex
+ * text field, kept in sync by ui.js. `Perxel_UI::color()`.
+ * ------------------------------------------------------------------ */
+
+.pxui-color {
+    display:inline-flex;
+    align-items:center;
+    gap:var(--pxui-s2);
+}
+
+.pxui-wrap .pxui-color__swatch {
+    flex:0 0 auto;
+    width:28px;
+    height:28px;
+    padding:0;
+    border:1px solid var(--pxui-border);
+    border-radius:var(--pxui-radius);
+    background:none;
+    cursor:pointer;
+}
+
+.pxui-wrap .pxui-color__swatch::-webkit-color-swatch-wrapper { padding:2px; }
+.pxui-wrap .pxui-color__swatch::-webkit-color-swatch { border:0; border-radius:5px; }
+.pxui-wrap .pxui-color__swatch::-moz-color-swatch { border:0; border-radius:5px; }
+
+.pxui-row__content input.pxui-color__hex,
+.pxui-color .pxui-color__hex {
+    flex:0 0 8em;
+    width:8em;
+    font-family:var(--pxui-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size:12px;
+    text-transform:lowercase;
 }

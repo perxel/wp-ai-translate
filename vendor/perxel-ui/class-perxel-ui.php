@@ -414,4 +414,154 @@ final class Perxel_UI {
 
 		return $label . '<pre class="pxui-code"' . $id_attr . '>' . esc_html( (string) $text ) . '</pre>';
 	}
+
+	/**
+	 * A WordPress media-library picker: a hidden `<input>` holding the chosen
+	 * attachment ID (a comma-joined list when `multiple`), a live preview, and
+	 * Choose / Remove controls. `ui.js` drives the native `wp.media` frame, so
+	 * the screen must call `wp_enqueue_media()` itself - core only auto-loads
+	 * the media library on post-edit screens, not a custom admin page.
+	 *
+	 * Stores bare attachment IDs. Read them back with
+	 * `absint( $_POST[ $name ] )`, or `wp_parse_id_list( $_POST[ $name ] )` for
+	 * a `multiple` field. Handy as row `content`.
+	 *
+	 * @param array $args [
+	 *   'name'         => string        hidden input name,
+	 *   'value'        => int|int[]|string  current ID, or a list / CSV of IDs,
+	 *   'type'         => string        '' | 'image' | 'audio' | 'video' - wp.media library filter,
+	 *   'multiple'     => bool          allow several; the value becomes a CSV (default false),
+	 *   'form'         => string        `form=` attribute for the hidden input,
+	 *   'label'        => string        button text (default "Choose file" / "Add files"),
+	 *   'preview_size' => string        registered image size for thumbnails (default 'thumbnail'),
+	 * ]
+	 * @return string
+	 */
+	public static function media( $args = array() ) {
+		$d = array_merge(
+			array(
+				'name'         => '',
+				'value'        => '',
+				'type'         => '',
+				'multiple'     => false,
+				'form'         => '',
+				'label'        => '',
+				'preview_size' => 'thumbnail',
+			),
+			$args
+		);
+
+		$multiple = ! empty( $d['multiple'] );
+
+		// Normalise the value to a list of positive ints.
+		$ids = is_array( $d['value'] )
+			? $d['value']
+			: preg_split( '/[\s,]+/', (string) $d['value'], -1, PREG_SPLIT_NO_EMPTY );
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', (array) $ids ) ) ) );
+		if ( ! $multiple ) {
+			$ids = $ids ? array( $ids[0] ) : array();
+		}
+
+		$size  = (string) $d['preview_size'];
+		$type  = preg_replace( '/[^a-z]/', '', strtolower( (string) $d['type'] ) );
+		$label = '' !== (string) $d['label']
+			? (string) $d['label']
+			: ( $multiple ? 'Add files' : 'Choose file' );
+
+		$wrap  = '<div class="pxui-media' . ( $multiple ? ' pxui-media--multiple' : '' ) . '"';
+		$wrap .= ' data-preview-size="' . esc_attr( $size ) . '"';
+		$wrap .= '' !== $type ? ' data-type="' . esc_attr( $type ) . '"' : '';
+		$wrap .= $multiple ? ' data-multiple="1"' : '';
+		$wrap .= '>';
+
+		$out  = $wrap;
+		$out .= '<input type="hidden" class="pxui-media__value"'
+			. ( $d['name'] ? ' name="' . esc_attr( $d['name'] ) . '"' : '' )
+			. ( $d['form'] ? ' form="' . esc_attr( $d['form'] ) . '"' : '' )
+			. ' value="' . esc_attr( implode( ',', $ids ) ) . '" />';
+
+		$out .= '<span class="pxui-media__list"' . ( $ids ? '' : ' hidden' ) . '>';
+		foreach ( $ids as $id ) {
+			$out .= self::media_item( $id, $size );
+		}
+		$out .= '</span>';
+
+		$out .= '<span class="pxui-media__actions">';
+		$out .= '<button type="button" class="button button-small pxui-media__choose">' . esc_html( $label ) . '</button>';
+		$out .= '<button type="button" class="pxui-media__clear"' . ( $ids ? '' : ' hidden' ) . '>'
+			. esc_html( $multiple ? 'Remove all' : 'Remove' ) . '</button>';
+		$out .= '</span>';
+
+		$out .= '</div>';
+
+		return $out;
+	}
+
+	/**
+	 * One preview tile for `media()` - a thumbnail for an image, a filename
+	 * chip for anything else, with a per-item remove button. `ui.js` builds
+	 * the same shape when the user picks a new attachment, so keep the two in
+	 * step.
+	 *
+	 * @param int    $id   Attachment ID.
+	 * @param string $size Registered image size for the thumbnail.
+	 * @return string
+	 */
+	private static function media_item( $id, $size = 'thumbnail' ) {
+		$id = absint( $id );
+		if ( ! $id ) {
+			return '';
+		}
+
+		$thumb = wp_get_attachment_image_url( $id, $size );
+		if ( $thumb ) {
+			$inner = '<img src="' . esc_url( $thumb ) . '" alt="" />';
+		} else {
+			$file  = wp_basename( (string) get_attached_file( $id ) );
+			$inner = '<span class="pxui-media__file">' . esc_html( '' !== $file ? $file : get_the_title( $id ) ) . '</span>';
+		}
+
+		return '<span class="pxui-media__item" data-id="' . esc_attr( (string) $id ) . '">'
+			. $inner
+			. '<button type="button" class="pxui-media__drop" aria-label="Remove">&times;</button>'
+			. '</span>';
+	}
+
+	/**
+	 * A colour picker: a native `<input type="color">` swatch beside a hex
+	 * text field. `ui.js` keeps the two in sync; with JS off the swatch alone
+	 * still works. The text field carries the input name, so a typed or pasted
+	 * `#rrggbb` submits. Value is a `#rrggbb` string ('' renders an unset
+	 * control). Handy as row `content`.
+	 *
+	 * @param array $args [ 'name', 'value' => '#rrggbb', 'form', 'label' (accessible name) ].
+	 * @return string
+	 */
+	public static function color( $args = array() ) {
+		$d = array_merge(
+			array(
+				'name'  => '',
+				'value' => '',
+				'form'  => '',
+				'label' => '',
+			),
+			$args
+		);
+
+		$hex   = preg_match( '/^#[0-9a-fA-F]{6}$/', (string) $d['value'] ) ? strtolower( (string) $d['value'] ) : '';
+		$form  = $d['form'] ? ' form="' . esc_attr( $d['form'] ) . '"' : '';
+		$label = $d['label'] ? ' aria-label="' . esc_attr( $d['label'] ) . '"' : '';
+
+		$out  = '<span class="pxui-color">';
+		$out .= '<input type="color" class="pxui-color__swatch" tabindex="-1" aria-hidden="true"'
+			. ' value="' . esc_attr( '' !== $hex ? $hex : '#000000' ) . '" />';
+		$out .= '<input type="text" class="pxui-color__hex" spellcheck="false" autocomplete="off"'
+			. ' maxlength="7" placeholder="#rrggbb"'
+			. ( $d['name'] ? ' name="' . esc_attr( $d['name'] ) . '"' : '' )
+			. $form . $label
+			. ' value="' . esc_attr( $hex ) . '" />';
+		$out .= '</span>';
+
+		return $out;
+	}
 }
