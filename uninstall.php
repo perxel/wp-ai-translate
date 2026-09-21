@@ -15,4 +15,4 @@ delete_option( 'pxat_settings' );
 delete_option( 'pxat_db_version' );
 
 require_once __DIR__ . '/includes/Db.php';
-Perxel\AITranslate\Db::uninstall();
+Perxel_Ai_Translate\Db::uninstall();

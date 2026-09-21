@@ -16,8 +16,9 @@ Drop these in, using the exact filenames:
 | `screenshot-1.png` | any | Matches `== Screenshots ==` item 1 in `readme.txt` |
 | `screenshot-2.png` | any | Matches item 2, and so on |
 
-Keep master/source art out of the shipped build too - put it in `assets-src/`
-(also `.distignore`d).
+Keep master/source art (full-size PNGs, design files) in `.claude/assets-src/`
+- committed, and never shipped (`.distignore` excludes `/.claude`). Name masters
+after the output, e.g. `icon-master.png`, `banner-master.png`.
 
 Sizing tips (macOS): `sips -z <h> <w> src.png --out out.png` resizes,
 `sips -c <h> <w> src.png --out out.png` crops. Banners must be exactly

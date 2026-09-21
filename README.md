@@ -107,60 +107,6 @@ https://github.com/perxel/wp-ai-translate/releases/latest/download/perxel-ai-tra
 Upload it under **Plugins → Add New → Upload Plugin**, activate, then open
 **Tools → AI Translate → Settings** and add your OpenRouter API key.
 
-## Development
-
-```bash
-composer install
-composer run lint      # PHP_CodeSniffer (WordPress standard)
-composer run lint:fix  # phpcbf
-```
-
-Build an installable / WordPress.org submission zip (only committed files,
-minus everything in `.distignore`):
-
-```bash
-composer run build          # or: bin/build-zip.sh
-bin/build-zip.sh --dirty    # include uncommitted changes
-# → dist/perxel-ai-translate.zip
-```
-
-Regenerate the translation template:
-
-```bash
-wp i18n make-pot . languages/perxel-ai-translate.pot
-```
-
-### Extending
-
-```php
-// Cap how many parallel browser workers a batched run uses (default 2).
-add_filter( 'pxat_batch_worker_count', fn () => 3 );
-```
-
-The AI model, its pricing and its limits are stored settings - set them on
-**Tools → AI Translate → Settings**, not in code.
-
-## Releasing
-
-1. Bump the version in `perxel-ai-translate.php` (header **and** `PXAT_VERSION`),
-   `readme.txt` (`Stable tag`), and add a changelog entry. Commit to `main`.
-2. Create a **GitHub Release** with the tag = the new version (e.g. `0.0.2`).
-
-`release.yml` then runs automatically on the published Release and does two
-things:
-
-| Job | What it does |
-| --- | --- |
-| `zip` | Builds `perxel-ai-translate.zip` with `bin/build-zip.sh` and **attaches it to the release**. Works immediately. |
-| `deploy` / `assets` | Pushes the version to the WordPress.org SVN repo and updates the `.org` readme and listing assets. Only works **after** the plugin's first submission has been approved, and needs the repo secrets `SVN_USERNAME` / `SVN_PASSWORD`. |
-
-The zip is a build artifact - it is **not** committed to the repo (`dist/` is
-git-ignored). The stable download URL for the latest build is
-`https://github.com/perxel/wp-ai-translate/releases/latest/download/perxel-ai-translate.zip`.
-
-Listing assets (icon, banner, screenshots) live in `.wordpress-org/` and are
-pushed to SVN on the same `release.yml` run.
-
 ## License
 
 GPL-2.0-or-later. See [LICENSE](LICENSE). Issues and pull requests welcome.

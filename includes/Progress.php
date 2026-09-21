@@ -1,6 +1,6 @@
 <?php
 
-namespace Perxel\AITranslate;
+namespace Perxel_Ai_Translate;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -333,7 +333,7 @@ class Progress {
 
 		if ( $run['batched'] ) {
 			$pending_ids   = Runs::peek_pending_ids( $run_id, OpenRouter::MAX_BATCH_JOBS );
-			$pending_items = array_filter( array_map( array( 'Perxel\AITranslate\Runs', 'item' ), $pending_ids ) );
+			$pending_items = array_filter( array_map( array( 'Perxel_Ai_Translate\Runs', 'item' ), $pending_ids ) );
 			$group_ids     = Translator::select_batch_ids( $pending_items, $run );
 			$claimed       = Runs::claim_ids( $run_id, $worker, $group_ids );
 		} else {

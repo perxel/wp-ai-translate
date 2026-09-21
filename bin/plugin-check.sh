@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 #
-# Run the official WordPress Plugin Check against the built plugin, with the
-# same ignore list as .github/workflows/lint.yml. Plugin Check does not read
-# phpcs.xml.dist, so the documented false positives are repeated here.
+# Run the official WordPress Plugin Check against the built plugin - the same
+# check CI runs (.github/workflows/lint.yml), against the same shippable zip.
+# Plugin Check does NOT read phpcs.xml.dist, so the documented false positives
+# live in .plugin-check-ignore (one code per line) and must be mirrored in the
+# `ignore-codes:` block of lint.yml. This script is byte-identical in every
+# Perxel plugin; the slug comes from the main plugin file's name.
 #
 # Needs wp-cli with the plugin-check package:
 #   wp package install wordpress/plugin-check-cli
@@ -14,15 +17,26 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+MAIN="$(grep -lE '^[[:space:]]*\*?[[:space:]]*Plugin Name:' ./*.php | head -n1 || true)"
+[[ -z "$MAIN" ]] && { echo "No main plugin file (with a Plugin Name: header) in $ROOT" >&2; exit 1; }
+SLUG="$(basename "$MAIN" .php)"
+
 bin/build-zip.sh
 rm -rf build && mkdir build
-unzip -q dist/perxel-ai-translate.zip -d build
+unzip -q "dist/${SLUG}.zip" -d build
 
-IGNORE="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedNamespaceFound"
-IGNORE+=",WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound"
-IGNORE+=",WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound"
-IGNORE+=",WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters"
+# Mirror lint.yml -> ignore-codes. Empty for the base template.
+IGNORE=""
+if [[ -f .plugin-check-ignore ]]; then
+	while IFS= read -r line; do
+		line="${line%%#*}"
+		line="$(echo "$line" | xargs || true)"
+		[[ -z "$line" ]] && continue
+		IGNORE+="${IGNORE:+,}${line}"
+	done < .plugin-check-ignore
+fi
 
-wp plugin check build/perxel-ai-translate \
-	--slug=perxel-ai-translate \
-	--ignore-codes="$IGNORE"
+ARGS=( "build/${SLUG}" "--slug=${SLUG}" )
+[[ -n "$IGNORE" ]] && ARGS+=( "--ignore-codes=${IGNORE}" )
+
+wp plugin check "${ARGS[@]}"

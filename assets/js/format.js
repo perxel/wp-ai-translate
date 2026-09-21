@@ -1,5 +1,5 @@
 /**
- * Mirror of PHP Perxel\AITranslate\Format for the progress screen's live
+ * Mirror of PHP Perxel_Ai_Translate\Format for the progress screen's live
  * counters. Kept tiny and dependency-free.
  */
 ( function () {

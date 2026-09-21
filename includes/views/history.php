@@ -4,7 +4,7 @@
  *
  * @package Perxel_AI_Translate
  *
- * @var \Perxel\AITranslate\RunsListTable $table
+ * @var \Perxel_Ai_Translate\RunsListTable $table
  * @var string|null                       $notice
  * @var bool                              $has_rows
  * @var array                             $totals
@@ -24,7 +24,7 @@ if ( ! $has_rows ) {
 }
 ?>
 <form method="get">
-	<input type="hidden" name="page" value="<?php echo esc_attr( \Perxel\AITranslate\Admin::PAGE_HISTORY ); ?>" />
+	<input type="hidden" name="page" value="<?php echo esc_attr( \Perxel_Ai_Translate\Admin::PAGE_HISTORY ); ?>" />
 	<?php wp_nonce_field( 'bulk-runs' ); ?>
 	<?php $table->display(); ?>
 </form>

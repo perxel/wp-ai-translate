@@ -19,8 +19,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use Perxel\AITranslate\Admin;
-use Perxel\AITranslate\Wpml;
+use Perxel_Ai_Translate\Admin;
+use Perxel_Ai_Translate\Wpml;
 
 if ( '' !== $error ) {
 	echo \Perxel_UI::notice( 'error', esc_html( $error ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure.

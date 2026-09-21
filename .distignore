@@ -4,13 +4,12 @@
 # is stripped below.
 
 /.git
-/dist
-/bin
 /.github
 /.claude
 /.idea
 /.wordpress-org
-/assets-src
+/bin
+/dist
 /node_modules
 /tests
 
@@ -19,6 +18,8 @@
 .distignore
 .gitignore
 .editorconfig
+.plugin-check-ignore
+.env.local
 CLAUDE.md
 README.md
 composer.json
@@ -27,4 +28,3 @@ phpcs.xml.dist
 phpunit.xml.dist
 package.json
 package-lock.json
-AGENTS.md

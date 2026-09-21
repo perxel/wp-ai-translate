@@ -58,6 +58,7 @@ final class Perxel_UI_Showcase {
 	public static function assets( $hook ) {
 		if ( 'tools_page_' . self::SLUG === $hook ) {
 			Perxel_UI::enqueue();
+			wp_enqueue_media();
 		}
 	}
 
@@ -282,6 +283,50 @@ final class Perxel_UI_Showcase {
 			array( 'label' => 'Build output' )
 		);
 
+		echo '<h2>Media &amp; colour pickers</h2>';
+		echo Perxel_UI::rows(
+			array(
+				array(
+					'title' => 'Assets',
+					'note'  => 'The media picker drives the native <code>wp.media</code> frame - the screen must call <code>wp_enqueue_media()</code> (this showcase does).',
+					'rows'  => array(
+						array(
+							'label'   => 'Featured image',
+							'sub'     => 'Single image - value is one attachment ID.',
+							'content' => Perxel_UI::media(
+								array(
+									'name'  => 'demo_image',
+									'type'  => 'image',
+									'label' => 'Choose image',
+								)
+							),
+						),
+						array(
+							'label'   => 'Gallery',
+							'sub'     => 'multiple - value is a comma-joined list of IDs.',
+							'content' => Perxel_UI::media(
+								array(
+									'name'     => 'demo_gallery',
+									'type'     => 'image',
+									'multiple' => true,
+								)
+							),
+						),
+						array(
+							'label'   => 'Brand colour',
+							'sub'     => 'Native swatch + a hex field, kept in sync.',
+							'content' => Perxel_UI::color(
+								array(
+									'name'  => 'demo_color',
+									'value' => '#082ae5',
+								)
+							),
+						),
+					),
+				),
+			)
+		);
+
 		echo '<h2>Form controls</h2>';
 		echo '<p class="pxui-field"><label><input type="checkbox" checked /> A checkbox is a square box with a brand tick</label></p>';
 		echo '<p class="pxui-field"><label><input type="checkbox" class="pxui-toggle" checked /> With <code>.pxui-toggle</code> - an iOS switch (what <code>Perxel_UI::toggle()</code> emits)</label></p>';
@@ -343,12 +388,12 @@ final class Perxel_UI_Showcase {
 						array(
 							'label'   => 'Remove all WebP files',
 							'sub'     => 'Deletes every .webp file and resets plugin data.',
-							'content' => '<button type="button" class="button" data-pxui-confirm="Really?">Remove files</button>',
+							'content' => '<button type="button" class="button button-small" data-pxui-confirm="Really?">Remove files</button>',
 						),
 						array(
 							'label'   => 'Remove .htaccess block',
 							'sub'     => 'Deletes the managed rewrite rules.',
-							'content' => '<button type="button" class="button">Remove block</button>',
+							'content' => '<button type="button" class="button button-small">Remove block</button>',
 						),
 					),
 				),

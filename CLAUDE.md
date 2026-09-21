@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-Guidance for working on this repository.
+Guidance for working on this repository. This is the **only** agent/maintainer
+document (see "Documentation rules" below).
 
 ## What this is
 
@@ -24,12 +25,33 @@ compliance rules, `.distignore`, build scripts, and the "Releasing" and
 change in the starter (or tell the maintainer). Plugin-specific code and listing
 art stay here.
 
+## Documentation rules
+
+Every Perxel plugin follows these; they are owned by the starter.
+
+- **`README.md` is public-facing only**: what the plugin does, screenshots,
+  install, requirements, what data it stores / external services, license. No
+  architecture, folder layout, build/lint/release steps, or "how to extend" -
+  none of that belongs on the public page.
+- **`CLAUDE.md` is the one and only file for developers and agents**:
+  architecture, conventions, compliance, releasing. There is **no `AGENTS.md`**
+  (and no second "playbook" file) - do not recreate it or duplicate content
+  across the two. Claude Code reads `CLAUDE.md`; other agents can be pointed at it.
+- `readme.txt` is the WordPress.org listing, `CHANGELOG.md` (optional) the
+  changelog. Neither carries developer guidance.
+- Master/source art for `.wordpress-org/` lives in `.claude/assets-src/`.
+- `.env.local` holds credentials: never commit it (it is in `.gitignore`).
+- `bin/*.sh` derive the slug from the main plugin file, so they are byte-identical
+  across plugins - never hard-code a slug in them. Per-plugin Plugin Check
+  suppressions go in `.plugin-check-ignore`.
+- `languages/` is optional; `.org` auto-loads translations.
+
 ## Layout
 
 ```
-perxel-ai-translate.php     Main file: constants, autoloader, ui/ loader, boot
+perxel-ai-translate.php     Main file: constants, autoloader, UI-kit loader, boot
 uninstall.php               Drops the option + custom tables on delete
-includes/*.php              One PSR-4-ish class per concern, namespace Perxel\AITranslate\
+includes/*.php              One PSR-4-ish class per concern, namespace Perxel_Ai_Translate\
 includes/views/*.php        Dumb admin templates, fed vars by the screen classes
 assets/js, assets/css       Admin-only JS/CSS (plugin-specific; layout comes from the kit)
 vendor/perxel-ui/           Shared admin-UI kit - vendored, see below
@@ -37,6 +59,9 @@ languages/                  .pot template
 readme.txt                  WordPress.org listing (keep in sync with README.md + version)
 .wordpress-org/             Listing assets - not shipped
 .github/workflows/          lint.yml (PHPCS + Plugin Check), release.yml
+bin/                        build-zip.sh, plugin-check.sh, update-ui.sh - identical in every plugin
+.plugin-check-ignore        Documented Plugin Check false positives (mirrored in lint.yml)
+.claude/assets-src/         Master/source art for the listing assets - committed, not shipped
 ```
 
 `includes/` is loaded by the `spl_autoload_register` in the main file (not
@@ -82,7 +107,7 @@ confirmed) wires `Admin`, `BulkAction`, `AdminBar`.
 
 ## Conventions
 
-- **Namespace** `Perxel\AITranslate\`. Hooks, option keys and CSS stay `pxat_` /
+- **Namespace** `Perxel_Ai_Translate\`. Hooks, option keys and CSS stay `pxat_` /
   `pxat-`; product name is the constant `PXAT_NAME` (no rebrand option).
 - **Text domain** `perxel-ai-translate` (= the slug). JS i18n via `wp.i18n`
   (`wp_set_script_translations`), handle deps include `wp-i18n`.
@@ -116,6 +141,22 @@ the general `vendor/` ignore, `.distignore` strips only its dev-only
 the highest registered version across active plugins. We host its component
 showcase as a hidden maintainer-only screen (`PERXEL_UI_SHOWCASE_HOSTED`).
 
+## Extending
+
+```php
+// Cap how many parallel browser workers a batched run uses (default 2).
+add_filter( 'pxat_batch_worker_count', fn () => 3 );
+```
+
+The AI model, its pricing and its limits are stored settings - set them on
+**Tools -> AI Translate -> Settings**, not in code.
+
+Regenerate the translation template (optional; `languages/` is not required):
+
+```bash
+wp i18n make-pot . languages/perxel-ai-translate.pot
+```
+
 ## Before committing
 
 ```bash
@@ -134,9 +175,8 @@ queue reads uncached; `Db` issues DDL). The one dynamic `IN ()` list in
 
 CI also runs the official **Plugin Check** action. It ignores `phpcs.xml.dist`,
 so its `ignore-codes` (in `lint.yml`, mirrored by `bin/plugin-check.sh`) repeats
-the three documented `PrefixAllGlobals` false positives: the `Perxel\AITranslate`
-vendor namespace, the `wpml_*` hook names (WPML's API), and view-template
-variables.
+the two documented `PrefixAllGlobals` false positives: the `wpml_*` hook names
+(WPML's API) and view-template variables (plus the deliberate `suppress_filters`).
 
 There are no automated tests and no WP/WPML in the lint environment - `phpcs` and
 `php -l` verify syntax and style only. Behaviour must be smoke-tested on a real
@@ -148,7 +188,7 @@ Rules that are not obvious and cost real time when re-derived per plugin:
 
 | Rule | Why |
 |---|---|
-| Namespace root = slug in `Ucfirst_Snake` (`Perxel_Ai_Translate`). **Known deviation:** this plugin still uses `Perxel\AITranslate`, hence the `NonPrefixedNamespaceFound` ignore in `lint.yml` | `PrefixAllGlobals` accepts it as the prefix; a `Vendor\Package` namespace is flagged (`NonPrefixedNamespaceFound`) and Plugin Check ignores the `phpcs.xml.dist` prefix list |
+| Namespace root = slug in `Ucfirst_Snake` (`Perxel_Ai_Translate`). | `PrefixAllGlobals` accepts it as the prefix; a `Vendor\Package` namespace is flagged (`NonPrefixedNamespaceFound`) and Plugin Check ignores the `phpcs.xml.dist` prefix list |
 | Custom-table names via `%i`, never string-concatenated | `WordPress.DB.PreparedSQL.NotPrepared` is **error-level** and blocks .org (see "Custom tables") |
 | No `load_plugin_textdomain()` | .org auto-loads translations (slug == text domain); calling it on `plugins_loaded` is "too early" on WP 6.7+ |
 | Prefix any variable you **assign** in a view (`$pxat_url`); vars passed in via `extract()` are fine | `NonPrefixedVariableFound` fires on template-scope assignments |
@@ -159,7 +199,7 @@ Rules that are not obvious and cost real time when re-derived per plugin:
 The split that bites: **Plugin Check runs its own ruleset, not `phpcs.xml.dist`.**
 Any suppression for a documented false positive goes in *both* places -
 `phpcs.xml.dist` (for `composer run lint`) and `lint.yml` -> `ignore-codes`
-(mirrored by `bin/plugin-check.sh`).
+(mirrored in `.plugin-check-ignore`, which `bin/plugin-check.sh` reads).
 
 ## Releasing
 
