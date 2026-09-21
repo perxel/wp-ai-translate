@@ -43,7 +43,7 @@ Every Perxel plugin follows these; they are owned by the starter.
 - `.env.local` holds credentials: never commit it (it is in `.gitignore`).
 - `bin/*.sh` derive the slug from the main plugin file, so they are byte-identical
   across plugins - never hard-code a slug in them. Per-plugin Plugin Check
-  suppressions go in `.plugin-check-ignore`.
+  suppressions go in `lint.yml` -> `ignore-codes`.
 - `languages/` is optional; `.org` auto-loads translations.
 
 ## Layout
@@ -59,8 +59,7 @@ languages/                  .pot template
 readme.txt                  WordPress.org listing (keep in sync with README.md + version)
 .wordpress-org/             Listing assets - not shipped
 .github/workflows/          lint.yml (PHPCS + Plugin Check), release.yml
-bin/                        build-zip.sh, plugin-check.sh, update-ui.sh - identical in every plugin
-.plugin-check-ignore        Documented Plugin Check false positives (mirrored in lint.yml)
+bin/                        build-zip.sh, update-ui.sh - identical in every plugin
 .claude/assets-src/         Master/source art for the listing assets - committed, not shipped
 ```
 
@@ -163,7 +162,6 @@ wp i18n make-pot . languages/perxel-ai-translate.pot
 php -l <changed files>
 vendor/bin/phpcs            # composer run lint - must stay green
 composer run build          # bin/build-zip.sh - installable zip in dist/
-bin/plugin-check.sh         # optional: official Plugin Check, same ignores as CI
 ```
 
 `phpcs.xml.dist` curates the base `WordPress` standard: terse-docblock house
@@ -174,7 +172,7 @@ queue reads uncached; `Db` issues DDL). The one dynamic `IN ()` list in
 `Runs::claim_ids()` has a scoped `phpcs:disable`.
 
 CI also runs the official **Plugin Check** action. It ignores `phpcs.xml.dist`,
-so its `ignore-codes` (in `lint.yml`, mirrored by `bin/plugin-check.sh`) repeats
+so its `ignore-codes` (in `lint.yml`) repeats
 the two documented `PrefixAllGlobals` false positives: the `wpml_*` hook names
 (WPML's API) and view-template variables (plus the deliberate `suppress_filters`).
 
@@ -198,8 +196,7 @@ Rules that are not obvious and cost real time when re-derived per plugin:
 
 The split that bites: **Plugin Check runs its own ruleset, not `phpcs.xml.dist`.**
 Any suppression for a documented false positive goes in *both* places -
-`phpcs.xml.dist` (for `composer run lint`) and `lint.yml` -> `ignore-codes`
-(mirrored in `.plugin-check-ignore`, which `bin/plugin-check.sh` reads).
+`phpcs.xml.dist` (for `composer run lint`) and `lint.yml` -> `ignore-codes`.
 
 ## Releasing
 
