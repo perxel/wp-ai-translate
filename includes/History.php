@@ -37,7 +37,6 @@ class History {
 	 * @return string|null Result message.
 	 */
 	protected static function handle_bulk_delete() {
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- nonce checked below.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You are not allowed to do this.', 'perxel-ai-translate' ) );
 		}
@@ -45,7 +44,6 @@ class History {
 		check_admin_referer( 'bulk-runs' );
 
 		$run_ids = isset( $_REQUEST['run_ids'] ) ? array_map( 'absint', (array) wp_unslash( $_REQUEST['run_ids'] ) ) : array();
-		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		$run_ids = array_filter( $run_ids );
 		foreach ( $run_ids as $run_id ) {

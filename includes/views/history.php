@@ -15,11 +15,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( $notice ) {
-	echo \Perxel_UI::notice( 'success', esc_html( $notice ), array( 'dismissible' => true ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure.
+	\Perxel_Ai_Translate\Admin::kit( \Perxel_UI::notice( 'success', esc_html( $notice ), array( 'dismissible' => true ) ) );
 }
 
 if ( ! $has_rows ) {
-	echo \Perxel_UI::notice( 'info', esc_html__( 'No translation runs yet. Start one from the Dashboard.', 'perxel-ai-translate' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	\Perxel_Ai_Translate\Admin::kit( \Perxel_UI::notice( 'info', esc_html__( 'No translation runs yet. Start one from the Dashboard.', 'perxel-ai-translate' ) ) );
 	return;
 }
 ?>

@@ -23,7 +23,7 @@ use Perxel_Ai_Translate\Admin;
 use Perxel_Ai_Translate\Wpml;
 
 if ( '' !== $error ) {
-	echo \Perxel_UI::notice( 'error', esc_html( $error ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure.
+	\Perxel_Ai_Translate\Admin::kit( \Perxel_UI::notice( 'error', esc_html( $error ) ) );
 	return;
 }
 ?>
@@ -34,7 +34,6 @@ if ( '' !== $error ) {
 	<input type="hidden" name="pxat_lookup" value="1" />
 
 	<?php
-	// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure; values escaped inline.
 	$lang_select = '<select name="dest_lang">';
 	foreach ( $languages as $code => $lang ) {
 		if ( $code === $source_lang ) {
@@ -44,20 +43,21 @@ if ( '' !== $error ) {
 	}
 	$lang_select .= '</select>';
 
-	echo \Perxel_UI::rows(
-		array(
+	\Perxel_Ai_Translate\Admin::kit(
+		\Perxel_UI::rows(
 			array(
-				'rows' => array(
-					array(
-						'label'   => esc_html__( 'Languages', 'perxel-ai-translate' ),
-						'sub'     => esc_html__( 'Source is WPML’s site default and cannot be changed here.', 'perxel-ai-translate' ),
-						'content' => esc_html( Wpml::language_label( $languages, $source_lang ) ) . ' &rarr; ' . $lang_select,
+				array(
+					'rows' => array(
+						array(
+							'label'   => esc_html__( 'Languages', 'perxel-ai-translate' ),
+							'sub'     => esc_html__( 'Source is WPML’s site default and cannot be changed here.', 'perxel-ai-translate' ),
+							'content' => esc_html( Wpml::language_label( $languages, $source_lang ) ) . ' &rarr; ' . $lang_select,
+						),
 					),
 				),
-			),
+			)
 		)
 	);
-	// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
 	?>
 
 	<div class="pxat-lookup__cols">

@@ -34,7 +34,6 @@ use Perxel_Ai_Translate\Fields;
 use Perxel_Ai_Translate\Format;
 use Perxel_Ai_Translate\Wpml;
 
-// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure; dynamic values escaped inline.
 
 $posts_phrase = sprintf(
 	/* translators: %s: number of posts. */
@@ -132,12 +131,14 @@ $config_rows = array(
 	<input type="hidden" name="ids" value="<?php echo esc_attr( $ids_csv ); ?>" />
 	<input type="hidden" name="post_type" value="<?php echo esc_attr( $post_type ); ?>" />
 	<?php
-	echo \Perxel_UI::rows(
-		array(
+	\Perxel_Ai_Translate\Admin::kit(
+		\Perxel_UI::rows(
 			array(
-				'title' => $selection_title,
-				'rows'  => $config_rows,
-			),
+				array(
+					'title' => $selection_title,
+					'rows'  => $config_rows,
+				),
+			)
 		)
 	);
 	?>
@@ -154,33 +155,37 @@ $config_rows = array(
 /* --- Review & start ---------------------------------------------- */
 
 if ( 0 === $eligible_count ) {
-	echo \Perxel_UI::notice( 'warning', esc_html__( 'Nothing to translate with the current selection.', 'perxel-ai-translate' ) );
+	\Perxel_Ai_Translate\Admin::kit( \Perxel_UI::notice( 'warning', esc_html__( 'Nothing to translate with the current selection.', 'perxel-ai-translate' ) ) );
 } elseif ( 0 === $total_tokens ) {
-	echo \Perxel_UI::notice( 'info', esc_html__( 'Structural copy only - no model call, no cost.', 'perxel-ai-translate' ) );
+	\Perxel_Ai_Translate\Admin::kit( \Perxel_UI::notice( 'info', esc_html__( 'Structural copy only - no model call, no cost.', 'perxel-ai-translate' ) ) );
 }
 
 // Key credit gate. Figures stay in USD both sides - it is a direct comparison
 // against the OpenRouter key balance, itself an exact dollar amount.
 if ( is_array( $key_budget ) && $eligible_count > 0 ) {
 	if ( $key_budget['remaining'] <= 0 ) {
-		echo \Perxel_UI::notice(
-			'error',
-			sprintf(
+		\Perxel_Ai_Translate\Admin::kit(
+			\Perxel_UI::notice(
+				'error',
+				sprintf(
 				/* translators: 1: key credit limit, 2: credit left (usually $0.00). */
-				esc_html__( 'The API key has reached its %1$s limit (%2$s left). Top up at openrouter.ai, then reload this page.', 'perxel-ai-translate' ),
-				esc_html( Format::money_usd( $key_budget['limit'] ) ),
-				esc_html( Format::money_usd( max( 0, $key_budget['remaining'] ) ) )
+					esc_html__( 'The API key has reached its %1$s limit (%2$s left). Top up at openrouter.ai, then reload this page.', 'perxel-ai-translate' ),
+					esc_html( Format::money_usd( $key_budget['limit'] ) ),
+					esc_html( Format::money_usd( max( 0, $key_budget['remaining'] ) ) )
+				)
 			)
 		);
 	} elseif ( $total_cost_usd > $key_budget['remaining'] ) {
-		echo \Perxel_UI::notice(
-			'warning',
-			sprintf(
+		\Perxel_Ai_Translate\Admin::kit(
+			\Perxel_UI::notice(
+				'warning',
+				sprintf(
 				/* translators: 1: estimated run cost, 2: credit left, 3: key credit limit. */
-				esc_html__( 'This run is estimated at %1$s, but the API key has only %2$s of its %3$s limit left. It may stop part way through - top up at openrouter.ai, or narrow the selection.', 'perxel-ai-translate' ),
-				esc_html( Format::cost_usd( $total_cost_usd ) ),
-				esc_html( Format::money_usd( $key_budget['remaining'] ) ),
-				esc_html( Format::money_usd( $key_budget['limit'] ) )
+					esc_html__( 'This run is estimated at %1$s, but the API key has only %2$s of its %3$s limit left. It may stop part way through - top up at openrouter.ai, or narrow the selection.', 'perxel-ai-translate' ),
+					esc_html( Format::cost_usd( $total_cost_usd ) ),
+					esc_html( Format::money_usd( $key_budget['remaining'] ) ),
+					esc_html( Format::money_usd( $key_budget['limit'] ) )
+				)
 			)
 		);
 	}
@@ -240,7 +245,7 @@ $flow = static function ( array $steps ) {
 								: esc_html__( 'Not created - no existing translation', 'perxel-ai-translate' )
 						) . '</span>';
 						if ( '' !== $dest_link ) {
-							echo '<br /><span class="pxat-muted">' . $dest_link . '</span>';
+							echo '<br /><span class="pxat-muted">' . $dest_link . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $dest_link is built from esc_url() / esc_html().
 						}
 					} else {
 						$verb   = 'structural' === $row['state']
@@ -250,7 +255,7 @@ $flow = static function ( array $steps ) {
 							? esc_html__( 'Overwrite', 'perxel-ai-translate' )
 							: esc_html__( 'New post', 'perxel-ai-translate' );
 
-						echo $flow( array( $verb, $target, esc_html( $status_label( $row['status'] ) ) ) );
+						echo $flow( array( $verb, $target, esc_html( $status_label( $row['status'] ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- every step is escaped above.
 
 						$ctx = array();
 						if ( '' !== $dest_link ) {
@@ -278,7 +283,7 @@ $flow = static function ( array $steps ) {
 							$ctx[] = esc_html__( 'will be created', 'perxel-ai-translate' );
 						}
 						if ( $ctx ) {
-							echo '<br /><span class="pxat-muted">' . implode( ' &middot; ', $ctx ) . '</span>';
+							echo '<br /><span class="pxat-muted">' . implode( ' &middot; ', $ctx ) . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- every $ctx entry is escaped above.
 						}
 					}
 					?>
@@ -337,4 +342,3 @@ $flow = static function ( array $steps ) {
 </form>
 
 <?php
-// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped

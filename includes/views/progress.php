@@ -23,7 +23,6 @@ use Perxel_Ai_Translate\Format;
 use Perxel_Ai_Translate\Translator;
 use Perxel_Ai_Translate\Wpml;
 
-// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Perxel_UI escapes structure; dynamic values escaped inline.
 
 $posts_n = static function ( $n ) {
 	return sprintf(
@@ -82,63 +81,67 @@ if ( $is_done && $counts['error'] > 0 ) {
 	);
 }
 
-echo \Perxel_UI::rows(
-	array(
+\Perxel_Ai_Translate\Admin::kit(
+	\Perxel_UI::rows(
 		array(
-			'title'        => sprintf(
-				/* translators: %d: run id. */
-				__( 'Run #%d', 'perxel-ai-translate' ),
-				$run['id']
+			array(
+				'title'        => sprintf(
+					/* translators: %d: run id. */
+					__( 'Run #%d', 'perxel-ai-translate' ),
+					$run['id']
+				),
+				'title_action' => '<span class="pxat-badge pxat-badge--mode">'
+					. esc_html( $scope . ( $run['batched'] ? ' · ' . __( 'batched', 'perxel-ai-translate' ) : '' ) )
+					. '</span>',
+				'note'         => esc_html(
+					sprintf(
+						/* translators: 1: source language, 2: target language, 3: relative start time. */
+						__( '%1$s → %2$s · started %3$s', 'perxel-ai-translate' ),
+						$src_label,
+						$dest_label,
+						Format::time_ago( $run['created_at'] )
+					)
+				),
+				'rows'         => array(
+					$progress_row,
+					array(
+						'label'   => __( 'Errors', 'perxel-ai-translate' ),
+						'sub'     => '<span id="pxat-stat-skipped">' . esc_html( number_format_i18n( $counts['skipped'] ) ) . '</span> ' . esc_html__( 'skipped', 'perxel-ai-translate' ),
+						'content' => '<span id="pxat-stat-error">' . esc_html( number_format_i18n( $counts['error'] ) ) . '</span>',
+						'tone'    => $counts['error'] > 0 ? 'bad' : null,
+					),
+					array(
+						'label'   => __( 'Cost', 'perxel-ai-translate' ),
+						'sub'     => esc_html( $model_label ) . ' &middot; <span id="pxat-stat-tokens">' . esc_html( Format::unit_label( $counts['prompt_tokens'] + $counts['completion_tokens'] ) ) . '</span>',
+						'content' => '<span id="pxat-stat-cost">' . esc_html( Format::cost( $counts['cost_usd'] ) ) . '</span>',
+					),
+					array(
+						'label'   => __( 'Time', 'perxel-ai-translate' ),
+						'content' => '<span id="pxat-stat-time">' . esc_html( Format::duration( $elapsed ) ) . '</span>',
+					),
+					array(
+						'summary' => __( 'Activity log', 'perxel-ai-translate' ),
+						'details' => \Perxel_UI::code( $log_text, array( 'id' => 'pxat-log' ) ),
+					),
+				),
 			),
-			'title_action' => '<span class="pxat-badge pxat-badge--mode">'
-				. esc_html( $scope . ( $run['batched'] ? ' · ' . __( 'batched', 'perxel-ai-translate' ) : '' ) )
-				. '</span>',
-			'note'         => esc_html(
-				sprintf(
-					/* translators: 1: source language, 2: target language, 3: relative start time. */
-					__( '%1$s → %2$s · started %3$s', 'perxel-ai-translate' ),
-					$src_label,
-					$dest_label,
-					Format::time_ago( $run['created_at'] )
-				)
-			),
-			'rows'         => array(
-				$progress_row,
-				array(
-					'label'   => __( 'Errors', 'perxel-ai-translate' ),
-					'sub'     => '<span id="pxat-stat-skipped">' . esc_html( number_format_i18n( $counts['skipped'] ) ) . '</span> ' . esc_html__( 'skipped', 'perxel-ai-translate' ),
-					'content' => '<span id="pxat-stat-error">' . esc_html( number_format_i18n( $counts['error'] ) ) . '</span>',
-					'tone'    => $counts['error'] > 0 ? 'bad' : null,
-				),
-				array(
-					'label'   => __( 'Cost', 'perxel-ai-translate' ),
-					'sub'     => esc_html( $model_label ) . ' &middot; <span id="pxat-stat-tokens">' . esc_html( Format::unit_label( $counts['prompt_tokens'] + $counts['completion_tokens'] ) ) . '</span>',
-					'content' => '<span id="pxat-stat-cost">' . esc_html( Format::cost( $counts['cost_usd'] ) ) . '</span>',
-				),
-				array(
-					'label'   => __( 'Time', 'perxel-ai-translate' ),
-					'content' => '<span id="pxat-stat-time">' . esc_html( Format::duration( $elapsed ) ) . '</span>',
-				),
-				array(
-					'summary' => __( 'Activity log', 'perxel-ai-translate' ),
-					'details' => \Perxel_UI::code( $log_text, array( 'id' => 'pxat-log' ) ),
-				),
-			),
-		),
+		)
 	)
 );
 
 if ( $counts['warnings'] > 0 ) {
-	echo \Perxel_UI::notice(
-		'warning',
-		esc_html(
-			sprintf(
+	\Perxel_Ai_Translate\Admin::kit(
+		\Perxel_UI::notice(
+			'warning',
+			esc_html(
+				sprintf(
 				/* translators: %s: post count. */
-				__( '%s finished with a warning - some data did not copy completely. See the Note column.', 'perxel-ai-translate' ),
-				$posts_n( $counts['warnings'] )
-			)
-		),
-		array( 'inline' => true )
+					__( '%s finished with a warning - some data did not copy completely. See the Note column.', 'perxel-ai-translate' ),
+					$posts_n( $counts['warnings'] )
+				)
+			),
+			array( 'inline' => true )
+		)
 	);
 }
 ?>
@@ -165,11 +168,11 @@ if ( $counts['warnings'] > 0 ) {
 			);
 			?>
 			<tr data-item-id="<?php echo (int) $item['id']; ?>" data-preview="<?php echo esc_attr( $preview_json ); ?>">
-				<td class="pxat-cell-source"><?php echo $item['html']['source']; ?></td>
-				<td class="pxat-cell-dest"><?php echo $item['html']['dest']; ?></td>
-				<td class="pxat-cell-status"><?php echo $item['html']['status']; ?></td>
-				<td class="pxat-cell-note"><?php echo $item['html']['note']; ?></td>
-				<td class="pxat-cell-action"><?php echo $item['html']['action']; ?></td>
+				<td class="pxat-cell-source"><?php echo $item['html']['source']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in Progress::render_*_cell(). ?></td>
+				<td class="pxat-cell-dest"><?php echo $item['html']['dest']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in Progress::render_*_cell(). ?></td>
+				<td class="pxat-cell-status"><?php echo $item['html']['status']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in Progress::render_*_cell(). ?></td>
+				<td class="pxat-cell-note"><?php echo $item['html']['note']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in Progress::render_*_cell(). ?></td>
+				<td class="pxat-cell-action"><?php echo $item['html']['action']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in Progress::render_*_cell(). ?></td>
 			</tr>
 		<?php endforeach; ?>
 	</tbody>
@@ -183,4 +186,3 @@ if ( $counts['warnings'] > 0 ) {
 </dialog>
 
 <?php
-// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped

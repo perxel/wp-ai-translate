@@ -26,6 +26,17 @@ class Admin {
 
 	const NONCE = 'pxat_admin';
 
+	/**
+	 * Echo markup returned by a Perxel_UI renderer. The kit escapes its own
+	 * structure; every dynamic value handed to it is escaped by the caller.
+	 * This is the single place output escaping is delegated to the kit.
+	 *
+	 * @param string $html Markup from a Perxel_UI:: renderer.
+	 */
+	public static function kit( $html ) {
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- trusted Perxel_UI markup; see docblock.
+	}
+
 	public function register() {
 		add_action( 'admin_menu', array( $this, 'menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'assets' ) );
@@ -329,17 +340,15 @@ class Admin {
 	}
 
 	public function render_settings() {
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- display-only flash flags set by our own redirect.
 		$vars = array(
 			'settings'      => Settings::all(),
 			'model'         => Settings::model(),
 			'environment'   => self::environment(),
 			'compatibility' => self::compatibility(),
 			'benchmark'     => self::homepage_benchmark(),
-			'updated'       => isset( $_GET['updated'] ),
-			'was_reset'     => isset( $_GET['reset'] ),
+			'updated'       => isset( $_GET['updated'] ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
+			'was_reset'     => isset( $_GET['reset'] ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 		);
-		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		$save = get_submit_button(
 			__( 'Save settings', 'perxel-ai-translate' ),

@@ -112,15 +112,13 @@ class Progress {
 	}
 
 	public static function localize() {
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only nav params.
-		$run_id = isset( $_GET['run_id'] ) ? absint( wp_unslash( $_GET['run_id'] ) ) : 0;
+		$run_id = isset( $_GET['run_id'] ) ? absint( wp_unslash( $_GET['run_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 		$run    = $run_id ? Runs::get( $run_id ) : null;
 
 		// The one-shot "go" flag: only the Confirm screen's "Translate and apply"
 		// redirect carries it. A plain reload of this URL does not, so the loop
 		// starts once and never on a refresh / bookmark / toolbar link.
-		$autostart = isset( $_GET['pxat_autostart'] );
-		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+		$autostart = isset( $_GET['pxat_autostart'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation param, sanitised on use.
 
 		wp_localize_script(
 			'pxat-progress',
