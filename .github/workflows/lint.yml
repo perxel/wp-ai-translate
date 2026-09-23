@@ -52,10 +52,8 @@ jobs:
           # Check does not read that file, so the list is repeated here):
           #  - NonPrefixedHooknameFound: wpml_* hook names are WPML's own API.
           #  - NonPrefixedVariableFound: view-template locals, not real globals.
-          #  - SuppressFilters: suppress_filters => true is a deliberate WPML bypass.
           # (Custom-table queries use the %i placeholder now, so the prepared-SQL
           # sniffs are no longer suppressed.)
           ignore-codes: |
             WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
             WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
-            WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters

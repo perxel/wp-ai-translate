@@ -82,7 +82,9 @@ confirmed) wires `Admin`, `BulkAction`, `AdminBar`.
   Concurrency: `claim_ids()` flips rows to `translating` in one atomic `UPDATE`
   (batched runs use `Translator::worker_count` parallel browser workers);
   `with_write_lock()` wraps the WordPress-write phase in a MySQL `GET_LOCK` so
-  two workers never create a destination post or resolve taxonomy at once;
+  two workers never create a destination post or resolve taxonomy at once (if
+  the lock times out, nothing is written and the item ends `error`, retryable
+  at no model cost since the preview is stored);
   `reclaim_stale()` requeues rows a dead request left `translating`.
 - **`Translator`** (ex two-phase job processor) - `process_item()` translates one
   post through OpenRouter then writes every selected data type into the WPML
@@ -132,7 +134,7 @@ confirmed) wires `Admin`, `BulkAction`, `AdminBar`.
 
 ## The `vendor/perxel-ui/` kit
 
-Standalone repo `perxel/wp-plugin-ui` (currently **0.19.0**), vendored via
+Standalone repo `perxel/wp-plugin-ui` (currently **0.23.0**), vendored via
 `bin/update-ui.sh <version>` (curl a tagged tarball into `vendor/perxel-ui/`,
 Action Scheduler style - no Composer). Committed; `.gitignore` keeps it out of
 the general `vendor/` ignore, `.distignore` strips only its dev-only
@@ -174,7 +176,7 @@ queue reads uncached; `Db` issues DDL). The one dynamic `IN ()` list in
 CI also runs the official **Plugin Check** action. It ignores `phpcs.xml.dist`,
 so its `ignore-codes` (in `lint.yml`) repeats
 the two documented `PrefixAllGlobals` false positives: the `wpml_*` hook names
-(WPML's API) and view-template variables (plus the deliberate `suppress_filters`).
+(WPML's API) and view-template variables.
 
 There are no automated tests and no WP/WPML in the lint environment - `phpcs` and
 `php -l` verify syntax and style only. Behaviour must be smoke-tested on a real
@@ -192,8 +194,9 @@ Rules that are not obvious and cost real time when re-derived per plugin:
 | Prefix any variable you **assign** in a view (`$pxat_url`); vars passed in via `extract()` are fine | `NonPrefixedVariableFound` fires on template-scope assignments |
 | `set_time_limit()` etc.: `function_exists()` guard + inline `// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- <reason>` | discouraged-function warning |
 | Calling another plugin's hooks (WPML `wpml_*`, WooCommerce): scope a `phpcs.xml.dist` exclude to the wrapper file **and** add the code to `lint.yml` -> `ignore-codes` | `NonPrefixedHooknameFound`; the two tools don't share config |
-| Never `phpcs:disable EscapeOutput` for a whole view. Kit markup goes through `Admin::kit()` (the one delegated `echo`); any other pre-escaped echo gets a per-line `phpcs:ignore` with the reason | Reviewers flag file-wide disables as escaping/nonce failures (hit perxel-image-optimizer and this plugin); `bin/check-suppressions.sh` (run by `composer run lint`, so CI) fails on the blanket form |
-| `'suppress_filters' => true` in a query: same dual-suppression, code `WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters` | deliberate but flagged |
+| Escape late, never suppress `EscapeOutput`. Kit markup goes through `Admin::kit()` = `wp_kses( $html, Perxel_UI::allowed_html() )`; other pre-built HTML (progress cells, Confirm's plan column) through `wp_kses( $html, Admin::inline_html() )`. No inline `on*` handlers in kit markup (kses strips them) - wire them in JS | Review of 2026-09-22 flagged file-wide `phpcs:disable`; review of 2026-09-23 flagged even per-line `echo $html; // phpcs:ignore ... escaped earlier`. `bin/check-suppressions.sh` (run by `composer run lint`, so CI) fails on both |
+| No `'suppress_filters' => true` (Plugin Check **error**). `get_posts()` already defaults to it; to read terms across WPML languages use `Wpml::switch_language( 'all' )` and restore | error-level `WordPressVIPMinimum...SuppressFilters_suppress_filters` |
+| A MySQL `GET_LOCK` result must be checked; skip the guarded work when it isn't `1` | reviewer flagged an ignored lock result as a race condition |
 
 The split that bites: **Plugin Check runs its own ruleset, not `phpcs.xml.dist`.**
 Any suppression for a documented false positive goes in *both* places -

@@ -215,14 +215,12 @@ class PostSync {
 		$missing    = array();
 
 		foreach ( $taxonomies as $taxonomy ) {
-			$term_ids = wp_get_object_terms(
-				$source_post_id,
-				$taxonomy,
-				array(
-					'fields'           => 'ids',
-					'suppress_filters' => true,
-				)
-			);
+			// Every term on the source post, whatever WPML's current admin
+			// language is: lift WPML's language filter for this one read.
+			$current_lang = Wpml::get_current_language();
+			Wpml::switch_language( 'all' );
+			$term_ids = wp_get_object_terms( $source_post_id, $taxonomy, array( 'fields' => 'ids' ) );
+			Wpml::switch_language( $current_lang );
 			if ( is_wp_error( $term_ids ) || empty( $term_ids ) ) {
 				continue;
 			}

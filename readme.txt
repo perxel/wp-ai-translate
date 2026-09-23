@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.0.24
+Stable tag: 0.0.25
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -100,6 +100,11 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History - every run with its languages, model, post count, warnings or errors, word volume and cost.
 
 == Changelog ==
+
+= 0.0.25 =
+* Admin output is now escaped at the point of output with `wp_kses()` everywhere, including the progress table and the translation plan.
+* A translation can no longer write while another one holds the write lock: if the lock is still busy after 15 seconds, the post is marked as an error you can retry (the stored translation is reused, no extra model cost).
+* Taxonomy sync reads the source post's terms across all WPML languages through WPML's own language switch.
 
 = 0.0.24 =
 * Housekeeping only, no behaviour change. Admin output now goes through a single escaping-delegation point instead of file-wide lint suppressions, and read-only request parameters carry per-line notes. Every state-changing action already verified a nonce and capability.

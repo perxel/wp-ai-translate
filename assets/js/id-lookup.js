@@ -16,6 +16,10 @@
 		return;
 	}
 
+	out.addEventListener( 'click', function () {
+		out.select();
+	} );
+
 	function report( ok ) {
 		if ( result ) {
 			result.textContent = ok

@@ -69,7 +69,7 @@ if ( '' !== $error ) {
 			<strong><?php esc_html_e( 'Result', 'perxel-ai-translate' ); ?></strong>
 			<button type="button" class="button button-small" id="pxat-copy-output"><?php esc_html_e( 'Copy', 'perxel-ai-translate' ); ?></button>
 			<span id="pxat-copy-output-result" class="pxat-test-result"></span>
-			<textarea id="pxat-output" readonly rows="16" onclick="this.select();" placeholder="<?php esc_attr_e( 'Results appear here after a lookup.', 'perxel-ai-translate' ); ?>"><?php echo esc_textarea( $output_text ); ?></textarea>
+			<textarea id="pxat-output" readonly rows="16" placeholder="<?php esc_attr_e( 'Results appear here after a lookup.', 'perxel-ai-translate' ); ?>"><?php echo esc_textarea( $output_text ); ?></textarea>
 			<?php if ( $submitted ) : ?>
 				<p class="pxat-muted">
 					<?php

@@ -562,17 +562,25 @@ class Runs {
 	 * ------------------------------------------------------------------- */
 
 	/**
-	 * Run $fn while holding a MySQL named lock, so the WordPress-write phase
-	 * (destination post creation, WPML taxonomy resolution) can never overlap
-	 * another worker's. $fn still runs if the lock can't be acquired.
+	 * Run $callback while holding a MySQL named lock, so the WordPress-write
+	 * phase (destination post creation, WPML taxonomy resolution) can never
+	 * overlap another worker's. If the lock can't be acquired within the
+	 * timeout, $callback is NOT run: $on_busy runs instead (the caller marks the
+	 * item retryable), so two workers never write at once.
 	 *
 	 * @param callable $callback Work to serialise.
-	 * @return mixed The callback's return value.
+	 * @param callable $on_busy  Fallback when the lock stays taken.
+	 * @return mixed The return value of whichever callable ran.
 	 */
-	public static function with_write_lock( callable $callback ) {
+	public static function with_write_lock( callable $callback, callable $on_busy ) {
 		global $wpdb;
 
-		$wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', self::WRITE_LOCK, 15 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$locked = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', self::WRITE_LOCK, 15 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		// 1 = acquired; 0 = timed out; NULL = error. Only 1 may write.
+		if ( '1' !== (string) $locked ) {
+			return $on_busy();
+		}
 
 		try {
 			return $callback();

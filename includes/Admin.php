@@ -27,14 +27,40 @@ class Admin {
 	const NONCE = 'pxat_admin';
 
 	/**
-	 * Echo markup returned by a Perxel_UI renderer. The kit escapes its own
-	 * structure; every dynamic value handed to it is escaped by the caller.
-	 * This is the single place output escaping is delegated to the kit.
+	 * Echo markup returned by a Perxel_UI renderer, escaped late through the
+	 * kit's own wp_kses() allowlist.
 	 *
 	 * @param string $html Markup from a Perxel_UI:: renderer.
 	 */
 	public static function kit( $html ) {
-		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- trusted Perxel_UI markup; see docblock.
+		echo wp_kses( $html, \Perxel_UI::allowed_html() );
+	}
+
+	/**
+	 * The wp_kses() allowlist for small inline fragments built outside the
+	 * kit: progress-table cells, the Confirm screen's plan column.
+	 *
+	 * @return array
+	 */
+	public static function inline_html() {
+		return array(
+			'a'      => array(
+				'href'   => true,
+				'target' => true,
+				'rel'    => true,
+				'class'  => true,
+			),
+			'span'   => array(
+				'class'       => true,
+				'aria-hidden' => true,
+			),
+			'button' => array(
+				'type'         => true,
+				'class'        => true,
+				'data-item-id' => true,
+			),
+			'br'     => array(),
+		);
 	}
 
 	public function register() {
@@ -709,9 +735,8 @@ class Admin {
 
 		$recent = get_posts(
 			array(
-				'numberposts'      => 1,
-				'post_status'      => 'publish',
-				'suppress_filters' => true,
+				'numberposts' => 1,
+				'post_status' => 'publish',
 			)
 		);
 
