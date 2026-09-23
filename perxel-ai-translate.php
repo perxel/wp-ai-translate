@@ -69,9 +69,12 @@ spl_autoload_register(
  * bin/update-ui.sh. Overwriting it can never change plugin behaviour - the
  * loader keeps the highest registered version across active plugins and a
  * second copy is inert. We host the kit's component showcase as a hidden
- * maintainer-only screen, so suppress its own Tools page.
+ * maintainer-only screen, so suppress its own Tools page. Other Perxel plugins
+ * may define the same constant, so only define it once.
  */
-define( 'PERXEL_UI_SHOWCASE_HOSTED', true );
+if ( ! defined( 'PERXEL_UI_SHOWCASE_HOSTED' ) ) {
+	define( 'PERXEL_UI_SHOWCASE_HOSTED', true );
+}
 
 if ( is_readable( PXAT_DIR . '/vendor/perxel-ui/loader.php' ) ) {
 	require_once PXAT_DIR . '/vendor/perxel-ui/loader.php';
