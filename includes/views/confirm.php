@@ -245,7 +245,7 @@ $flow = static function ( array $steps ) {
 								: esc_html__( 'Not created - no existing translation', 'perxel-ai-translate' )
 						) . '</span>';
 						if ( '' !== $dest_link ) {
-							echo '<br /><span class="pxat-muted">' . $dest_link . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $dest_link is built from esc_url() / esc_html().
+							echo '<br /><span class="pxat-muted">' . wp_kses( $dest_link, Admin::inline_html() ) . '</span>';
 						}
 					} else {
 						$verb   = 'structural' === $row['state']
@@ -255,7 +255,7 @@ $flow = static function ( array $steps ) {
 							? esc_html__( 'Overwrite', 'perxel-ai-translate' )
 							: esc_html__( 'New post', 'perxel-ai-translate' );
 
-						echo $flow( array( $verb, $target, esc_html( $status_label( $row['status'] ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- every step is escaped above.
+						echo wp_kses( $flow( array( $verb, $target, esc_html( $status_label( $row['status'] ) ) ) ), Admin::inline_html() );
 
 						$ctx = array();
 						if ( '' !== $dest_link ) {
@@ -283,7 +283,7 @@ $flow = static function ( array $steps ) {
 							$ctx[] = esc_html__( 'will be created', 'perxel-ai-translate' );
 						}
 						if ( $ctx ) {
-							echo '<br /><span class="pxat-muted">' . implode( ' &middot; ', $ctx ) . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- every $ctx entry is escaped above.
+							echo '<br /><span class="pxat-muted">' . wp_kses( implode( ' &middot; ', $ctx ), Admin::inline_html() ) . '</span>';
 						}
 					}
 					?>

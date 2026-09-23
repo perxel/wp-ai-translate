@@ -19,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use Perxel_Ai_Translate\Admin;
 use Perxel_Ai_Translate\Format;
 use Perxel_Ai_Translate\Translator;
 use Perxel_Ai_Translate\Wpml;
@@ -168,11 +169,11 @@ if ( $counts['warnings'] > 0 ) {
 			);
 			?>
 			<tr data-item-id="<?php echo (int) $item['id']; ?>" data-preview="<?php echo esc_attr( $preview_json ); ?>">
-				<td class="pxat-cell-source"><?php echo $item['html']['source']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in Progress::render_*_cell(). ?></td>
-				<td class="pxat-cell-dest"><?php echo $item['html']['dest']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in Progress::render_*_cell(). ?></td>
-				<td class="pxat-cell-status"><?php echo $item['html']['status']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in Progress::render_*_cell(). ?></td>
-				<td class="pxat-cell-note"><?php echo $item['html']['note']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in Progress::render_*_cell(). ?></td>
-				<td class="pxat-cell-action"><?php echo $item['html']['action']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in Progress::render_*_cell(). ?></td>
+				<td class="pxat-cell-source"><?php echo wp_kses( $item['html']['source'], Admin::inline_html() ); ?></td>
+				<td class="pxat-cell-dest"><?php echo wp_kses( $item['html']['dest'], Admin::inline_html() ); ?></td>
+				<td class="pxat-cell-status"><?php echo wp_kses( $item['html']['status'], Admin::inline_html() ); ?></td>
+				<td class="pxat-cell-note"><?php echo wp_kses( $item['html']['note'], Admin::inline_html() ); ?></td>
+				<td class="pxat-cell-action"><?php echo wp_kses( $item['html']['action'], Admin::inline_html() ); ?></td>
 			</tr>
 		<?php endforeach; ?>
 	</tbody>

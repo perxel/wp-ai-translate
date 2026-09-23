@@ -14,6 +14,13 @@
 		return document.getElementById( id );
 	}
 
+	// Read-only prompt box: one click selects it all, ready to copy.
+	document.querySelectorAll( '.pxat-select-all' ).forEach( function ( el ) {
+		el.addEventListener( 'click', function () {
+			el.select();
+		} );
+	} );
+
 	var keyInput = $( 'pxat-api-key' );
 	var modelInput = $( 'pxat-model-id' );
 	var testBtn = $( 'pxat-test' );

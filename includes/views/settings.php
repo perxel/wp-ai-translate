@@ -100,8 +100,8 @@ if ( $benchmark ) {
 	<input type="hidden" name="action" value="pxat_save_settings" />
 	<?php wp_nonce_field( 'pxat_save_settings' ); ?>
 
-	<input type="hidden" name="api_key_verified" id="pxat-api-key-verified" value="<?php echo $settings['api_key_verified'] ? '1' : ''; ?>" />
-	<input type="hidden" name="model_verified" id="pxat-model-verified" value="<?php echo $settings['model_verified'] ? '1' : ''; ?>" />
+	<input type="hidden" name="api_key_verified" id="pxat-api-key-verified" value="<?php echo esc_attr( $settings['api_key_verified'] ? '1' : '' ); ?>" />
+	<input type="hidden" name="model_verified" id="pxat-model-verified" value="<?php echo esc_attr( $settings['model_verified'] ? '1' : '' ); ?>" />
 	<input type="hidden" name="model_label" id="pxat-model-label" value="<?php echo esc_attr( $settings['model_label'] ); ?>" />
 	<input type="hidden" name="model_input" id="pxat-model-input" value="<?php echo esc_attr( $settings['model_input'] ); ?>" />
 	<input type="hidden" name="model_output" id="pxat-model-output" value="<?php echo esc_attr( $settings['model_output'] ); ?>" />
@@ -146,7 +146,7 @@ if ( $benchmark ) {
 						array(
 							'summary' => __( 'System prompt sent to the model', 'perxel-ai-translate' ),
 							'sub'     => esc_html__( 'Read-only. Copy it to translate manually with any AI chat tool if your key stops working. Replace {source_lang} / {dest_lang} with real codes.', 'perxel-ai-translate' ),
-							'details' => '<textarea class="pxui-mono" rows="8" readonly onclick="this.select()">' . esc_textarea( $system_prompt ) . '</textarea>',
+							'details' => '<textarea class="pxui-mono pxat-select-all" rows="8" readonly>' . esc_textarea( $system_prompt ) . '</textarea>',
 						),
 					),
 				),

@@ -348,6 +348,18 @@ class Translator {
 				}
 
 				return $updated;
+			},
+			static function () use ( $run, $item ) {
+				// Another worker held the write lock past the timeout. Write
+				// nothing; the stored preview makes a retry free of model cost.
+				Runs::log( $run['id'], $item['id'], self::post_label( $item['source_post_id'] ) . ': write lock busy, not written - retry this post' );
+				return Runs::update_item(
+					$item['id'],
+					array(
+						'status'        => 'error',
+						'error_message' => __( 'Another translation was still writing. Retry this post.', 'perxel-ai-translate' ),
+					)
+				);
 			}
 		);
 	}

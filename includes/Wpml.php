@@ -25,6 +25,21 @@ class Wpml {
 		return apply_filters( 'wpml_default_language', null );
 	}
 
+	public static function get_current_language() {
+		return apply_filters( 'wpml_current_language', null );
+	}
+
+	/**
+	 * Switch WPML's query language: 'all' lifts its per-language filtering of
+	 * term and post queries; pass the value from get_current_language() back to
+	 * restore it.
+	 *
+	 * @param string|null $language_code Language code, 'all', or null.
+	 */
+	public static function switch_language( $language_code ) {
+		do_action( 'wpml_switch_language', $language_code );
+	}
+
 	public static function get_element_trid( $post_id, $post_type ) {
 		return apply_filters( 'wpml_element_trid', null, $post_id, 'post_' . $post_type );
 	}
