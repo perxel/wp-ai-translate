@@ -4,7 +4,7 @@ Tags: translation, wpml, multilingual, ai, openrouter
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.0.25
+Stable tag: 0.0.26
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -100,6 +100,9 @@ Deleting the plugin removes its settings and those tables. Translations already 
 4. History - every run with its languages, model, post count, warnings or errors, word volume and cost.
 
 == Changelog ==
+
+= 0.0.26 =
+* Housekeeping only, no behaviour change. Plugin URI now points to the product page on perxel.com instead of the GitHub repo.
 
 = 0.0.25 =
 * Admin output is now escaped at the point of output with `wp_kses()` everywhere, including the progress table and the translation plan.
