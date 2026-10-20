@@ -65,6 +65,7 @@ class Admin {
 
 	public function register() {
 		add_action( 'admin_menu', array( $this, 'menu' ) );
+		add_action( 'admin_init', array( $this, 'register_commands' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'assets' ) );
 
 		add_filter( 'plugin_action_links_' . plugin_basename( PXAT_FILE ), array( $this, 'action_links' ) );
@@ -126,6 +127,61 @@ class Admin {
 		if ( class_exists( 'Perxel_UI_Layout' ) ) {
 			\Perxel_UI_Layout::set_page_titles( $titles, PXAT_NAME );
 		}
+	}
+
+	/**
+	 * Put the screens in WordPress's command palette (Cmd/Ctrl+K, WordPress
+	 * 6.9+) through the kit's Perxel_UI_Commands (kit 0.24.0+). On
+	 * admin_init: the kit boots on after_setup_theme.
+	 */
+	public function register_commands() {
+		if ( class_exists( 'Perxel_UI_Commands' ) ) {
+			\Perxel_UI_Commands::add( PXAT_NAME, array( self::class, 'commands' ) );
+		}
+	}
+
+	/**
+	 * The palette's commands: the screens on the kit's sidebar (not the
+	 * confirm and run screens, reached mid-task), searched by what they hold.
+	 * Only for users who can open them.
+	 *
+	 * @return array[]
+	 */
+	public static function commands() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return array();
+		}
+
+		$url = static function ( $page ) {
+			return admin_url( 'tools.php?page=' . $page );
+		};
+
+		return array(
+			array(
+				'name'     => 'pxat/dashboard',
+				'label'    => __( 'Dashboard', 'perxel-ai-translate' ),
+				'url'      => $url( self::PAGE_DASHBOARD ),
+				'keywords' => array( 'WPML', __( 'Translate', 'perxel-ai-translate' ), __( 'Languages', 'perxel-ai-translate' ) ),
+			),
+			array(
+				'name'     => 'pxat/history',
+				'label'    => __( 'History', 'perxel-ai-translate' ),
+				'url'      => $url( self::PAGE_HISTORY ),
+				'keywords' => array( __( 'Translation runs', 'perxel-ai-translate' ), __( 'Cost', 'perxel-ai-translate' ) ),
+			),
+			array(
+				'name'     => 'pxat/id-lookup',
+				'label'    => __( 'ID lookup', 'perxel-ai-translate' ),
+				'url'      => $url( self::PAGE_ID_LOOKUP ),
+				'keywords' => array( 'WPML', __( 'Translated ID', 'perxel-ai-translate' ) ),
+			),
+			array(
+				'name'     => 'pxat/settings',
+				'label'    => __( 'Settings', 'perxel-ai-translate' ),
+				'url'      => $url( self::PAGE_SETTINGS ),
+				'keywords' => array( 'OpenRouter', __( 'API key', 'perxel-ai-translate' ), __( 'Model id', 'perxel-ai-translate' ), __( 'Faster batched requests', 'perxel-ai-translate' ), __( 'Homepage benchmark', 'perxel-ai-translate' ), __( 'Compatibility', 'perxel-ai-translate' ), __( 'Reset settings to defaults', 'perxel-ai-translate' ) ),
+			),
+		);
 	}
 
 	/**
